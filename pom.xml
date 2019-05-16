@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>com.yandex.cloud</groupId>
+    <groupId>tech.ydb</groupId>
     <artifactId>ydb-sdk-parent</artifactId>
     <version>0.9.9</version>
   </parent>
@@ -34,7 +34,7 @@
 
   <dependencies>
     <dependency>
-      <groupId>com.yandex.cloud</groupId>
+      <groupId>tech.ydb</groupId>
       <artifactId>ydb-sdk-table</artifactId>
       <version>1.0.0</version>
     </dependency>
