@@ -1,10 +1,11 @@
 package tech.ydb.examples.simple;
 
+import tech.ydb.core.rpc.RpcTransport;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
-import tech.ydb.table.TableService;
 import tech.ydb.table.description.TableColumn;
 import tech.ydb.table.description.TableDescription;
+import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.settings.AlterTableSettings;
 import tech.ydb.table.types.OptionalType;
 import tech.ydb.table.types.PrimitiveType;
@@ -16,9 +17,10 @@ import tech.ydb.table.types.PrimitiveType;
 public class AlterTable extends SimpleExample {
 
     @Override
-    void run(TableService tableService, String pathPrefix) {
+    void run(RpcTransport transport, String pathPrefix) {
         String tablePath = pathPrefix + getClass().getSimpleName();
-        TableClient tableClient = tableService.newTableClient();
+        TableClient tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport))
+            .build();
 
         Session session = tableClient.createSession()
             .join()

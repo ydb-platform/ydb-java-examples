@@ -13,6 +13,7 @@ import javax.annotation.Nullable;
 
 import tech.ydb.core.Result;
 import tech.ydb.core.Status;
+import tech.ydb.core.rpc.RpcTransport;
 import tech.ydb.examples.App;
 import tech.ydb.examples.AppRunner;
 import tech.ydb.examples.TablePrinter;
@@ -20,13 +21,13 @@ import tech.ydb.examples.basic_example.exceptions.NonRetriableErrorException;
 import tech.ydb.examples.basic_example.exceptions.TooManyRetriesException;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
-import tech.ydb.table.TableService;
 import tech.ydb.table.description.TableColumn;
 import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.query.DataQuery;
 import tech.ydb.table.query.DataQueryResult;
 import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
+import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.transaction.Transaction;
 import tech.ydb.table.transaction.TransactionMode;
 import tech.ydb.table.transaction.TxControl;
@@ -51,11 +52,11 @@ public class BasicExampleApp implements App {
     private Session session;
     private Map<String, DataQuery> preparedQueries = new HashMap<>();
 
-    BasicExampleApp(TableService tableService, String path) {
+    BasicExampleApp(RpcTransport transport, String path) {
         this.path = path;
-
-        tableClient = tableService.newTableClient();
-        session = tableClient.createSession()
+        this.tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport))
+            .build();
+        this.session = tableClient.createSession()
             .join()
             .expect("cannot create session");
     }
@@ -524,6 +525,7 @@ public class BasicExampleApp implements App {
                 .join()
                 .expect("cannot close session");
         }
+        tableClient.close();
     }
 
     public static void main(String[] args) {

@@ -3,15 +3,17 @@ package tech.ydb.examples.simple;
 import java.util.UUID;
 
 import tech.ydb.core.Result;
+import tech.ydb.core.rpc.RpcTransport;
 import tech.ydb.table.SchemeClient;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
-import tech.ydb.table.TableService;
 import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.query.DataQuery;
 import tech.ydb.table.query.DataQueryResult;
 import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
+import tech.ydb.table.rpc.grpc.GrpcSchemeRpc;
+import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.settings.DropTableSettings;
 import tech.ydb.table.transaction.TxControl;
 import tech.ydb.table.types.PrimitiveType;
@@ -126,13 +128,13 @@ public class BasicWorkflow extends SimpleExample {
     }
 
     @Override
-    void run(TableService tableService, String pathPrefix) {
+    void run(RpcTransport transport, String pathPrefix) {
         final String rootPath = pathPrefix + UUID.randomUUID().toString();
         final String workDirPath = rootPath + "/MyData";
         final String ordersTablePath = workDirPath + "/Orders";
 
-        final SchemeClient schemeClient = tableService.newSchemeClient();
-        final TableClient tableClient = tableService.newTableClient();
+        final SchemeClient schemeClient = SchemeClient.newClient(GrpcSchemeRpc.useTransport(transport)).build();
+        final TableClient tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport)).build();
         final Session session = makeSession(tableClient);
 
         try {

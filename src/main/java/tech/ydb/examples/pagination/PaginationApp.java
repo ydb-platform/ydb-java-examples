@@ -3,17 +3,18 @@ package tech.ydb.examples.pagination;
 import java.util.ArrayList;
 import java.util.List;
 
+import tech.ydb.core.rpc.RpcTransport;
 import tech.ydb.examples.App;
 import tech.ydb.examples.AppRunner;
 import tech.ydb.examples.pagination.model.School;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
-import tech.ydb.table.TableService;
 import tech.ydb.table.description.TableColumn;
 import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.query.DataQueryResult;
 import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
+import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.transaction.TxControl;
 import tech.ydb.table.types.ListType;
 import tech.ydb.table.types.PrimitiveType;
@@ -34,12 +35,13 @@ public class PaginationApp implements App {
     private static final int MAX_PAGES = 10;
 
     private final String path;
+    private final TableClient tableClient;
     private final Session session;
 
-    PaginationApp(TableService tableService, String path) {
+    PaginationApp(RpcTransport transport, String path) {
         this.path = path;
-
-        TableClient tableClient = tableService.newTableClient();
+        this.tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport))
+            .build();
         this.session = tableClient.createSession()
             .join()
             .expect("cannot create session");
@@ -190,6 +192,7 @@ public class PaginationApp implements App {
     @Override
     public void close() {
         session.close();
+        tableClient.close();
     }
 
     public static void main(String[] args) {

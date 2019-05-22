@@ -1,8 +1,9 @@
 package tech.ydb.examples.simple;
 
+import tech.ydb.core.rpc.RpcTransport;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
-import tech.ydb.table.TableService;
+import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 
 
 /**
@@ -11,9 +12,9 @@ import tech.ydb.table.TableService;
 public class SchemeQuery extends SimpleExample {
 
     @Override
-    protected void run(TableService tableService, String pathPrefix) {
+    protected void run(RpcTransport transport, String pathPrefix) {
         String tablePath = pathPrefix + getClass().getSimpleName();
-        TableClient tableClient = tableService.newTableClient();
+        TableClient tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport)).build();
 
         Session session = tableClient.createSession()
             .join()
