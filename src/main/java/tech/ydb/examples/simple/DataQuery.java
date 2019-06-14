@@ -10,7 +10,7 @@ import tech.ydb.table.settings.AutoPartitioningPolicy;
 import tech.ydb.table.settings.CreateTableSettings;
 import tech.ydb.table.settings.PartitioningPolicy;
 import tech.ydb.table.transaction.TxControl;
-import tech.ydb.table.types.PrimitiveType;
+import tech.ydb.table.values.PrimitiveType;
 
 
 /**

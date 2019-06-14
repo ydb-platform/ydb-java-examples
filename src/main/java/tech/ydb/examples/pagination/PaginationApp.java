@@ -16,8 +16,8 @@ import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.transaction.TxControl;
-import tech.ydb.table.types.ListType;
-import tech.ydb.table.types.PrimitiveType;
+import tech.ydb.table.values.ListType;
+import tech.ydb.table.values.PrimitiveType;
 
 import static tech.ydb.table.values.PrimitiveValue.uint32;
 import static tech.ydb.table.values.PrimitiveValue.uint64;

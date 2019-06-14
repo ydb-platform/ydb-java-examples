@@ -7,8 +7,8 @@ import tech.ydb.table.description.TableColumn;
 import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.settings.AlterTableSettings;
-import tech.ydb.table.types.OptionalType;
-import tech.ydb.table.types.PrimitiveType;
+import tech.ydb.table.values.OptionalType;
+import tech.ydb.table.values.PrimitiveType;
 
 
 /**

@@ -16,7 +16,7 @@ import tech.ydb.table.rpc.grpc.GrpcSchemeRpc;
 import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.settings.DropTableSettings;
 import tech.ydb.table.transaction.TxControl;
-import tech.ydb.table.types.PrimitiveType;
+import tech.ydb.table.values.PrimitiveType;
 
 import static tech.ydb.table.values.PrimitiveValue.uint32;
 import static java.nio.charset.StandardCharsets.UTF_8;

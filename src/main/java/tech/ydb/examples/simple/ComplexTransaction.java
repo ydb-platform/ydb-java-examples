@@ -11,7 +11,7 @@ import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.transaction.Transaction;
 import tech.ydb.table.transaction.TransactionMode;
 import tech.ydb.table.transaction.TxControl;
-import tech.ydb.table.types.PrimitiveType;
+import tech.ydb.table.values.PrimitiveType;
 
 
 /**

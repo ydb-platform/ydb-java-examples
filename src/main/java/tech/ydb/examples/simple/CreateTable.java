@@ -8,9 +8,9 @@ import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.settings.CreateTableSettings;
 import tech.ydb.table.settings.PartitioningPolicy;
-import tech.ydb.table.types.PrimitiveType;
-import tech.ydb.table.types.TupleType;
+import tech.ydb.table.values.PrimitiveType;
 import tech.ydb.table.values.PrimitiveValue;
+import tech.ydb.table.values.TupleType;
 import tech.ydb.table.values.TupleValue;
 
 

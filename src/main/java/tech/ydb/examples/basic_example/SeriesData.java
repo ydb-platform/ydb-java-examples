@@ -10,11 +10,11 @@ import com.google.common.collect.ImmutableMap;
 import tech.ydb.examples.basic_example.model.Episode;
 import tech.ydb.examples.basic_example.model.Season;
 import tech.ydb.examples.basic_example.model.Series;
-import tech.ydb.table.types.PrimitiveType;
-import tech.ydb.table.types.StructType;
+import tech.ydb.table.values.ListType;
 import tech.ydb.table.values.ListValue;
+import tech.ydb.table.values.PrimitiveType;
 import tech.ydb.table.values.PrimitiveValue;
-import tech.ydb.table.values.StructValue;
+import tech.ydb.table.values.StructType;
 import tech.ydb.table.values.Value;
 
 
@@ -172,8 +172,9 @@ final class SeriesData {
     }
 
     private static <T> ListValue toListValue(T[] items, StructType type, Function<T, Map<String, Value>> mapper) {
-        return ListValue.of(Arrays.stream(items)
-            .map(e -> StructValue.of(type, mapper.apply(e)))
+        ListType listType = ListType.of(type);
+        return listType.newValue(Arrays.stream(items)
+            .map(e -> type.newValue(mapper.apply(e)))
             .collect(Collectors.toList()));
     }
 }
