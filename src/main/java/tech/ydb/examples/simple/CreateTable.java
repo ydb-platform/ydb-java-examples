@@ -10,7 +10,6 @@ import tech.ydb.table.settings.CreateTableSettings;
 import tech.ydb.table.settings.PartitioningPolicy;
 import tech.ydb.table.values.PrimitiveType;
 import tech.ydb.table.values.PrimitiveValue;
-import tech.ydb.table.values.TupleType;
 import tech.ydb.table.values.TupleValue;
 
 
@@ -82,12 +81,10 @@ public class CreateTable extends SimpleExample {
             .setPrimaryKey("name")
             .build();
 
-        TupleType keyType = TupleType.of(PrimitiveType.utf8().makeOptional());
-
         CreateTableSettings settings = new CreateTableSettings()
             .setPartitioningPolicy(new PartitioningPolicy()
-                .addExplicitPartitioningPoint(keyType, makeKey("a"))
-                .addExplicitPartitioningPoint(keyType, makeKey("n")));
+                .addExplicitPartitioningPoint(makeKey("a"))
+                .addExplicitPartitioningPoint(makeKey("n")));
 
         session.createTable(tablePath, description, settings)
             .join()
