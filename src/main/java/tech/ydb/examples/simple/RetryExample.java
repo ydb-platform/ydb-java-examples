@@ -1,7 +1,7 @@
 package tech.ydb.examples.simple;
 
+import java.time.Duration;
 import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.TimeUnit;
 
 import tech.ydb.core.Result;
 import tech.ydb.core.rpc.RpcTransport;
@@ -29,7 +29,7 @@ public class RetryExample extends SimpleExample {
             SessionRetryContext ctx = SessionRetryContext.create(tableClient)
                 .executor(ForkJoinPool.commonPool())
                 .maxRetries(5)
-                .sessionSupplyTimeout(3, TimeUnit.SECONDS)
+                .sessionSupplyTimeout(Duration.ofSeconds(3))
                 .build();
 
             Result<DataQueryResult> result = ctx.supplyResult(session -> {
