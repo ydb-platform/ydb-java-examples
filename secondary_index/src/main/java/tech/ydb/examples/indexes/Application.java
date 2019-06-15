@@ -5,7 +5,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
 import tech.ydb.core.auth.TokenAuthProvider;
-import tech.ydb.core.grpc.GrpcTransportBuilder;
+import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.core.rpc.RpcTransport;
 import tech.ydb.examples.indexes.configuration.IndexesConfigurationProperties;
 import tech.ydb.examples.indexes.repositories.SeriesRepository;
@@ -40,7 +40,7 @@ public class Application {
             token = System.getenv("YDB_TOKEN");
         }
         logger.info("Creating rpc transport for endpoint={} database={}", endpoint, database);
-        GrpcTransportBuilder builder = GrpcTransportBuilder.forEndpoint(endpoint, database)
+        GrpcTransport.Builder builder = GrpcTransport.forEndpoint(endpoint, database)
                 .withCallExecutor(grpcExecutor);
         if (token != null && !token.isEmpty()) {
             builder.withAuthProvider(new TokenAuthProvider(token));
