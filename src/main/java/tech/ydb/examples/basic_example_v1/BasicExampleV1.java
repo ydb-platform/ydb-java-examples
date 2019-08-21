@@ -1,4 +1,4 @@
-package tech.ydb.examples.basic_example;
+package tech.ydb.examples.basic_example_v1;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 import javax.annotation.Nullable;
+import javax.annotation.WillNotClose;
 
 import tech.ydb.core.Result;
 import tech.ydb.core.Status;
@@ -17,8 +18,8 @@ import tech.ydb.core.rpc.RpcTransport;
 import tech.ydb.examples.App;
 import tech.ydb.examples.AppRunner;
 import tech.ydb.examples.TablePrinter;
-import tech.ydb.examples.basic_example.exceptions.NonRetriableErrorException;
-import tech.ydb.examples.basic_example.exceptions.TooManyRetriesException;
+import tech.ydb.examples.basic_example_v1.exceptions.NonRetriableErrorException;
+import tech.ydb.examples.basic_example_v1.exceptions.TooManyRetriesException;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.description.TableColumn;
@@ -33,26 +34,25 @@ import tech.ydb.table.transaction.TransactionMode;
 import tech.ydb.table.transaction.TxControl;
 import tech.ydb.table.values.PrimitiveType;
 
-import static tech.ydb.table.values.PrimitiveValue.date;
 import static tech.ydb.table.values.PrimitiveValue.uint64;
 
 
 /**
  * @author Sergey Polovko
  */
-public class BasicExampleApp implements App {
+public class BasicExampleV1 implements App {
 
     private static final int MAX_RETRIES = 5;
     private static final long OVERLOAD_DELAY_MILLIS = 5000;
 
-    private final String path;
+    private final String database;
     private final TableClient tableClient;
     @Nullable
     private Session session;
     private Map<String, DataQuery> preparedQueries = new HashMap<>();
 
-    BasicExampleApp(RpcTransport transport, String path) {
-        this.path = path;
+    BasicExampleV1(@WillNotClose RpcTransport transport, String database) {
+        this.database = database;
         this.tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport))
             .build();
         this.session = tableClient.createSession()
@@ -93,7 +93,7 @@ public class BasicExampleApp implements App {
             .setPrimaryKey("series_id")
             .build();
 
-        execute(session -> session.createTable(path + "/series", seriesTable).join());
+        execute(session -> session.createTable(database + "/series", seriesTable).join());
 
         TableDescription seasonsTable = TableDescription.newBuilder()
             .addNullableColumn("series_id", PrimitiveType.uint64())
@@ -104,7 +104,7 @@ public class BasicExampleApp implements App {
             .setPrimaryKeys("series_id", "season_id")
             .build();
 
-        execute(session -> session.createTable(path + "/seasons", seasonsTable).join());
+        execute(session -> session.createTable(database + "/seasons", seasonsTable).join());
 
         TableDescription episodesTable = TableDescription.newBuilder()
             .addNullableColumn("series_id", PrimitiveType.uint64())
@@ -115,7 +115,7 @@ public class BasicExampleApp implements App {
             .setPrimaryKeys("series_id", "season_id", "episode_id")
             .build();
 
-        execute(session -> session.createTable(path + "/episodes", episodesTable).join());
+        execute(session -> session.createTable(database + "/episodes", episodesTable).join());
     }
 
     /**
@@ -125,7 +125,7 @@ public class BasicExampleApp implements App {
         System.out.println("\n--[ DescribeTables ]--");
 
         for (String tableName : new String[]{ "series", "seasons", "episodes" }) {
-            String tablePath = path + '/' + tableName;
+            String tablePath = database + '/' + tableName;
             TableDescription tableDesc = executeWithResult(session -> session.describeTable(tablePath).join());
 
             System.out.println(tablePath + ':');
@@ -145,32 +145,32 @@ public class BasicExampleApp implements App {
         String query = String.format(
             "PRAGMA TablePathPrefix(\"%s\");\n" +
             "\n" +
-            "DECLARE $seriesData AS \"List<Struct<\n" +
+            "DECLARE $seriesData AS List<Struct<\n" +
             "    series_id: Uint64,\n" +
             "    title: Utf8,\n" +
             "    series_info: Utf8,\n" +
-            "    release_date: Date>>\";\n" +
+            "    release_date: Date>>;\n" +
             "\n" +
-            "DECLARE $seasonsData AS \"List<Struct<\n" +
+            "DECLARE $seasonsData AS List<Struct<\n" +
             "    series_id: Uint64,\n" +
             "    season_id: Uint64,\n" +
             "    title: Utf8,\n" +
             "    first_aired: Date,\n" +
-            "    last_aired: Date>>\";\n" +
+            "    last_aired: Date>>;\n" +
             "\n" +
-            "DECLARE $episodesData AS \"List<Struct<\n" +
+            "DECLARE $episodesData AS List<Struct<\n" +
             "    series_id: Uint64,\n" +
             "    season_id: Uint64,\n" +
             "    episode_id: Uint64,\n" +
             "    title: Utf8,\n" +
-            "    air_date: Date>>\";\n" +
+            "    air_date: Date>>;\n" +
             "\n" +
             "REPLACE INTO series\n" +
             "SELECT\n" +
             "    series_id,\n" +
             "    title,\n" +
             "    series_info,\n" +
-            "    DateTime::ToDays(release_date) AS release_date\n" +
+            "    CAST(release_date AS Uint64) AS release_date\n" +
             "FROM AS_TABLE($seriesData);\n" +
             "\n" +
             "REPLACE INTO seasons\n" +
@@ -178,8 +178,8 @@ public class BasicExampleApp implements App {
             "    series_id,\n" +
             "    season_id,\n" +
             "    title,\n" +
-            "    DateTime::ToDays(first_aired) AS first_aired,\n" +
-            "    DateTime::ToDays(last_aired) AS last_aired\n" +
+            "    CAST(first_aired AS Uint64) AS first_aired,\n" +
+            "    CAST(last_aired AS Uint64) AS last_aired\n" +
             "FROM AS_TABLE($seasonsData);\n" +
             "\n" +
             "REPLACE INTO episodes\n" +
@@ -188,9 +188,9 @@ public class BasicExampleApp implements App {
             "    season_id,\n" +
             "    episode_id,\n" +
             "    title,\n" +
-            "    DateTime::ToDays(air_date) AS air_date\n" +
+            "    CAST(air_date AS Uint64) AS air_date\n" +
             "FROM AS_TABLE($episodesData);",
-            path);
+            database);
 
         Params params = Params.of(
             "$seriesData", SeriesData.SERIES_DATA,
@@ -199,6 +199,7 @@ public class BasicExampleApp implements App {
 
         TxControl txControl = TxControl.serializableRw().setCommitTx(true);
 
+        System.out.println(query);
         execute(session -> session.executeDataQuery(query, txControl, params)
             .join()
             .toStatus());
@@ -210,11 +211,15 @@ public class BasicExampleApp implements App {
     private void selectSimple() {
         String query = String.format(
             "PRAGMA TablePathPrefix(\"%s\");\n" +
+            "$format = DateTime::Format(\"%%Y-%%m-%%d\");\n" +
             "\n" +
-            "SELECT series_id, title, DateTime::ToDate(DateTime::FromDays(release_date)) AS release_date\n" +
+            "SELECT\n" +
+            "    series_id,\n" +
+            "    title,\n" +
+            "    $format(DateTime::FromSeconds(CAST(DateTime::ToSeconds(DateTime::IntervalFromDays(CAST(release_date AS Int16))) AS Uint32))) AS release_date\n" +
             "FROM series\n" +
             "WHERE series_id = 1;",
-            path);
+            database);
 
         // Begin new transaction with SerializableRW mode
         TxControl txControl = TxControl.serializableRw().setCommitTx(true);
@@ -236,7 +241,7 @@ public class BasicExampleApp implements App {
             "\n" +
             "UPSERT INTO episodes (series_id, season_id, episode_id, title) VALUES\n" +
             "(2, 6, 1, \"TBD\");",
-            path);
+            database);
 
         // Begin new transaction with SerializableRW mode
         TxControl txControl = TxControl.serializableRw().setCommitTx(true);
@@ -262,7 +267,7 @@ public class BasicExampleApp implements App {
             "INNER JOIN series AS sr\n" +
             "ON sa.series_id = sr.series_id\n" +
             "WHERE sa.series_id = $seriesId AND sa.season_id = $seasonId;",
-            path);
+            database);
 
         // Begin new transaction with SerializableRW mode
         TxControl txControl = TxControl.serializableRw().setCommitTx(true);
@@ -299,7 +304,7 @@ public class BasicExampleApp implements App {
                 "SELECT *\n" +
                 "FROM episodes\n" +
                 "WHERE series_id = $seriesId AND season_id = $seasonId AND episode_id = $episodeId;",
-                path);
+                database);
 
             // Prepare query and and store it's QueryId for current session
             query = executeWithResult(session -> session.prepareDataQuery(queryText).join());
@@ -338,7 +343,7 @@ public class BasicExampleApp implements App {
                 "\n" +
                 "SELECT first_aired AS from_date FROM seasons\n" +
                 "WHERE series_id = $seriesId AND season_id = $seasonId;",
-                path);
+                database);
 
             Params params = Params.of("$seriesId", uint64(seriesId), "$seasonId", uint64(seasonId));
 
@@ -375,7 +380,7 @@ public class BasicExampleApp implements App {
                 "\n" +
                 "SELECT season_id, episode_id, title, air_date FROM episodes\n" +
                 "WHERE series_id = $seriesId AND air_date >= $fromDate AND air_date <= $toDate;",
-                path);
+                database);
 
             Params params = Params.of(
                 "$seriesId", uint64(seriesId),
@@ -410,11 +415,11 @@ public class BasicExampleApp implements App {
         Transaction transaction = transactionResult.expect("cannot begin transaction");
         String query = String.format(
             "PRAGMA TablePathPrefix(\"%s\");\n" +
-            "DECLARE $airDate AS Date;\n" +
-            "UPDATE episodes SET air_date = DateTime::ToDays($airDate) WHERE title = \"TBD\";",
-            path);
+            "DECLARE $airDate AS Uint64;\n" +
+            "UPDATE episodes SET air_date = $airDate WHERE title = \"TBD\";",
+            database);
 
-        Params params = Params.of("$airDate", date(Instant.now()));
+        Params params = Params.of("$airDate", uint64(Duration.between(Instant.EPOCH, Instant.now()).toDays()));
 
         // Execute data query.
         // Transaction control settings continues active transaction (tx)
@@ -500,7 +505,7 @@ public class BasicExampleApp implements App {
     }
 
     /**
-     * Same as {@link BasicExampleApp#execute}, but extracts result.
+     * Same as {@link BasicExampleV1#execute}, but extracts result.
      */
     private <T> T executeWithResult(Function<Session, Result<T>> fn) {
         AtomicReference<Result<T>> result = new AtomicReference<>();
@@ -523,6 +528,6 @@ public class BasicExampleApp implements App {
     }
 
     public static void main(String[] args) {
-        AppRunner.run("BasicExampleApp", BasicExampleApp::new, args);
+        AppRunner.run("BasicExampleV1", BasicExampleV1::new, args);
     }
 }
