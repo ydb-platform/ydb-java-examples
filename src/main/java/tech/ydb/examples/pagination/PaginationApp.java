@@ -24,7 +24,7 @@ import static tech.ydb.table.values.PrimitiveValue.utf8;
 
 
 /**
- * This app does not preform retries on failure. Please see {@link tech.ydb.examples.basic_example.BasicExampleApp#execute}
+ * This app does not preform retries on failure. Please see {@link tech.ydb.examples.basic_example.BasicExample#execute}
  * for example how to do that.
  *
  * @author Sergey Polovko
