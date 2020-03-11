@@ -10,6 +10,7 @@ import tech.ydb.table.description.TableIndex;
 import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.settings.CreateTableSettings;
 import tech.ydb.table.settings.PartitioningPolicy;
+import tech.ydb.table.settings.ReplicationPolicy;
 import tech.ydb.table.values.PrimitiveType;
 import tech.ydb.table.values.PrimitiveValue;
 import tech.ydb.table.values.TupleValue;
@@ -45,6 +46,13 @@ public class CreateTable extends SimpleExample {
                 String tablePath = pathPrefix + "TableWithIndexes";
                 session.dropTable(tablePath).join();
                 createTableWithIndexes(tablePath, session);
+                printTableScheme(tablePath, session);
+            }
+
+            {
+                String tablePath = pathPrefix + "TableWithSlaves";
+                session.dropTable(tablePath).join();
+                createTableWithSlaves(tablePath, session);
                 printTableScheme(tablePath, session);
             }
 
@@ -110,6 +118,27 @@ public class CreateTable extends SimpleExample {
             .setPartitioningPolicy(new PartitioningPolicy()
                 .addExplicitPartitioningPoint(makeKey("a"))
                 .addExplicitPartitioningPoint(makeKey("n")));
+
+        session.createTable(tablePath, description, settings)
+            .join()
+            .expect("cannot create table " + tablePath);
+    }
+
+    /**
+     * Will create table with slaves
+     */
+    private void createTableWithSlaves(String tablePath, Session session) {
+        TableDescription description = TableDescription.newBuilder()
+            .addNullableColumn("id", PrimitiveType.uint64())
+            .addNullableColumn("value", PrimitiveType.utf8())
+            .setPrimaryKey("id")
+            .build();
+
+        CreateTableSettings settings = new CreateTableSettings()
+            .setReplicationPolicy(new ReplicationPolicy()
+                .setReplicasCount(1)
+                .setCreatePerAvailabilityZone(true)
+                .setAllowPromotion(false));
 
         session.createTable(tablePath, description, settings)
             .join()
