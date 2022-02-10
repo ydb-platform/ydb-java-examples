@@ -66,17 +66,17 @@
         <dependency>
             <groupId>tech.ydb</groupId>
             <artifactId>ydb-sdk-core</artifactId>
-            <version>1.10.5</version>
+            <version>1.10.6</version>
         </dependency>
         <dependency>
             <groupId>tech.ydb</groupId>
             <artifactId>ydb-sdk-table</artifactId>
-            <version>1.10.5</version>
+            <version>1.10.6</version>
         </dependency>
         <dependency>
             <groupId>tech.ydb.auth</groupId>
             <artifactId>yc-auth-creditals</artifactId>
-            <version>1.10.5</version>
+            <version>1.10.6</version>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>

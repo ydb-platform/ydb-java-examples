@@ -1,53 +1,77 @@
 <?xml version="1.0"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
-  <modelVersion>4.0.0</modelVersion>
+    <modelVersion>4.0.0</modelVersion>
 
-  <parent>
-    <groupId>tech.ydb</groupId>
-    <artifactId>ydb-sdk-parent</artifactId>
+    <parent>
+        <groupId>tech.ydb</groupId>
+        <artifactId>ydb-sdk-parent</artifactId>
+        <version>0.9.9</version>
+    </parent>
+
+    <artifactId>ydb-sdk-examples</artifactId>
     <version>0.9.9</version>
-  </parent>
+    <name>Examples of usage Java SDK for YDB</name>
+    <description>Examples of usage Java SDK for YDB</description>
 
-  <artifactId>ydb-sdk-examples</artifactId>
-    <version>0.9.9</version>
-  <name>Examples of usage Java SDK for YDB</name>
-  <description>Examples of usage Java SDK for YDB</description>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <ydb.yc-creditals.version>1.0.0</ydb.yc-creditals.version></properties>
 
-  <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-      <ydb.yc-creditals.version>1.0.0</ydb.yc-creditals.version></properties>
+    <dependencies>
+        <dependency>
+            <groupId>tech.ydb</groupId>
+            <artifactId>ydb-sdk-table</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>tech.ydb.auth</groupId>
+            <artifactId>yc-auth-creditals</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.beust</groupId>
+            <artifactId>jcommander</artifactId>
+            <version>1.72</version>
+        </dependency>
+        <dependency>
+            <groupId>com.yandex.cloud</groupId>
+            <artifactId>java-sdk-auth</artifactId>
+            <version>2.0.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-netty-shaded</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-services</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
 
-  <dependencies>
-    <dependency>
-      <groupId>tech.ydb</groupId>
-      <artifactId>ydb-sdk-table</artifactId>
-      <version>${project.parent.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>tech.ydb.auth</groupId>
-      <artifactId>yc-auth-creditals</artifactId>
-      <version>${project.parent.version}</version>
-    </dependency>
-	<dependency>
-	  <groupId>com.beust</groupId>
-	  <artifactId>jcommander</artifactId>
-	  <version>1.72</version>
-	</dependency>
-    <dependency>
-      <groupId>com.yandex.cloud</groupId>
-      <artifactId>java-sdk-auth</artifactId>
-      <version>2.0.0</version>
-      <exclusions>
-          <exclusion>
-              <groupId>io.grpc</groupId>
-              <artifactId>grpc-netty-shaded</artifactId>
-          </exclusion>
-          <exclusion>
-              <groupId>io.grpc</groupId>
-              <artifactId>grpc-services</artifactId>
-          </exclusion>
-      </exclusions>
-    </dependency>
-  </dependencies>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.33</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j-impl</artifactId>
+            <version>2.17.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.8.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>1.15.2</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 </project>
