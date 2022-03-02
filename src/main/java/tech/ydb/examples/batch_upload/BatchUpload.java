@@ -2,13 +2,11 @@ package tech.ydb.examples.batch_upload;
 
 import java.util.ArrayList;
 
-import javax.annotation.Nullable;
-
 import tech.ydb.core.Status;
 import tech.ydb.core.rpc.RpcTransport;
 import tech.ydb.examples.App;
 import tech.ydb.examples.AppRunner;
-import tech.ydb.table.Session;
+import tech.ydb.table.SessionRetryContext;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.query.DataQueryResult;
@@ -30,9 +28,7 @@ public class BatchUpload implements App {
     private final String tablePath;
 
     private final TableClient tableClient;
-
-    @Nullable
-    private final Session session;
+    private final SessionRetryContext retryCtx;
 
     final int recordsCount = 60;
 
@@ -41,9 +37,7 @@ public class BatchUpload implements App {
         this.tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport))
                 .build();
         this.tablePath = this.path + "/" + TABLE_NAME;
-        this.session = tableClient.createSession()
-                .join()
-                .expect("cannot create session");
+        this.retryCtx = SessionRetryContext.create(tableClient).build();
     }
 
     static class Generator {
@@ -118,8 +112,10 @@ public class BatchUpload implements App {
         Params params = Params.of("$items", ListValue.of(values));
 
         TxControl txControl = TxControl.serializableRw().setCommitTx(true);
-        return session.executeDataQuery(query, txControl, params)
-                .join().expect("expected success result");
+        return retryCtx
+                .supplyResult(session -> session.executeDataQuery(query, txControl, params))
+                .join()
+                .expect("expected success result");
     }
 
     private void createTables() {
@@ -131,7 +127,7 @@ public class BatchUpload implements App {
                 .setPrimaryKeys("HostUid", "UrlUid")
                 .build();
 
-        Status status = session.createTable(tablePath, seriesTable).join();
+        Status status = retryCtx.supplyStatus(session -> session.createTable(tablePath, seriesTable)).join();
         if (status != Status.SUCCESS) {
             System.out.println(String.format("Creation table failed with status: %s", status));
         }
@@ -139,11 +135,6 @@ public class BatchUpload implements App {
 
     @Override
     public void close() {
-        if (session != null) {
-            session.close()
-                    .join()
-                    .expect("cannot close session");
-        }
         tableClient.close();
     }
 
