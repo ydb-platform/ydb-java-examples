@@ -4,23 +4,36 @@
 
     <parent>
         <groupId>tech.ydb.examples</groupId>
-        <artifactId>ydb-sdk-auth-examples</artifactId>
+        <artifactId>ydb-sdk-examples</artifactId>
         <version>0.9.9</version>
     </parent>
 
-    <artifactId>ydb-java-example-auth-service-account-credentials</artifactId>
-    <name>YDB Service account example</name>
-    <packaging>jar</packaging>
+    <artifactId>ydb-simple-project</artifactId>
+    <name>YDB Simple Project</name>
+    <description>Simple example of usage Java SDK for YDB</description>
 
     <dependencies>
         <dependency>
             <groupId>tech.ydb</groupId>
+            <artifactId>ydb-sdk-core</artifactId>
+            <version>1.11.1</version>
+        </dependency>
+        <dependency>
+            <groupId>tech.ydb</groupId>
             <artifactId>ydb-sdk-table</artifactId>
+            <version>1.11.1</version>
         </dependency>
         <dependency>
             <groupId>tech.ydb.auth</groupId>
             <artifactId>yc-auth-creditals</artifactId>
+            <version>1.11.1</version>
         </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-netty-shaded</artifactId>
+            <version>1.26.0</version>
+        </dependency>
+
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-slf4j-impl</artifactId>
@@ -28,7 +41,7 @@
     </dependencies>
 
     <build>
-        <finalName>ydb-service-account-example</finalName>
+        <finalName>ydb-simple-project</finalName>
         <plugins>
             <!-- copy dependencies to libs folder -->
             <plugin>
