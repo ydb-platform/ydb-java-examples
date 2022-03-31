@@ -1,7 +1,12 @@
 package tech.ydb.examples;
 
+import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.examples.batch_upload.BatchUpload;
 import tech.ydb.examples.bulk_upsert.BulkUpsert;
+import tech.ydb.examples.suites.TableWithPartitioningSettings;
+import tech.ydb.table.SessionRetryContext;
+import tech.ydb.table.TableClient;
+import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -50,5 +55,23 @@ public class ExamplesTest {
     @Test
     public void testBulkUpsert() {
         Assertions.assertEquals(0, BulkUpsert.test(args), "Bulk upsert test");
+    }
+
+    @Test
+    public void testTableWithPartitioningSettings() {
+        try (TableClient client = createTableClient()) {
+            SessionRetryContext ctx = SessionRetryContext.create(client).build();
+            (new TableWithPartitioningSettings(ctx, args[3])).run();
+        }
+    }
+
+    private TableClient createTableClient() {
+        GrpcTransport transport = GrpcTransport
+                .forEndpoint(args[1], args[3])
+                .build();
+
+        return TableClient
+                .newClient(GrpcTableRpc.ownTransport(transport))
+                .build();
     }
 }
