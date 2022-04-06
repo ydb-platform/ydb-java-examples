@@ -8,8 +8,8 @@
         <version>0.9.9</version>
     </parent>
 
-    <artifactId>ydb-simple-project</artifactId>
-    <name>YDB Simple Project</name>
+    <artifactId>ydb-basic-example</artifactId>
+    <name>YDB Basic Example</name>
     <description>Simple example of usage Java SDK for YDB</description>
 
     <dependencies>
@@ -29,7 +29,7 @@
     </dependencies>
 
     <build>
-        <finalName>ydb-simple-project</finalName>
+        <finalName>ydb-basic-example</finalName>
         <plugins>
             <!-- copy dependencies to libs folder -->
             <plugin>
