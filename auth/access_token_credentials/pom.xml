@@ -47,7 +47,7 @@
                             <mainClass>tech.ydb.example.Main</mainClass>
                         </manifest>
                     </archive>
-                </configuration>   
+                </configuration>
             </plugin>
         </plugins>
     </build>
