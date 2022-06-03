@@ -1,11 +1,10 @@
 package tech.ydb.demo.ydb;
 
 import java.time.Duration;
+import tech.ydb.core.grpc.GrpcTransport;
 
-import tech.ydb.core.rpc.RpcTransport;
 import tech.ydb.table.SessionRetryContext;
 import tech.ydb.table.TableClient;
-import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 
 /**
  *
@@ -16,10 +15,8 @@ public class YdbDriver implements AutoCloseable {
     private final String database;
     private final SessionRetryContext retryContext;
 
-    public YdbDriver(RpcTransport transport, String database) throws Exception {
-        this.tableClient = TableClient
-                .newClient(GrpcTableRpc.useTransport(transport))
-                .build();
+    public YdbDriver(GrpcTransport transport, String database) throws Exception {
+        this.tableClient = TableClient.newClient(transport).build();
 
         this.retryContext = SessionRetryContext.create(tableClient)
                 .maxRetries(5)

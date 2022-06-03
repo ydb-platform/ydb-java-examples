@@ -7,7 +7,6 @@ import java.util.concurrent.ScheduledExecutorService;
 
 import tech.ydb.core.auth.TokenAuthProvider;
 import tech.ydb.core.grpc.GrpcTransport;
-import tech.ydb.core.rpc.RpcTransport;
 import tech.ydb.examples.indexes.configuration.IndexesConfigurationProperties;
 import tech.ydb.examples.indexes.repositories.SeriesRepository;
 import tech.ydb.table.TableClient;
@@ -17,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import tech.ydb.core.grpc.GrpcTransportBuilder;
 
 @SpringBootApplication
 public class Application {
@@ -33,7 +33,7 @@ public class Application {
     }
 
     @Bean(destroyMethod = "close")
-    RpcTransport rpcTransport(IndexesConfigurationProperties properties, ExecutorService grpcExecutor) {
+    GrpcTransport grpcTransport(IndexesConfigurationProperties properties, ExecutorService grpcExecutor) {
         String endpoint = properties.getEndpoint();
         String database = properties.getDatabase();
         String token = properties.getToken();
@@ -41,7 +41,7 @@ public class Application {
             token = System.getenv("YDB_TOKEN");
         }
         logger.info("Creating rpc transport for endpoint={} database={}", endpoint, database);
-        GrpcTransport.Builder builder = GrpcTransport.forEndpoint(endpoint, database)
+        GrpcTransportBuilder builder = GrpcTransport.forEndpoint(endpoint, database)
                 .withReadTimeout(Duration.ofSeconds(10))
                 .withCallExecutor(grpcExecutor);
         if (token != null && !token.isEmpty()) {
@@ -51,7 +51,7 @@ public class Application {
     }
 
     @Bean
-    TableClient tableClient(RpcTransport transport) {
+    TableClient tableClient(GrpcTransport transport) {
         return TableClient.newClient(GrpcTableRpc.useTransport(transport))
             .build();
     }

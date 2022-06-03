@@ -10,7 +10,6 @@ import java.nio.file.Paths;
 import java.time.Duration;
 
 import tech.ydb.core.grpc.GrpcTransport;
-import tech.ydb.core.rpc.RpcTransport;
 import tech.ydb.demo.rest.RedirectServlet;
 import tech.ydb.demo.rest.URLServlet;
 import tech.ydb.demo.ydb.YdbDriver;
@@ -23,6 +22,7 @@ import org.eclipse.jetty.util.resource.Resource;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tech.ydb.core.grpc.GrpcTransportBuilder;
 
 /**
  *
@@ -38,14 +38,15 @@ public class Application {
     private static Application instance;
 
     private final Server server;
+    private final GrpcTransport grpc;
     private final YdbDriver driver;
 
     public Application(AppParams prms) throws Exception {
         QueuedThreadPool threadPool = new QueuedThreadPool(MAX_THREADS, MIN_THREADS, IDLE_TIMEOUT);
         server = new Server(threadPool);
 
-        RpcTransport rpc = createRpcTransport(prms);
-        driver = new YdbDriver(rpc, prms.database());
+        grpc = createGrpcTransport(prms);
+        driver = new YdbDriver(grpc, prms.database());
 
         setupJetty(prms.listenPort());
 
@@ -84,12 +85,12 @@ public class Application {
         }
     }
 
-    private RpcTransport createRpcTransport(AppParams prms) throws IOException {
+    private GrpcTransport createGrpcTransport(AppParams prms) throws IOException {
         String endpoint = prms.endpoint();
         String database = prms.database();
 
         log.info("Creating rpc transport for endpoint={} database={}", endpoint, database);
-        GrpcTransport.Builder builder = GrpcTransport.forEndpoint(endpoint, database)
+        GrpcTransportBuilder builder = GrpcTransport.forEndpoint(endpoint, database)
                 .withReadTimeout(Duration.ofSeconds(10));
 
         if (prms.certPath() != null) {
@@ -117,6 +118,7 @@ public class Application {
             log.info("stop application");
             server.stop();
             driver.close();
+            grpc.close();
         } catch (Exception e) {
             log.error("application stop exception", e);
         }

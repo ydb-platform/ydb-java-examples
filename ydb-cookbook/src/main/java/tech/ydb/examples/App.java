@@ -1,6 +1,7 @@
 package tech.ydb.examples;
 
-import tech.ydb.core.rpc.RpcTransport;
+import tech.ydb.core.grpc.GrpcTransport;
+
 
 
 /**
@@ -14,6 +15,6 @@ public interface App extends AutoCloseable {
     void close();
 
     interface Factory {
-        App newApp(RpcTransport transport, String path);
+        App newApp(GrpcTransport transport, String path);
     }
 }

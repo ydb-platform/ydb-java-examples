@@ -4,17 +4,16 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-import tech.ydb.core.rpc.RpcTransport;
 import tech.ydb.examples.App;
 import tech.ydb.examples.AppRunner;
 import tech.ydb.table.SessionRetryContext;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.description.TableDescription;
-import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.settings.BulkUpsertSettings;
 import tech.ydb.table.values.ListValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tech.ydb.core.grpc.GrpcTransport;
 
 public class BulkUpsert implements App {
     private static final Logger log = LoggerFactory.getLogger(BulkUpsert.class);
@@ -31,10 +30,9 @@ public class BulkUpsert implements App {
 
     private final Instant now = Instant.now();
 
-    BulkUpsert(RpcTransport transport, String path) {
+    BulkUpsert(GrpcTransport transport, String path) {
         this.path = path;
-        this.tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport))
-                .build();
+        this.tableClient = TableClient.newClient(transport).build();
         this.tablePath = this.path + "/" + TABLE_NAME;
         this.retryCtx = SessionRetryContext.create(tableClient).build();
     }

@@ -1,6 +1,6 @@
 package tech.ydb.examples.simple;
 
-import tech.ydb.core.rpc.RpcTransport;
+import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.query.ExplainDataQueryResult;
@@ -13,7 +13,7 @@ import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 public class ExplainDataQuery extends SimpleExample {
 
     @Override
-    void run(RpcTransport transport, String pathPrefix) {
+    void run(GrpcTransport transport, String pathPrefix) {
         String tablePath = pathPrefix + getClass().getSimpleName();
         TableClient tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport)).build();
 

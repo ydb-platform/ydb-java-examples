@@ -1,8 +1,8 @@
 package tech.ydb.examples.simple;
 
 import java.util.UUID;
+import tech.ydb.core.grpc.GrpcTransport;
 
-import tech.ydb.core.rpc.RpcTransport;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.query.DataQueryResult;
@@ -17,7 +17,7 @@ import tech.ydb.table.transaction.TxControl;
 public class UuidExample extends SimpleExample {
 
     @Override
-    void run(RpcTransport transport, String pathPrefix) {
+    void run(GrpcTransport transport, String pathPrefix) {
         TableClient tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport)).build();
 
         Session session = tableClient.createSession()

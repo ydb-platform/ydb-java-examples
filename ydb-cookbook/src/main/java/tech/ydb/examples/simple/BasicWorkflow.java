@@ -3,7 +3,6 @@ package tech.ydb.examples.simple;
 import java.util.UUID;
 
 import tech.ydb.core.Result;
-import tech.ydb.core.rpc.RpcTransport;
 import tech.ydb.table.SchemeClient;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
@@ -20,6 +19,7 @@ import tech.ydb.table.values.PrimitiveType;
 
 import static tech.ydb.table.values.PrimitiveValue.uint32;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import tech.ydb.core.grpc.GrpcTransport;
 
 
 public class BasicWorkflow extends SimpleExample {
@@ -120,7 +120,7 @@ public class BasicWorkflow extends SimpleExample {
     }
 
     @Override
-    void run(RpcTransport transport, String pathPrefix) {
+    void run(GrpcTransport transport, String pathPrefix) {
         final String rootPath = pathPrefix + UUID.randomUUID().toString();
         final String workDirPath = rootPath + "/MyData";
         final String ordersTablePath = workDirPath + "/Orders";

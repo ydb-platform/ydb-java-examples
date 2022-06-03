@@ -3,7 +3,7 @@ package tech.ydb.examples.batch_upload;
 import java.util.ArrayList;
 
 import tech.ydb.core.Status;
-import tech.ydb.core.rpc.RpcTransport;
+import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.examples.App;
 import tech.ydb.examples.AppRunner;
 import tech.ydb.table.SessionRetryContext;
@@ -11,7 +11,6 @@ import tech.ydb.table.TableClient;
 import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.query.DataQueryResult;
 import tech.ydb.table.query.Params;
-import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.transaction.TxControl;
 import tech.ydb.table.values.ListValue;
 import tech.ydb.table.values.PrimitiveType;
@@ -32,10 +31,9 @@ public class BatchUpload implements App {
 
     final int recordsCount = 60;
 
-    BatchUpload(RpcTransport transport, String path) {
+    BatchUpload(GrpcTransport transport, String path) {
         this.path = path;
-        this.tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport))
-                .build();
+        this.tableClient = TableClient.newClient(transport).build();
         this.tablePath = this.path + "/" + TABLE_NAME;
         this.retryCtx = SessionRetryContext.create(tableClient).build();
     }

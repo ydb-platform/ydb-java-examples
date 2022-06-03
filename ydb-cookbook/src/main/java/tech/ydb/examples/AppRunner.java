@@ -7,6 +7,7 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import tech.ydb.core.auth.TokenAuthProvider;
 import tech.ydb.core.grpc.GrpcTransport;
+import tech.ydb.core.grpc.GrpcTransportBuilder;
 
 
 /**
@@ -47,7 +48,7 @@ public class AppRunner {
             return 1;
         }
 
-        GrpcTransport.Builder transportBuilder = GrpcTransport.forEndpoint(args.endpoint, args.database);
+        GrpcTransportBuilder transportBuilder = GrpcTransport.forEndpoint(args.endpoint, args.database);
 
         String ydbToken = System.getenv("YDB_TOKEN");
 

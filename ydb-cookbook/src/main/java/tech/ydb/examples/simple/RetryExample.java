@@ -4,7 +4,7 @@ import java.time.Duration;
 import java.util.concurrent.ForkJoinPool;
 
 import tech.ydb.core.Result;
-import tech.ydb.core.rpc.RpcTransport;
+import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.table.SessionRetryContext;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.query.DataQueryResult;
@@ -20,7 +20,7 @@ import tech.ydb.table.transaction.TxControl;
 public class RetryExample extends SimpleExample {
 
     @Override
-    void run(RpcTransport transport, String pathPrefix) {
+    void run(GrpcTransport transport, String pathPrefix) {
         try (TableClient tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport))
                 .sessionPoolSize(10, 20)
                 .queryCacheSize(100)

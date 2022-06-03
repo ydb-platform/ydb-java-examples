@@ -3,7 +3,6 @@ package tech.ydb.examples.simple;
 import java.util.concurrent.Executors;
 
 import tech.ydb.core.grpc.GrpcTransport;
-import tech.ydb.core.rpc.RpcTransport;
 
 
 /**
@@ -27,7 +26,7 @@ public abstract class SimpleExample {
         System.err.println("PATH=" + path);
         System.err.println();
 
-        try (RpcTransport transport = GrpcTransport.forHost(host, port)
+        try (GrpcTransport transport = GrpcTransport.forHost(host, port)
             .withCallExecutor(Executors.newFixedThreadPool(3))
             .build()) {
             run(transport, path);
@@ -36,5 +35,5 @@ public abstract class SimpleExample {
         }
     }
 
-    abstract void run(RpcTransport transport, String pathPrefix);
+    abstract void run(GrpcTransport transport, String pathPrefix);
 }

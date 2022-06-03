@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy;
 import org.testcontainers.shaded.org.apache.commons.io.IOUtils;
+import tech.ydb.core.grpc.GrpcTransportBuilder;
 
 /**
  *
@@ -90,7 +91,7 @@ public class YdbDockerContainer extends GenericContainer<YdbDockerContainer> {
             // Wait 30 second for start of ydb
             Unreliables.retryUntilSuccess(30, TimeUnit.SECONDS, () -> {
                 getRateLimiter().doWhenReady(() -> {
-                    GrpcTransport.Builder transportBuilder = GrpcTransport.forEndpoint(nonSecureEndpoint(), database());
+                    GrpcTransportBuilder transportBuilder = GrpcTransport.forEndpoint(nonSecureEndpoint(), database());
                     try (GrpcTransport transport = transportBuilder.build()) {
                         GrpcTableRpc grpcTableRpc = GrpcTableRpc.useTransport(transport);
                         try (TableClient tableClient = TableClient.newClient(grpcTableRpc).build()) {

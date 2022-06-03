@@ -2,8 +2,8 @@ package tech.ydb.examples.pagination;
 
 import java.util.ArrayList;
 import java.util.List;
+import tech.ydb.core.grpc.GrpcTransport;
 
-import tech.ydb.core.rpc.RpcTransport;
 import tech.ydb.examples.App;
 import tech.ydb.examples.AppRunner;
 import tech.ydb.examples.pagination.model.School;
@@ -14,7 +14,6 @@ import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.query.DataQueryResult;
 import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
-import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.transaction.TxControl;
 import tech.ydb.table.values.PrimitiveType;
 
@@ -35,10 +34,9 @@ public class PaginationApp implements App {
     private final TableClient tableClient;
     private final Session session;
 
-    PaginationApp(RpcTransport transport, String path) {
+    PaginationApp(GrpcTransport transport, String path) {
         this.path = path;
-        this.tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport))
-            .build();
+        this.tableClient = TableClient.newClient(transport).build();
         this.session = tableClient.createSession()
             .join()
             .expect("cannot create session");

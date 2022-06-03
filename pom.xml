@@ -24,7 +24,7 @@
         
         <maven.javadoc.skip>true</maven.javadoc.skip>
         <ydb.yc-creditals.version>1.0.0</ydb.yc-creditals.version>
-        <ydb.sdk.version>2.0.0-SHAPSHOT</ydb.sdk.version>
+        <ydb.sdk.version>2.0.0-SNAPSHOT</ydb.sdk.version>
     </properties>
 
     <modules>

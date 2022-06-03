@@ -1,6 +1,6 @@
 package tech.ydb.examples.simple;
 
-import tech.ydb.core.rpc.RpcTransport;
+import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.query.DataQueryResult;
@@ -16,7 +16,7 @@ import tech.ydb.table.values.DecimalValue;
 public class DecimalExample extends SimpleExample {
 
     @Override
-    void run(RpcTransport transport, String pathPrefix) {
+    void run(GrpcTransport transport, String pathPrefix) {
         TableClient tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport)).build();
 
         Session session = tableClient.createSession()
