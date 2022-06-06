@@ -6,7 +6,6 @@ import tech.ydb.core.Status;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
-import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.settings.ReadTableSettings;
 import tech.ydb.table.transaction.TxControl;
 
@@ -20,7 +19,7 @@ public class ReadTableExample extends SimpleExample {
 
     @Override
     void run(GrpcTransport transport, String pathPrefix) {
-        try (TableClient tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport))
+        try (TableClient tableClient = TableClient.newClient(transport)
                 .sessionPoolSize(10, 20)
                 .build()) {
             Session session = tableClient.getOrCreateSession(Duration.ofSeconds(3))

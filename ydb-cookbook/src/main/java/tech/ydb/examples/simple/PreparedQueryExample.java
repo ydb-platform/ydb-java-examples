@@ -7,7 +7,6 @@ import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.query.DataQuery;
 import tech.ydb.table.query.DataQueryResult;
 import tech.ydb.table.query.Params;
-import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.settings.DropTableSettings;
 import tech.ydb.table.transaction.TxControl;
 import tech.ydb.table.values.PrimitiveType;
@@ -22,7 +21,7 @@ public class PreparedQueryExample extends SimpleExample {
     @Override
     void run(GrpcTransport transport, String pathPrefix) {
         String tablePath = pathPrefix + getClass().getSimpleName();
-        TableClient tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport)).build();
+        TableClient tableClient = TableClient.newClient(transport).build();
 
         Session session = tableClient.createSession()
             .join()

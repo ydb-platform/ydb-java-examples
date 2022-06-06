@@ -9,7 +9,6 @@ import tech.ydb.table.TableClient;
 import tech.ydb.table.description.TableColumn;
 import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.description.TableIndex;
-import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.settings.CreateTableSettings;
 import tech.ydb.table.settings.PartitioningPolicy;
 import tech.ydb.table.settings.ReplicationPolicy;
@@ -25,7 +24,7 @@ public class CreateTable extends SimpleExample {
 
     @Override
     void run(GrpcTransport transport, String pathPrefix) {
-        try (TableClient tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport)).build()) {
+        try (TableClient tableClient = TableClient.newClient(transport).build()) {
             Session session = tableClient.createSession()
                 .join()
                 .expect("cannot create session");

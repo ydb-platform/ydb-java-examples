@@ -3,7 +3,6 @@ package tech.ydb.examples.simple;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
-import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 
 
 /**
@@ -14,7 +13,7 @@ public class SchemeQuery extends SimpleExample {
     @Override
     protected void run(GrpcTransport transport, String pathPrefix) {
         String tablePath = pathPrefix + getClass().getSimpleName();
-        TableClient tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport)).build();
+        TableClient tableClient = TableClient.newClient(transport).build();
 
         Session session = tableClient.createSession()
             .join()

@@ -19,7 +19,7 @@ public class AlterTable extends SimpleExample {
     @Override
     void run(GrpcTransport transport, String pathPrefix) {
         String tablePath = pathPrefix + getClass().getSimpleName();
-        TableClient tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport))
+        TableClient tableClient = TableClient.newClient(transport)
             .build();
 
         Session session = tableClient.createSession()

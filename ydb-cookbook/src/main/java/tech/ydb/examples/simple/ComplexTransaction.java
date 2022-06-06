@@ -7,7 +7,6 @@ import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.query.DataQueryResult;
-import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.transaction.Transaction;
 import tech.ydb.table.transaction.TransactionMode;
 import tech.ydb.table.transaction.TxControl;
@@ -24,7 +23,7 @@ public class ComplexTransaction extends SimpleExample {
         String tablePath = pathPrefix + getClass().getSimpleName();
         String prevSessionId;
 
-        try (TableClient tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport)).build()) {
+        try (TableClient tableClient = TableClient.newClient(transport).build()) {
             Session session = tableClient.getOrCreateSession(Duration.ofSeconds(2))
                 .join()
                 .expect("cannot create session");
