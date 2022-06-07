@@ -17,26 +17,21 @@ public class UuidExample extends SimpleExample {
 
     @Override
     void run(GrpcTransport transport, String pathPrefix) {
-        TableClient tableClient = TableClient.newClient(transport).build();
-
-        Session session = tableClient.createSession()
-            .join()
-            .expect("cannot create session");
-
-        String query = "SELECT CAST(\"00112233-4455-6677-8899-aabbccddeeff\" AS Uuid);";
-        DataQueryResult result = session.executeDataQuery(query, TxControl.serializableRw().setCommitTx(true))
-            .join()
-            .expect("query failed");
-
-        ResultSetReader resultSet = result.getResultSet(0);
-        resultSet.next();
-
-        UUID uuid = resultSet.getColumn(0).getUuid();
-        System.out.println("uuid: " + uuid);
-
-        session.close()
-            .join()
-            .expect("cannot close session");
+        try (
+                TableClient tableClient = TableClient.newClient(transport).build();
+                Session session = tableClient.createSession().join().expect("create session")
+                ) {
+            String query = "SELECT CAST(\"00112233-4455-6677-8899-aabbccddeeff\" AS Uuid);";
+            DataQueryResult result = session.executeDataQuery(query, TxControl.serializableRw().setCommitTx(true))
+                    .join()
+                    .expect("query failed");
+            
+            ResultSetReader resultSet = result.getResultSet(0);
+            resultSet.next();
+            
+            UUID uuid = resultSet.getColumn(0).getUuid();
+            System.out.println("uuid: " + uuid);
+        }
     }
 
     public static void main(String[] args) {

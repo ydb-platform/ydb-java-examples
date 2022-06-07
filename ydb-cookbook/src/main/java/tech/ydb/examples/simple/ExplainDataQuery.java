@@ -14,38 +14,34 @@ public class ExplainDataQuery extends SimpleExample {
     @Override
     void run(GrpcTransport transport, String pathPrefix) {
         String tablePath = pathPrefix + getClass().getSimpleName();
-        TableClient tableClient = TableClient.newClient(transport).build();
+        try (
+                TableClient tableClient = TableClient.newClient(transport).build();
+                Session session = tableClient.createSession().join().expect("create session")
+                ) {
 
-        Session session = tableClient.createSession()
-            .join()
-            .expect("cannot create session");
+            session.dropTable(tablePath)
+                .join();
 
-        session.dropTable(tablePath)
-            .join();
-
-        String query1 =
-            "CREATE TABLE [" + tablePath + "] (" +
-                "  key Uint32," +
-                "  value String," +
-                "  PRIMARY KEY(key)" +
-                ");";
-        session.executeSchemeQuery(query1)
-            .join()
-            .expect("cannot create table");
+            String query1 =
+                "CREATE TABLE [" + tablePath + "] (" +
+                    "  key Uint32," +
+                    "  value String," +
+                    "  PRIMARY KEY(key)" +
+                    ");";
+            session.executeSchemeQuery(query1)
+                .join()
+                .expect("cannot create table");
 
 
-        String query2 = "SELECT * FROM [" + tablePath + "];";
-        ExplainDataQueryResult result = session.explainDataQuery(query2)
-            .join()
-            .expect("cannot explain query");
+            String query2 = "SELECT * FROM [" + tablePath + "];";
+            ExplainDataQueryResult result = session.explainDataQuery(query2)
+                .join()
+                .expect("cannot explain query");
 
-        System.out.println("--[ast]----------------------\n" + result.getQueryAst());
-        System.out.println();
-        System.out.println("--[plan]---------------------\n" + result.getQueryPlan());
-
-        session.close()
-            .join()
-            .expect("cannot close session");
+            System.out.println("--[ast]----------------------\n" + result.getQueryAst());
+            System.out.println();
+            System.out.println("--[plan]---------------------\n" + result.getQueryPlan());
+        }
     }
 
     public static void main(String[] args) {

@@ -12,7 +12,6 @@ import tech.ydb.table.query.DataQueryResult;
 import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.rpc.grpc.GrpcSchemeRpc;
-import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.settings.DropTableSettings;
 import tech.ydb.table.transaction.TxControl;
 import tech.ydb.table.values.PrimitiveType;
@@ -126,21 +125,19 @@ public class BasicWorkflow extends SimpleExample {
         final String ordersTablePath = workDirPath + "/Orders";
 
         final SchemeClient schemeClient = SchemeClient.newClient(GrpcSchemeRpc.useTransport(transport)).build();
-        final TableClient tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport)).build();
-        final Session session = makeSession(tableClient);
 
-        try {
-            makeDirectory(schemeClient, rootPath);
-            makeDirectory(schemeClient, workDirPath);
-            createOrdersTable(session, ordersTablePath);
+        try (TableClient tableClient = TableClient.newClient(transport).build()) {
+            try (Session session = makeSession(tableClient)) {
+                makeDirectory(schemeClient, rootPath);
+                makeDirectory(schemeClient, workDirPath);
+                createOrdersTable(session, ordersTablePath);
 
-            processBasicData(session, ordersTablePath);
+                processBasicData(session, ordersTablePath);
 
-            dropTable(session, ordersTablePath);
-            removeDir(schemeClient, workDirPath);
-            removeDir(schemeClient, rootPath);
-        } finally {
-            session.close();
+                dropTable(session, ordersTablePath);
+                removeDir(schemeClient, workDirPath);
+                removeDir(schemeClient, rootPath);
+            }
         }
     }
 

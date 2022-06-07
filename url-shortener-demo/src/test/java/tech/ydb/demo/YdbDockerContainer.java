@@ -10,7 +10,6 @@ import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.description.TableDescription;
-import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.values.PrimitiveType;
 import org.rnorth.ducttape.unreliables.Unreliables;
 import org.slf4j.Logger;
@@ -104,8 +103,7 @@ public class YdbDockerContainer extends GenericContainer<YdbDockerContainer> {
                 getRateLimiter().doWhenReady(() -> {
                     GrpcTransportBuilder transportBuilder = GrpcTransport.forEndpoint(nonSecureEndpoint(), database());
                     try (GrpcTransport transport = transportBuilder.build()) {
-                        GrpcTableRpc grpcTableRpc = GrpcTableRpc.useTransport(transport);
-                        try (TableClient tableClient = TableClient.newClient(grpcTableRpc).build()) {
+                        try (TableClient tableClient = TableClient.newClient(transport).build()) {
 
                             Session session = tableClient.createSession()
                                     .get().expect("session not ready");

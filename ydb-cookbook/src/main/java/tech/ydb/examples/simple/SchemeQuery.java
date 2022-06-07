@@ -13,30 +13,26 @@ public class SchemeQuery extends SimpleExample {
     @Override
     protected void run(GrpcTransport transport, String pathPrefix) {
         String tablePath = pathPrefix + getClass().getSimpleName();
-        TableClient tableClient = TableClient.newClient(transport).build();
 
-        Session session = tableClient.createSession()
-            .join()
-            .expect("cannot create session");
-
-        String createTable =
-            "CREATE TABLE [" + tablePath + "] (" +
-            "  key Uint32," +
-            "  value String," +
-            "  PRIMARY KEY(key)" +
-            ");";
-
-        session.executeSchemeQuery(createTable)
-            .join()
-            .expect("cannot create table");
-
-        session.executeSchemeQuery("DROP TABLE [" + tablePath + "];")
-            .join()
-            .expect("cannot drop table");
-
-        session.close()
-            .join()
-            .expect("cannot close session");
+        try (
+                TableClient tableClient = TableClient.newClient(transport).build();
+                Session session = tableClient.createSession().join().expect("create session")
+                ) {
+            String createTable =
+                    "CREATE TABLE [" + tablePath + "] (" +
+                    "  key Uint32," +
+                    "  value String," +
+                    "  PRIMARY KEY(key)" +
+                    ");";
+            
+            session.executeSchemeQuery(createTable)
+                    .join()
+                    .expect("cannot create table");
+            
+            session.executeSchemeQuery("DROP TABLE [" + tablePath + "];")
+                    .join()
+                    .expect("cannot drop table");
+        }
     }
 
     public static void main(String[] args) {

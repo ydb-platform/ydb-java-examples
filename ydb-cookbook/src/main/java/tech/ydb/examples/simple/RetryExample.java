@@ -20,13 +20,10 @@ public class RetryExample extends SimpleExample {
 
     @Override
     void run(GrpcTransport transport, String pathPrefix) {
-        try (TableClient tableClient = TableClient.newClient(transport)
-                .sessionPoolSize(10, 20)
-                .build()) {
+        try (TableClient tableClient = TableClient.newClient(transport).build()) {
             SessionRetryContext ctx = SessionRetryContext.create(tableClient)
                 .executor(ForkJoinPool.commonPool())
                 .maxRetries(5)
-                .sessionSupplyTimeout(Duration.ofSeconds(3))
                 .build();
 
             Result<DataQueryResult> result = ctx.supplyResult(session -> {

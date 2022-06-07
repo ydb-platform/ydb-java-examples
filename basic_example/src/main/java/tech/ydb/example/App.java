@@ -18,11 +18,9 @@ import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.query.DataQueryResult;
 import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
-import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.settings.BulkUpsertSettings;
 import tech.ydb.table.settings.ExecuteScanQuerySettings;
 import tech.ydb.table.transaction.Transaction;
-import tech.ydb.table.transaction.TransactionMode;
 import tech.ydb.table.transaction.TxControl;
 import tech.ydb.table.values.ListType;
 import tech.ydb.table.values.ListValue;
@@ -45,8 +43,7 @@ public final class App implements Runnable, AutoCloseable {
         GrpcTransport transport = GrpcTransport.forConnectionString(connectionString)
                 .withAuthProvider(CloudAuthHelper.getAuthProviderFromEnviron())
                 .build();
-        GrpcTableRpc rpc = GrpcTableRpc.ownTransport(transport);
-        this.tableClient = TableClient.newClient(rpc).build();
+        this.tableClient = TableClient.newClient(transport).build();
 
         this.database = transport.getDatabase();
         this.retryCtx = SessionRetryContext.create(tableClient).build();
@@ -361,7 +358,7 @@ public final class App implements Runnable, AutoCloseable {
 
     private void tclTransaction() {
         retryCtx.supplyStatus(session -> {
-            Transaction transaction = session.beginTransaction(TransactionMode.SERIALIZABLE_READ_WRITE)
+            Transaction transaction = session.beginTransaction(Transaction.Mode.SERIALIZABLE_READ_WRITE)
                 .join().expect("begin transaction problem");
 
             String query

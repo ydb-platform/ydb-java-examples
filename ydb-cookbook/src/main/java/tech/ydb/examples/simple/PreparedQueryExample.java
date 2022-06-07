@@ -21,53 +21,49 @@ public class PreparedQueryExample extends SimpleExample {
     @Override
     void run(GrpcTransport transport, String pathPrefix) {
         String tablePath = pathPrefix + getClass().getSimpleName();
-        TableClient tableClient = TableClient.newClient(transport).build();
 
-        Session session = tableClient.createSession()
-            .join()
-            .expect("cannot create session");
-
-        session.dropTable(tablePath, new DropTableSettings())
-            .join();
-
-        TableDescription tableDescription = TableDescription.newBuilder()
-            .addNullableColumn("name", PrimitiveType.utf8())
-            .addNullableColumn("size", PrimitiveType.uint64())
-            .setPrimaryKey("name")
-            .build();
-
-        session.createTable(tablePath, tableDescription)
-            .join()
-            .expect("cannot create table");
-
-        DataQuery query1 = session.prepareDataQuery(
-                "DECLARE $name AS Utf8;" +
-                "DECLARE $size AS Uint32;" +
-                "INSERT INTO [" + tablePath + "] (name, size) VALUES ($name, $size);")
-            .join()
-            .expect("cannot create prepared query");
-
-        Params params = query1.newParams()
-            .put("$name", PrimitiveValue.utf8("/etc/passwd"))
-            .put("$size", PrimitiveValue.uint32(42));
-
-        DataQueryResult result1 = query1.execute(TxControl.serializableRw().setCommitTx(true), params)
-            .join()
-            .expect("query failed");
-
-        DataQueryResults.print(result1);
-
-        String query2 = "SELECT * FROM [" + tablePath + "];";
-
-        DataQueryResult result2 = session.executeDataQuery(query2, TxControl.serializableRw().setCommitTx(true))
-            .join()
-            .expect("query failed");
-
-        DataQueryResults.print(result2);
-
-        session.close()
-            .join()
-            .expect("cannot close session");
+        try (
+                TableClient tableClient = TableClient.newClient(transport).build();
+                Session session = tableClient.createSession().join().expect("create session")
+                ) {
+            session.dropTable(tablePath, new DropTableSettings())
+                    .join();
+            
+            TableDescription tableDescription = TableDescription.newBuilder()
+                    .addNullableColumn("name", PrimitiveType.utf8())
+                    .addNullableColumn("size", PrimitiveType.uint64())
+                    .setPrimaryKey("name")
+                    .build();
+            
+            session.createTable(tablePath, tableDescription)
+                    .join()
+                    .expect("cannot create table");
+            
+            DataQuery query1 = session.prepareDataQuery(
+                    "DECLARE $name AS Utf8;" +
+                            "DECLARE $size AS Uint32;" +
+                            "INSERT INTO [" + tablePath + "] (name, size) VALUES ($name, $size);")
+                    .join()
+                    .expect("cannot create prepared query");
+            
+            Params params = query1.newParams()
+                    .put("$name", PrimitiveValue.utf8("/etc/passwd"))
+                    .put("$size", PrimitiveValue.uint32(42));
+            
+            DataQueryResult result1 = query1.execute(TxControl.serializableRw().setCommitTx(true), params)
+                    .join()
+                    .expect("query failed");
+            
+            DataQueryResults.print(result1);
+            
+            String query2 = "SELECT * FROM [" + tablePath + "];";
+            
+            DataQueryResult result2 = session.executeDataQuery(query2, TxControl.serializableRw().setCommitTx(true))
+                    .join()
+                    .expect("query failed");
+            
+            DataQueryResults.print(result2);
+        }
     }
 
     public static void main(String[] args) {

@@ -1,6 +1,5 @@
 package tech.ydb.demo.ydb;
 
-import java.time.Duration;
 import tech.ydb.core.grpc.GrpcTransport;
 
 import tech.ydb.table.SessionRetryContext;
@@ -20,7 +19,6 @@ public class YdbDriver implements AutoCloseable {
 
         this.retryContext = SessionRetryContext.create(tableClient)
                 .maxRetries(5)
-                .sessionSupplyTimeout(Duration.ofSeconds(3))
                 .build();
 
         this.database = database;

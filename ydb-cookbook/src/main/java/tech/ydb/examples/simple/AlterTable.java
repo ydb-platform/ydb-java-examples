@@ -5,7 +5,6 @@ import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.description.TableColumn;
 import tech.ydb.table.description.TableDescription;
-import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.settings.AlterTableSettings;
 import tech.ydb.table.values.OptionalType;
 import tech.ydb.table.values.PrimitiveType;
@@ -62,9 +61,7 @@ public class AlterTable extends SimpleExample {
             System.out.printf("%4d. %s %s\n", i++, column.getName(), column.getType());
         }
 
-        session.close()
-            .join()
-            .expect("cannot close session");
+        session.close();
     }
 
     public static void main(String[] args) {

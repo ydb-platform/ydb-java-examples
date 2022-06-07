@@ -18,9 +18,10 @@ public class NameResolverExample {
         GrpcTransport transport = GrpcTransport.forEndpoint("ydb-ru.yandex.net", "/ru/home/username/mydb")
             .build();
 
-        try (TableClient tableClient = TableClient.newClient(transport).build()) {
-            Session session = tableClient.createSession().join()
-                .expect("create session");
+        try (
+                TableClient tableClient = TableClient.newClient(transport).build();
+                Session session = tableClient.createSession().join().expect("create session")
+                ) {
 
             DataQueryResult dataResult = session.executeDataQuery("SELECT 1;", TxControl.serializableRw())
                 .join()
@@ -32,8 +33,6 @@ public class NameResolverExample {
             long value = resultSet.getColumn(0).getUint32();
             System.out.println("value=" + value);
 
-            session.close().join()
-                .expect("close session");
         }
     }
 

@@ -20,48 +20,44 @@ public class DataQuery extends SimpleExample {
     @Override
     void run(GrpcTransport transport, String pathPrefix) {
         String tablePath = pathPrefix + getClass().getSimpleName();
-        TableClient tableClient = TableClient.newClient(transport).build();
+        try (
+                TableClient tableClient = TableClient.newClient(transport).build();
+                Session session = tableClient.createSession().join().expect("cannot create session");
+                ) {
 
-        Session session = tableClient.createSession()
-            .join()
-            .expect("cannot create session");
+            session.dropTable(tablePath)
+                .join();
 
-        session.dropTable(tablePath)
-            .join();
+            TableDescription tableDescription = TableDescription.newBuilder()
+                .addNullableColumn("id", PrimitiveType.uint32())
+                .addNullableColumn("login", PrimitiveType.string())
+                .addNullableColumn("age", PrimitiveType.uint32())
+                .setPrimaryKey("id")
+                .build();
 
-        TableDescription tableDescription = TableDescription.newBuilder()
-            .addNullableColumn("id", PrimitiveType.uint32())
-            .addNullableColumn("login", PrimitiveType.string())
-            .addNullableColumn("age", PrimitiveType.uint32())
-            .setPrimaryKey("id")
-            .build();
+            CreateTableSettings settings = new CreateTableSettings()
+                .setPartitioningPolicy(new PartitioningPolicy()
+                    .setAutoPartitioning(AutoPartitioningPolicy.AUTO_SPLIT)
+                    .setUniformPartitions(4));
 
-        CreateTableSettings settings = new CreateTableSettings()
-            .setPartitioningPolicy(new PartitioningPolicy()
-                .setAutoPartitioning(AutoPartitioningPolicy.AUTO_SPLIT)
-                .setUniformPartitions(4));
-
-        session.createTable(tablePath, tableDescription, settings)
-            .join()
-            .expect("cannot create table");
-
-
-        String query1 = "INSERT INTO [" + tablePath + "] (id, login, age) VALUES (1, 'Jamel', 99);";
-        DataQueryResult result1 = session.executeDataQuery(query1, TxControl.serializableRw().setCommitTx(true))
-            .join()
-            .expect("query failed");
-        DataQueryResults.print(result1);
+            session.createTable(tablePath, tableDescription, settings)
+                .join()
+                .expect("cannot create table");
 
 
-        String query2 = "SELECT * FROM [" + tablePath + "];";
-        DataQueryResult result2 = session.executeDataQuery(query2, TxControl.serializableRw().setCommitTx(true))
-            .join()
-            .expect("query failed");
-        DataQueryResults.print(result2);
+            String query1 = "INSERT INTO [" + tablePath + "] (id, login, age) VALUES (1, 'Jamel', 99);";
+            DataQueryResult result1 = session.executeDataQuery(query1, TxControl.serializableRw().setCommitTx(true))
+                .join()
+                .expect("query failed");
+            DataQueryResults.print(result1);
 
-        session.close()
-            .join()
-            .expect("cannot close session");
+
+            String query2 = "SELECT * FROM [" + tablePath + "];";
+            DataQueryResult result2 = session.executeDataQuery(query2, TxControl.serializableRw().setCommitTx(true))
+                .join()
+                .expect("query failed");
+            DataQueryResults.print(result2);
+        }
     }
 
     public static void main(String[] args) {

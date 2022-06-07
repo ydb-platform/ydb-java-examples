@@ -25,18 +25,12 @@ public class CreateTable extends SimpleExample {
     @Override
     void run(GrpcTransport transport, String pathPrefix) {
         try (TableClient tableClient = TableClient.newClient(transport).build()) {
-            Session session = tableClient.createSession()
-                .join()
-                .expect("cannot create session");
-
-            checkTable(session, pathPrefix + "UniformPartitionedTable", this::createUniformPartitionedTable);
-            checkTable(session, pathPrefix + "ManuallyPartitionedTable", this::createManuallyPartitionedTable);
-            checkTable(session, pathPrefix + "TableWithIndexes", this::createTableWithIndexes);
-            checkTable(session, pathPrefix + "TableWithReplicas", this::createTableWithReplicas);
-
-            session.close()
-                .join()
-                .expect("cannot close session");
+            try (Session session = tableClient.createSession().join().expect("cannot create session")) {
+                checkTable(session, pathPrefix + "UniformPartitionedTable", this::createUniformPartitionedTable);
+                checkTable(session, pathPrefix + "ManuallyPartitionedTable", this::createManuallyPartitionedTable);
+                checkTable(session, pathPrefix + "TableWithIndexes", this::createTableWithIndexes);
+                checkTable(session, pathPrefix + "TableWithReplicas", this::createTableWithReplicas);
+            }
         }
     }
 

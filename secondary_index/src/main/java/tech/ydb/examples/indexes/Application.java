@@ -52,8 +52,7 @@ public class Application {
 
     @Bean
     TableClient tableClient(GrpcTransport transport) {
-        return TableClient.newClient(GrpcTableRpc.useTransport(transport))
-            .build();
+        return TableClient.newClient(transport).build();
     }
 
     @Bean

@@ -93,8 +93,7 @@ public class YdbDockerContainer extends GenericContainer<YdbDockerContainer> {
                 getRateLimiter().doWhenReady(() -> {
                     GrpcTransportBuilder transportBuilder = GrpcTransport.forEndpoint(nonSecureEndpoint(), database());
                     try (GrpcTransport transport = transportBuilder.build()) {
-                        GrpcTableRpc grpcTableRpc = GrpcTableRpc.useTransport(transport);
-                        try (TableClient tableClient = TableClient.newClient(grpcTableRpc).build()) {
+                        try (TableClient tableClient = TableClient.newClient(transport).build()) {
 
                             Session session = tableClient.createSession()
                                     .get().expect("session not ready");

@@ -6,7 +6,6 @@ import tech.ydb.examples.bulk_upsert.BulkUpsert;
 import tech.ydb.examples.suites.TableWithPartitioningSettings;
 import tech.ydb.table.SessionRetryContext;
 import tech.ydb.table.TableClient;
-import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -61,19 +60,21 @@ public class ExamplesTest {
 
     @Test
     public void testTableWithPartitioningSettings() {
-        try (TableClient client = createTableClient()) {
+        try (
+                GrpcTransport transport = createGrpcTransport();
+                TableClient client = createTableClient(transport)) {
             SessionRetryContext ctx = SessionRetryContext.create(client).build();
             (new TableWithPartitioningSettings(ctx, args[3])).run();
         }
     }
-
-    private TableClient createTableClient() {
-        GrpcTransport transport = GrpcTransport
-                .forEndpoint(args[1], args[3])
-                .build();
-
+    
+    private GrpcTransport createGrpcTransport() {
+        return GrpcTransport.forEndpoint(args[1], args[3]).build();
+    }
+    
+    private TableClient createTableClient(GrpcTransport transport) {
         return TableClient
-                .newClient(GrpcTableRpc.ownTransport(transport))
+                .newClient(transport)
                 .build();
     }
 }

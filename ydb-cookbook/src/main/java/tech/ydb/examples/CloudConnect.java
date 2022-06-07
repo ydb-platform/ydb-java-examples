@@ -3,13 +3,11 @@ package tech.ydb.examples;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.time.Duration;
 
 import tech.ydb.auth.iam.CloudAuthProvider;
 import tech.ydb.core.auth.AuthProvider;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.table.TableClient;
-import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 
 import yandex.cloud.sdk.auth.provider.ApiKeyCredentialProvider;
 
@@ -30,10 +28,10 @@ public class CloudConnect {
                 .withSecureConnection(cert)
                 .build();
 
-        TableClient tableClient = TableClient.newClient(GrpcTableRpc.useTransport(transport))
+        TableClient tableClient = TableClient.newClient(transport)
                 .build();
 
-        tableClient.getOrCreateSession(Duration.ofSeconds(10))
+        tableClient.createSession()
                 .join().expect("ok");
     }
 }

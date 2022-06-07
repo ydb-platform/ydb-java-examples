@@ -29,26 +29,26 @@ public final class Main {
                 .token(accessToken)
                 .build()
         );
+        
 
-        GrpcTransport transport = GrpcTransport.forConnectionString(connectionString)
+        try ( GrpcTransport transport = GrpcTransport.forConnectionString(connectionString)
                 .withAuthProvider(authProvider) // Or this method could not be called at all
-                .build();
-
-        try (TableClient tableClient = TableClient
-                .newClient(GrpcTableRpc.ownTransport(transport))
                 .build()) {
+            try ( TableClient tableClient = TableClient
+                    .newClient(transport)
+                    .build()) {
+                SessionRetryContext retryCtx = SessionRetryContext.create(tableClient).build();
 
-            SessionRetryContext retryCtx = SessionRetryContext.create(tableClient).build();
+                retryCtx.supplyResult(session -> {
+                    ResultSetReader rsReader = session.executeDataQuery("SELECT 1;", TxControl.serializableRw())
+                            .join().expect("ok").getResultSet(0);
 
-            retryCtx.supplyResult(session -> {
-                ResultSetReader rsReader = session.executeDataQuery("SELECT 1;", TxControl.serializableRw())
-                        .join().expect("ok").getResultSet(0);
+                    rsReader.next();
+                    System.out.println(rsReader.getColumn(0).getInt32());
 
-                rsReader.next();
-                System.out.println(rsReader.getColumn(0).getInt32());
-
-                return CompletableFuture.completedFuture(Result.success(Boolean.TRUE));
-            });
+                    return CompletableFuture.completedFuture(Result.success(Boolean.TRUE));
+                });
+            }
         }
     }
 }

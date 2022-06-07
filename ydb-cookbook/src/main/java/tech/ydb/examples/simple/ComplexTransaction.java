@@ -1,6 +1,5 @@
 package tech.ydb.examples.simple;
 
-import java.time.Duration;
 import tech.ydb.core.grpc.GrpcTransport;
 
 import tech.ydb.table.Session;
@@ -8,7 +7,6 @@ import tech.ydb.table.TableClient;
 import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.query.DataQueryResult;
 import tech.ydb.table.transaction.Transaction;
-import tech.ydb.table.transaction.TransactionMode;
 import tech.ydb.table.transaction.TxControl;
 import tech.ydb.table.values.PrimitiveType;
 
@@ -21,14 +19,11 @@ public class ComplexTransaction extends SimpleExample {
     @Override
     void run(GrpcTransport transport, String pathPrefix) {
         String tablePath = pathPrefix + getClass().getSimpleName();
-        String prevSessionId;
 
-        try (TableClient tableClient = TableClient.newClient(transport).build()) {
-            Session session = tableClient.getOrCreateSession(Duration.ofSeconds(2))
-                .join()
-                .expect("cannot create session");
-
-            prevSessionId = session.getId();
+        try (
+                TableClient tableClient = TableClient.newClient(transport).build();
+                Session session = tableClient.createSession().join().expect("cannot create session");
+                ) {
 
             session.dropTable(tablePath)
                 .join();
@@ -43,7 +38,7 @@ public class ComplexTransaction extends SimpleExample {
                 .join()
                 .expect("cannot create table");
 
-            Transaction transaction = session.beginTransaction(TransactionMode.SERIALIZABLE_READ_WRITE)
+            Transaction transaction = session.beginTransaction(Transaction.Mode.SERIALIZABLE_READ_WRITE)
                 .join()
                 .expect("cannot create transaction");
 
@@ -82,23 +77,6 @@ public class ComplexTransaction extends SimpleExample {
             System.out.println("--[after commit]-------------");
             DataQueryResults.print(result);
             System.out.println("------------------------------");
-
-            boolean released = session.release();
-            if (released) {
-                Session session2 = tableClient.getOrCreateSession(Duration.ofSeconds(2))
-                    .join()
-                    .expect("cannot get or create session");
-
-                if (!prevSessionId.equals(session2.getId())) {
-                    throw new IllegalStateException("get non pooled session");
-                }
-
-                session2.release();
-            } else {
-                session.close()
-                    .join()
-                    .expect("cannot close session");
-            }
         }
     }
 

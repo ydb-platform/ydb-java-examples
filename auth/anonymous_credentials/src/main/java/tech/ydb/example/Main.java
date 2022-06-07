@@ -10,6 +10,9 @@ import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.transaction.TxControl;
 
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import tech.ydb.core.Result;
+import tech.ydb.table.SessionRetryContext;
 
 public final class Main {
     public static void main(String[] args) {
@@ -22,27 +25,25 @@ public final class Main {
         // Anonymous credentials
         AuthProvider authProvider = NopAuthProvider.INSTANCE;
 
-        GrpcTransport transport = GrpcTransport.forConnectionString(connectionString)
+        try ( GrpcTransport transport = GrpcTransport.forConnectionString(connectionString)
                 .withAuthProvider(authProvider) // Or this method could not be called at all
-                .build();
-
-        try (TableClient tableClient = TableClient
-                .newClient(GrpcTableRpc.ownTransport(transport))
                 .build()) {
+            try ( TableClient tableClient = TableClient
+                    .newClient(transport)
+                    .build()) {
 
-            Session session = tableClient.getOrCreateSession(Duration.ofSeconds(10))
-                    .join().expect("ok");
+                SessionRetryContext retryCtx = SessionRetryContext.create(tableClient).build();
 
-            ResultSetReader rsReader = session.executeDataQuery("SELECT 1;", TxControl.serializableRw())
-                    .join().expect("ok").getResultSet(0);
+                retryCtx.supplyResult(session -> {
+                    ResultSetReader rsReader = session.executeDataQuery("SELECT 1;", TxControl.serializableRw())
+                            .join().expect("ok").getResultSet(0);
 
-            assert (rsReader.getRowCount() == 1);
-            System.out.println("Result:");
-            while (rsReader.next()) {
-                System.out.println(rsReader.getColumn(0).getInt32());
+                    rsReader.next();
+                    System.out.println(rsReader.getColumn(0).getInt32());
+
+                    return CompletableFuture.completedFuture(Result.success(Boolean.TRUE));
+                });
             }
-
-            session.release();
         }
     }
 }
