@@ -3,6 +3,7 @@ package tech.ydb.examples.simple;
 import java.util.function.BiConsumer;
 
 import com.google.common.collect.ImmutableList;
+import java.time.Duration;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
@@ -25,7 +26,7 @@ public class CreateTable extends SimpleExample {
     @Override
     void run(GrpcTransport transport, String pathPrefix) {
         try (TableClient tableClient = TableClient.newClient(transport).build()) {
-            try (Session session = tableClient.createSession().join().expect("cannot create session")) {
+            try (Session session = tableClient.createSession(Duration.ofSeconds(5)).join().expect("cannot create session")) {
                 checkTable(session, pathPrefix + "UniformPartitionedTable", this::createUniformPartitionedTable);
                 checkTable(session, pathPrefix + "ManuallyPartitionedTable", this::createManuallyPartitionedTable);
                 checkTable(session, pathPrefix + "TableWithIndexes", this::createTableWithIndexes);

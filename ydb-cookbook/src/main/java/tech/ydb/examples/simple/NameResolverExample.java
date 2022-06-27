@@ -1,5 +1,6 @@
 package tech.ydb.examples.simple;
 
+import java.time.Duration;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
@@ -20,7 +21,7 @@ public class NameResolverExample {
 
         try (
                 TableClient tableClient = TableClient.newClient(transport).build();
-                Session session = tableClient.createSession().join().expect("create session")
+                Session session = tableClient.createSession(Duration.ofSeconds(5)).join().expect("create session")
                 ) {
 
             DataQueryResult dataResult = session.executeDataQuery("SELECT 1;", TxControl.serializableRw())

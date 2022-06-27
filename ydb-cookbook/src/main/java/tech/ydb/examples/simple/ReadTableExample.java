@@ -1,6 +1,7 @@
 package tech.ydb.examples.simple;
 
 
+import java.time.Duration;
 import tech.ydb.core.Status;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.table.Session;
@@ -20,7 +21,7 @@ public class ReadTableExample extends SimpleExample {
     void run(GrpcTransport transport, String pathPrefix) {
         try (
                 TableClient tableClient = TableClient.newClient(transport).build();
-                Session session = tableClient.createSession().join().expect("create session")
+                Session session = tableClient.createSession(Duration.ofSeconds(5)).join().expect("create session")
                 ) {
 
             String tablePath = pathPrefix + getClass().getSimpleName();

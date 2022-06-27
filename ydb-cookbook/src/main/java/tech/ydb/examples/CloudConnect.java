@@ -3,6 +3,7 @@ package tech.ydb.examples;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.Duration;
 
 import tech.ydb.auth.iam.CloudAuthProvider;
 import tech.ydb.core.auth.AuthProvider;
@@ -31,7 +32,7 @@ public class CloudConnect {
         TableClient tableClient = TableClient.newClient(transport)
                 .build();
 
-        tableClient.createSession()
+        tableClient.createSession(Duration.ofSeconds(5))
                 .join().expect("ok");
     }
 }

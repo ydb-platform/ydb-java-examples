@@ -1,5 +1,6 @@
 package tech.ydb.examples.indexes;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -47,7 +48,7 @@ public class SessionCache {
         }
 
         logger.debug("Creating new YDB session");
-        return tableClient.createSession()
+        return tableClient.createSession(Duration.ZERO)
                 .thenApply((Result<Session> result) -> new Entry(result.expect("acquireSession")));
     }
 

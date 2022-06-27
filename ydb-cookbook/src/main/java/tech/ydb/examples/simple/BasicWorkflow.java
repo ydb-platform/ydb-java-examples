@@ -18,6 +18,7 @@ import tech.ydb.table.values.PrimitiveType;
 
 import static tech.ydb.table.values.PrimitiveValue.uint32;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import java.time.Duration;
 import tech.ydb.core.grpc.GrpcTransport;
 
 
@@ -36,7 +37,7 @@ public class BasicWorkflow extends SimpleExample {
     }
 
     private Session makeSession(TableClient tableClient) {
-        return tableClient.createSession()
+        return tableClient.createSession(Duration.ofSeconds(5))
             .join()
             .expect("cannot create session");
     }

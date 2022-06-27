@@ -1,5 +1,6 @@
 package tech.ydb.examples.simple;
 
+import java.time.Duration;
 import java.util.UUID;
 import tech.ydb.core.grpc.GrpcTransport;
 
@@ -19,7 +20,7 @@ public class UuidExample extends SimpleExample {
     void run(GrpcTransport transport, String pathPrefix) {
         try (
                 TableClient tableClient = TableClient.newClient(transport).build();
-                Session session = tableClient.createSession().join().expect("create session")
+                Session session = tableClient.createSession(Duration.ofSeconds(5)).join().expect("create session")
                 ) {
             String query = "SELECT CAST(\"00112233-4455-6677-8899-aabbccddeeff\" AS Uuid);";
             DataQueryResult result = session.executeDataQuery(query, TxControl.serializableRw().setCommitTx(true))

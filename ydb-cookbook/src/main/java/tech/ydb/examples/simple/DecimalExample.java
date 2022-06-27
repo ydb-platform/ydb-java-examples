@@ -1,5 +1,6 @@
 package tech.ydb.examples.simple;
 
+import java.time.Duration;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
@@ -19,7 +20,7 @@ public class DecimalExample extends SimpleExample {
 
         try (
                 TableClient tableClient = TableClient.newClient(transport).build();
-                Session session = tableClient.createSession().join().expect("create session")
+                Session session = tableClient.createSession(Duration.ofSeconds(5)).join().expect("create session")
                 ) {
             String query = "SELECT CAST(\"12.345\" AS Decimal(13, 3));";
             DataQueryResult result = session.executeDataQuery(query, TxControl.serializableRw().setCommitTx(true))

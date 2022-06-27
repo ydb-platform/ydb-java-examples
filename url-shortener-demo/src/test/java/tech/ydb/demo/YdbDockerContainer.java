@@ -3,6 +3,7 @@ package tech.ydb.demo;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -105,7 +106,7 @@ public class YdbDockerContainer extends GenericContainer<YdbDockerContainer> {
                     try (GrpcTransport transport = transportBuilder.build()) {
                         try (TableClient tableClient = TableClient.newClient(transport).build()) {
 
-                            Session session = tableClient.createSession()
+                            Session session = tableClient.createSession(Duration.ofSeconds(5))
                                     .get().expect("session not ready");
 
                             session.createTable(

@@ -1,5 +1,6 @@
 package tech.ydb.examples.pagination;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import tech.ydb.core.grpc.GrpcTransport;
@@ -37,7 +38,7 @@ public class PaginationApp implements App {
     PaginationApp(GrpcTransport transport, String path) {
         this.path = path;
         this.tableClient = TableClient.newClient(transport).build();
-        this.session = tableClient.createSession()
+        this.session = tableClient.createSession(Duration.ofSeconds(5))
             .join()
             .expect("cannot create session");
     }

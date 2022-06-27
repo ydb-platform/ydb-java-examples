@@ -1,5 +1,6 @@
 package tech.ydb.examples.simple;
 
+import java.time.Duration;
 import tech.ydb.core.grpc.GrpcTransport;
 
 import tech.ydb.table.Session;
@@ -22,7 +23,7 @@ public class ComplexTransaction extends SimpleExample {
 
         try (
                 TableClient tableClient = TableClient.newClient(transport).build();
-                Session session = tableClient.createSession().join().expect("cannot create session");
+                Session session = tableClient.createSession(Duration.ofSeconds(5)).join().expect("cannot create session");
                 ) {
 
             session.dropTable(tablePath)
