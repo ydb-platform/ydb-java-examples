@@ -17,7 +17,7 @@ public class SchemeQuery extends SimpleExample {
 
         try (
                 TableClient tableClient = TableClient.newClient(transport).build();
-                Session session = tableClient.createSession(Duration.ofSeconds(5)).join().expect("create session")
+                Session session = tableClient.createSession(Duration.ofSeconds(5)).join().getValue()
                 ) {
             String createTable =
                     "CREATE TABLE [" + tablePath + "] (" +
@@ -28,11 +28,11 @@ public class SchemeQuery extends SimpleExample {
             
             session.executeSchemeQuery(createTable)
                     .join()
-                    .expect("cannot create table");
+                    .expectSuccess("cannot create table");
             
             session.executeSchemeQuery("DROP TABLE [" + tablePath + "];")
                     .join()
-                    .expect("cannot drop table");
+                    .expectSuccess("cannot drop table");
         }
     }
 

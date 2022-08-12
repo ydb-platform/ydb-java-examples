@@ -16,10 +16,10 @@
         <Logger name="org.testcontainers" level="warn" additivity="false">
             <AppenderRef ref="Console"/>
         </Logger>
-        <Logger name="tech.ydb.core.grpc" level="error" additivity="false">
+        <Logger name="tech.ydb.core" level="debug" additivity="false">
             <AppenderRef ref="Console"/>
         </Logger>
-        <Logger name="tech.ydb.table.impl" level="warn" additivity="false">
+        <Logger name="tech.ydb.table" level="debug" additivity="false">
             <AppenderRef ref="Console"/>
         </Logger>
 

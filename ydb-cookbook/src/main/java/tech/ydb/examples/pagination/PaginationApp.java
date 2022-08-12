@@ -3,6 +3,7 @@ package tech.ydb.examples.pagination;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+
 import tech.ydb.core.grpc.GrpcTransport;
 
 import tech.ydb.examples.App;
@@ -17,10 +18,7 @@ import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.transaction.TxControl;
 import tech.ydb.table.values.PrimitiveType;
-
-import static tech.ydb.table.values.PrimitiveValue.uint32;
-import static tech.ydb.table.values.PrimitiveValue.uint64;
-import static tech.ydb.table.values.PrimitiveValue.utf8;
+import tech.ydb.table.values.PrimitiveValue;
 
 
 /**
@@ -40,7 +38,7 @@ public class PaginationApp implements App {
         this.tableClient = TableClient.newClient(transport).build();
         this.session = tableClient.createSession(Duration.ofSeconds(5))
             .join()
-            .expect("cannot create session");
+            .getValue();
     }
 
     @Override
@@ -80,15 +78,15 @@ public class PaginationApp implements App {
      */
     private void createTable() {
         TableDescription schoolTable = TableDescription.newBuilder()
-            .addNullableColumn("city", PrimitiveType.utf8())
-            .addNullableColumn("number", PrimitiveType.uint32())
-            .addNullableColumn("address", PrimitiveType.utf8())
+            .addNullableColumn("city", PrimitiveType.Text)
+            .addNullableColumn("number", PrimitiveType.Uint32)
+            .addNullableColumn("address", PrimitiveType.Text)
             .setPrimaryKeys("city", "number")
             .build();
 
         session.createTable(path + "/schools", schoolTable)
             .join()
-            .expect("cannot create schools table");
+            .expectSuccess("cannot create schools table");
     }
 
     /**
@@ -100,7 +98,7 @@ public class PaginationApp implements App {
         String tablePath = path + "/schools";
         TableDescription tableDesc = session.describeTable(tablePath)
             .join()
-            .expect("cannot describe schools table");
+            .getValue();
 
         System.out.println(tablePath + ':');
         List<String> primaryKeys = tableDesc.getPrimaryKeys();
@@ -137,7 +135,7 @@ public class PaginationApp implements App {
 
         session.executeDataQuery(query, txControl, params)
             .join()
-            .expect("cannot insert data into schools table");
+            .getValue();
     }
 
     private List<School> selectPaging(long limit, School.Key lastSchool) {
@@ -171,15 +169,15 @@ public class PaginationApp implements App {
             path);
 
         Params params = Params.of(
-            "$limit", uint64(limit),
-            "$lastCity", utf8(lastSchool.getCity()),
-            "$lastNumber", uint32(lastSchool.getNumber()));
+            "$limit", PrimitiveValue.newUint64(limit),
+            "$lastCity", PrimitiveValue.newText(lastSchool.getCity()),
+            "$lastNumber", PrimitiveValue.newUint32(lastSchool.getNumber()));
 
         TxControl txControl = TxControl.serializableRw().setCommitTx(true);
 
         DataQueryResult result = session.executeDataQuery(query, txControl, params)
                 .join()
-                .expect("cannot execute data query");
+                .getValue();
 
         ResultSetReader resultSet = result.getResultSet(0);
         List<School> schools = new ArrayList<>(resultSet.getRowCount());

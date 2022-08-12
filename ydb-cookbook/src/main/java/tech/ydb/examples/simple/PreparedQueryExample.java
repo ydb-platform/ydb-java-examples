@@ -25,35 +25,35 @@ public class PreparedQueryExample extends SimpleExample {
 
         try (
                 TableClient tableClient = TableClient.newClient(transport).build();
-                Session session = tableClient.createSession(Duration.ofSeconds(5)).join().expect("create session")
+                Session session = tableClient.createSession(Duration.ofSeconds(5)).join().getValue()
                 ) {
             session.dropTable(tablePath, new DropTableSettings())
                     .join();
             
             TableDescription tableDescription = TableDescription.newBuilder()
-                    .addNullableColumn("name", PrimitiveType.utf8())
-                    .addNullableColumn("size", PrimitiveType.uint64())
+                    .addNullableColumn("name", PrimitiveType.Text)
+                    .addNullableColumn("size", PrimitiveType.Uint64)
                     .setPrimaryKey("name")
                     .build();
             
             session.createTable(tablePath, tableDescription)
                     .join()
-                    .expect("cannot create table");
+                    .expectSuccess("cannot create table");
             
             DataQuery query1 = session.prepareDataQuery(
                     "DECLARE $name AS Utf8;" +
                             "DECLARE $size AS Uint32;" +
                             "INSERT INTO [" + tablePath + "] (name, size) VALUES ($name, $size);")
                     .join()
-                    .expect("cannot create prepared query");
+                    .getValue();
             
             Params params = query1.newParams()
-                    .put("$name", PrimitiveValue.utf8("/etc/passwd"))
-                    .put("$size", PrimitiveValue.uint32(42));
+                    .put("$name", PrimitiveValue.newText("/etc/passwd"))
+                    .put("$size", PrimitiveValue.newUint32(42));
             
             DataQueryResult result1 = query1.execute(TxControl.serializableRw().setCommitTx(true), params)
                     .join()
-                    .expect("query failed");
+                    .getValue();
             
             DataQueryResults.print(result1);
             
@@ -61,7 +61,7 @@ public class PreparedQueryExample extends SimpleExample {
             
             DataQueryResult result2 = session.executeDataQuery(query2, TxControl.serializableRw().setCommitTx(true))
                     .join()
-                    .expect("query failed");
+                    .getValue();
             
             DataQueryResults.print(result2);
         }

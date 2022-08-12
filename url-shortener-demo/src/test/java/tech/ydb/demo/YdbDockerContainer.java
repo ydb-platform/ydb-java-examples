@@ -107,16 +107,16 @@ public class YdbDockerContainer extends GenericContainer<YdbDockerContainer> {
                         try (TableClient tableClient = TableClient.newClient(transport).build()) {
 
                             Session session = tableClient.createSession(Duration.ofSeconds(5))
-                                    .get().expect("session not ready");
+                                    .get().getValue();
 
                             session.createTable(
                                     DOCKER_INIT_TABLE,
                                     TableDescription
                                             .newBuilder()
-                                            .addNullableColumn("id", PrimitiveType.utf8())
+                                            .addNullableColumn("id", PrimitiveType.Text)
                                             .setPrimaryKey("id")
                                             .build()
-                            ).get().expect("Table creation error");
+                            ).get().expectSuccess("Table creation error");
                         }
                     } catch (InterruptedException e) {
                         log.warn("execution interrupted {}", e.getMessage());

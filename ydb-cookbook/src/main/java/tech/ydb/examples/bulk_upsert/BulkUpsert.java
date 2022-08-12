@@ -70,14 +70,14 @@ public class BulkUpsert implements App {
 
         log.info("create table {}", tablePath);
         retryCtx.supplyStatus(session -> session.createTable(tablePath, table.build()))
-                .join().expect("create table fail");
+                .join().expectSuccess("create table fail");
     }
 
     private void writeLogBatch(List<LogRecord> items) {
         ListValue rows = LogRecord.toListValue(items);
         retryCtx.supplyStatus(session -> session.executeBulkUpsert(
                 tablePath, rows, new BulkUpsertSettings()
-        )).join().expect("bulk upsert problem");
+        )).join().expectSuccess("bulk upsert problem");
     }
 
     @Override

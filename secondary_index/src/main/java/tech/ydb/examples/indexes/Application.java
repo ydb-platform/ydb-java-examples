@@ -7,16 +7,16 @@ import java.util.concurrent.ScheduledExecutorService;
 
 import tech.ydb.core.auth.TokenAuthProvider;
 import tech.ydb.core.grpc.GrpcTransport;
+import tech.ydb.core.grpc.GrpcTransportBuilder;
 import tech.ydb.examples.indexes.configuration.IndexesConfigurationProperties;
 import tech.ydb.examples.indexes.repositories.SeriesRepository;
 import tech.ydb.table.TableClient;
-import tech.ydb.table.rpc.grpc.GrpcTableRpc;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
-import tech.ydb.core.grpc.GrpcTransportBuilder;
 
 @SpringBootApplication
 public class Application {
@@ -56,13 +56,8 @@ public class Application {
     }
 
     @Bean
-    SessionCache sessionCache(TableClient tableClient, ScheduledExecutorService timerScheduler) {
-        return new SessionCache(tableClient, timerScheduler);
-    }
-
-    @Bean
-    SeriesRepository seriesRepository(SessionCache sessionCache, IndexesConfigurationProperties properties) {
-        return new SeriesRepository(sessionCache, properties.getPrefix());
+    SeriesRepository seriesRepository(TableClient tableClient, IndexesConfigurationProperties properties) {
+        return new SeriesRepository(tableClient, properties.getPrefix());
     }
 
     public static void main(String[] args) {

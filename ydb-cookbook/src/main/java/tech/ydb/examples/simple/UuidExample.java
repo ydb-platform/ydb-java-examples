@@ -20,12 +20,12 @@ public class UuidExample extends SimpleExample {
     void run(GrpcTransport transport, String pathPrefix) {
         try (
                 TableClient tableClient = TableClient.newClient(transport).build();
-                Session session = tableClient.createSession(Duration.ofSeconds(5)).join().expect("create session")
+                Session session = tableClient.createSession(Duration.ofSeconds(5)).join().getValue()
                 ) {
             String query = "SELECT CAST(\"00112233-4455-6677-8899-aabbccddeeff\" AS Uuid);";
             DataQueryResult result = session.executeDataQuery(query, TxControl.serializableRw().setCommitTx(true))
                     .join()
-                    .expect("query failed");
+                    .getValue();
             
             ResultSetReader resultSet = result.getResultSet(0);
             resultSet.next();

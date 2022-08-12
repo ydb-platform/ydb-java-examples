@@ -16,10 +16,10 @@ import tech.ydb.table.settings.DropTableSettings;
 import tech.ydb.table.transaction.TxControl;
 import tech.ydb.table.values.PrimitiveType;
 
-import static tech.ydb.table.values.PrimitiveValue.uint32;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import java.time.Duration;
+
 import tech.ydb.core.grpc.GrpcTransport;
+import tech.ydb.table.values.PrimitiveValue;
 
 
 public class BasicWorkflow extends SimpleExample {
@@ -27,33 +27,33 @@ public class BasicWorkflow extends SimpleExample {
     private void makeDirectory(SchemeClient schemeClient, String directoryPath) {
         schemeClient.makeDirectory(directoryPath)
                 .join()
-                .expect("cannot make directory: " + directoryPath);
+                .expectSuccess("cannot make directory: " + directoryPath);
     }
 
     private void removeDir(SchemeClient schemeClient, String directoryPath) {
         schemeClient.removeDirectory(directoryPath)
                 .join()
-                .expect("cannot remove directory: " + directoryPath);
+                .expectSuccess("cannot remove directory: " + directoryPath);
     }
 
     private Session makeSession(TableClient tableClient) {
         return tableClient.createSession(Duration.ofSeconds(5))
             .join()
-            .expect("cannot create session");
+            .getValue();
     }
 
     private void createOrdersTable(Session session, String tablePath) {
         TableDescription tableDescription = TableDescription.newBuilder()
-            .addNullableColumn("id", PrimitiveType.uint32())
-            .addNullableColumn("counterparty", PrimitiveType.string())
-            .addNullableColumn("security", PrimitiveType.string())
-            .addNullableColumn("amount", PrimitiveType.uint32())
+            .addNullableColumn("id", PrimitiveType.Uint32)
+            .addNullableColumn("counterparty", PrimitiveType.Bytes)
+            .addNullableColumn("security", PrimitiveType.Bytes)
+            .addNullableColumn("amount", PrimitiveType.Uint32)
             .setPrimaryKey("id")
             .build();
 
         session.createTable(tablePath, tableDescription)
                 .join()
-                .expect("cannot create table");
+                .expectSuccess("cannot create table");
     }
 
     private void dropTable(Session session, String tablePath) {
@@ -65,14 +65,14 @@ public class BasicWorkflow extends SimpleExample {
     DataQueryResult executeQuery(Session session, String query) {
         Result<DataQueryResult> result = session.executeDataQuery(query, TxControl.serializableRw().setCommitTx(true))
             .join();
-        System.out.println("Status: " + result.getCode());
-        return result.expect("query failed: " + query);
+        System.out.println("Status: " + result.getStatus());
+        return result.getValue();
     }
 
     DataQuery makePreparedQuery(Session session, String query) {
         return session.prepareDataQuery(query)
             .join()
-            .expect("cannot create prepared query");
+            .getValue();
     }
 
     void processBasicData(Session session, String tablePath) {
@@ -80,7 +80,7 @@ public class BasicWorkflow extends SimpleExample {
                 "VALUES (1, 'Fedex', 'tmob', 5000), (2, 'Apple', 'db', 10000);";
         DataQueryResult result1 = session.executeDataQuery(query1, TxControl.serializableRw().setCommitTx(true))
             .join()
-            .expect("query failed");
+            .getValue();
         DataQueryResults.print(result1);
 
         String query2 = "SELECT * FROM [" + tablePath + "];";
@@ -91,11 +91,11 @@ public class BasicWorkflow extends SimpleExample {
         DataQuery query3 = makePreparedQuery(session,
                 "DECLARE $id AS Uint32; SELECT id, security FROM [" + tablePath + "] where id=$id;");
 
-        Params params = Params.of("$id", uint32(1));
+        Params params = Params.of("$id", PrimitiveValue.newUint32(1));
 
         DataQueryResult result3 = query3.execute(TxControl.serializableRw().setCommitTx(true), params)
             .join()
-            .expect("Can't select");
+            .getValue();
 
         if (result3.isEmpty()) {
             throw new IllegalStateException("empty result set");
@@ -110,7 +110,7 @@ public class BasicWorkflow extends SimpleExample {
         System.out.println("-------------------------------------");
         while (resultSet.next()) {
             long id = resultSet.getColumn("id").getUint32();
-            String security = resultSet.getColumn("security").getString(UTF_8);
+            String security = resultSet.getColumn("security").getUtf8();
             System.out.println(String.format("ID=%d, security=%s", id, security));
         }
 

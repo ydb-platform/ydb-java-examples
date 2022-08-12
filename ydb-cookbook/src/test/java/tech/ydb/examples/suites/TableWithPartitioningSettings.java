@@ -36,11 +36,11 @@ public class TableWithPartitioningSettings {
         initSettings.setPartitioningBySize(true);  // true by default
 
         TableDescription tableDescription = TableDescription.newBuilder()
-                .addNullableColumn("id", PrimitiveType.uint64())
-                .addNullableColumn("code", PrimitiveType.utf8())
-                .addNullableColumn("size", PrimitiveType.float64())
-                .addNullableColumn("created", PrimitiveType.timestamp())
-                .addNullableColumn("data", PrimitiveType.json())
+                .addNullableColumn("id", PrimitiveType.Uint64)
+                .addNullableColumn("code", PrimitiveType.Text)
+                .addNullableColumn("size", PrimitiveType.Float)
+                .addNullableColumn("created", PrimitiveType.Timestamp)
+                .addNullableColumn("data", PrimitiveType.Json)
                 .setPrimaryKey("id")
                 .setPartitioningSettings(initSettings)
                 .build();
@@ -91,7 +91,7 @@ public class TableWithPartitioningSettings {
         }).join();
         Assertions.assertTrue(describeResult.isSuccess(), "Describe table");
 
-        TableDescription description = describeResult.expect("ok");
+        TableDescription description = describeResult.getValue();
 
         Assertions.assertEquals(
                 tableDescription.getColumns().size(),

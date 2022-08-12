@@ -23,8 +23,8 @@ public class YdbRepository {
 
     private static final String TABLE_NAME = "urls";
     private static final TableDescription TABLE_DESCRIPTION = TableDescription.newBuilder()
-            .addNullableColumn("src", PrimitiveType.utf8())
-            .addNullableColumn("hash", PrimitiveType.utf8())
+            .addNullableColumn("src", PrimitiveType.Text)
+            .addNullableColumn("hash", PrimitiveType.Text)
             .setPrimaryKey("hash")
             .build();
 
@@ -48,7 +48,7 @@ public class YdbRepository {
 
             driver.retryCtx()
                     .supplyStatus(session -> session.createTable(tablePath, TABLE_DESCRIPTION))
-                    .join().expect("can't create table " + tablePath);
+                    .join().expectSuccess("can't create table " + tablePath);
         } catch (UnexpectedResultException e) {
             log.error("init table problem", e);
             throw new YdbException(e.getMessage(), e);
@@ -63,15 +63,15 @@ public class YdbRepository {
                     + "UPSERT INTO " + TABLE_NAME + "(src, hash) VALUES ($url, $hash);";
 
             Params params = Params.of(
-                "$url", PrimitiveValue.utf8(record.url()),
-                "$hash", PrimitiveValue.utf8(record.hash())
+                "$url", PrimitiveValue.newText(record.url()),
+                "$hash", PrimitiveValue.newText(record.hash())
             );
 
             TxControl txControl = TxControl.serializableRw().setCommitTx(true);
 
             driver.retryCtx()
                     .supplyResult(session -> session.executeDataQuery(query, txControl, params))
-                    .join().expect("can't read query result");
+                    .join().getStatus().expectSuccess("can't read query result");
         } catch (UnexpectedResultException e) {
             log.error("insert record problem", e);
             throw new YdbException(e.getMessage(), e);
@@ -85,14 +85,14 @@ public class YdbRepository {
                     + "SELECT * FROM " + TABLE_NAME + " WHERE hash=$hash;";
 
             Params params = Params.of(
-                "$hash", PrimitiveValue.utf8(hash)
+                "$hash", PrimitiveValue.newText(hash)
             );
 
             TxControl txControl = TxControl.serializableRw();
 
             DataQueryResult result = driver.retryCtx()
                     .supplyResult(session -> session.executeDataQuery(query, txControl, params))
-                    .join().expect("can't read query result");
+                    .join().getValue();
 
             if (result.isEmpty()) {
                 return Optional.empty();

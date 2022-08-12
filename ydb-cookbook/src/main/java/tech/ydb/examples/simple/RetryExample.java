@@ -1,6 +1,5 @@
 package tech.ydb.examples.simple;
 
-import java.time.Duration;
 import java.util.concurrent.ForkJoinPool;
 
 import tech.ydb.core.Result;
@@ -32,7 +31,7 @@ public class RetryExample extends SimpleExample {
                 return session.executeDataQuery("SELECT 1 + 2;", txControl);
             }).join();
 
-            DataQueryResult dataQueryResult = result.expect("cannot execute data query");
+            DataQueryResult dataQueryResult = result.getValue();
             ResultSetReader resultSet = dataQueryResult.getResultSet(0);
             while (resultSet.next()) {
                 ValueReader reader = resultSet.getColumn(0);

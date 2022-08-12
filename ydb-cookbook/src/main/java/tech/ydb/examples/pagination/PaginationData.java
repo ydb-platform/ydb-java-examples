@@ -36,15 +36,15 @@ final class PaginationData {
     };
 
     public static final StructType SCHOOL_TYPE = StructType.of(
-        "city", PrimitiveType.utf8(),
-        "number", PrimitiveType.uint32(),
-        "address", PrimitiveType.utf8()
+        "city", PrimitiveType.Text,
+        "number", PrimitiveType.Uint32,
+        "address", PrimitiveType.Text
     );
 
     public static final ListValue SCHOOL_DATA = toListValue(SCHOOLS, SCHOOL_TYPE, s -> ImmutableMap.of(
-        "city", PrimitiveValue.utf8(s.getCity()),
-        "number", PrimitiveValue.uint32(s.getNumber()),
-        "address", PrimitiveValue.utf8(s.getAddress())
+        "city", PrimitiveValue.newText(s.getCity()),
+        "number", PrimitiveValue.newUint32(s.getNumber()),
+        "address", PrimitiveValue.newText(s.getAddress())
     ));
 
     private PaginationData() { }

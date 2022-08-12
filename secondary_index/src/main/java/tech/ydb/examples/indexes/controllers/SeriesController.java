@@ -9,6 +9,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import tech.ydb.examples.indexes.model.Series;
 import tech.ydb.examples.indexes.repositories.SeriesRepository;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -50,7 +51,7 @@ public class SeriesController {
             @RequestParam int count,
             @RequestParam(defaultValue = "100") int maxConcurrency) {
         long nextId = startId;
-        Deque<CompletableFuture<Void>> futures = new ArrayDeque<>();
+        Deque<CompletableFuture<Boolean>> futures = new ArrayDeque<>();
         while (count > 0) {
             while (futures.size() >= maxConcurrency) {
                 futures.getFirst().join();

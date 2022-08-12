@@ -21,18 +21,18 @@ public class Scheme extends SimpleExample {
 
         schemeClient.makeDirectory(directoryPath)
             .join()
-            .expect("cannot make directory: " + directoryPath);
+            .expectSuccess("cannot make directory: " + directoryPath);
 
         for (int i = 0; i < 3; i++) {
             String subDirectory = directoryPath + '/' + i;
             schemeClient.makeDirectory(subDirectory)
                 .join()
-                .expect("cannot make directory: " + subDirectory);
+                .expectSuccess("cannot make directory: " + subDirectory);
         }
 
         DescribePathResult result1 = schemeClient.describePath(directoryPath)
             .join()
-            .expect("cannot describe path: " + directoryPath);
+            .getValue();
 
         System.out.println("--[self]---------------------------");
         System.out.println(result1.getSelf());
@@ -40,7 +40,7 @@ public class Scheme extends SimpleExample {
 
         ListDirectoryResult result2 = schemeClient.listDirectory(directoryPath)
             .join()
-            .expect("cannot describe directory: " + directoryPath);
+            .getValue();
 
         System.out.println("--[self]---------------------------");
         System.out.println(result2.getSelf());
@@ -52,12 +52,12 @@ public class Scheme extends SimpleExample {
             String subDirectory = directoryPath + '/' + i;
             schemeClient.removeDirectory(subDirectory)
                 .join()
-                .expect("cannot remove directory: " + subDirectory);
+                .expectSuccess("cannot remove directory: " + subDirectory);
         }
 
         schemeClient.removeDirectory(directoryPath)
             .join()
-            .expect("cannot remove directory: " + directoryPath);
+            .expectSuccess("cannot remove directory: " + directoryPath);
 
     }
 

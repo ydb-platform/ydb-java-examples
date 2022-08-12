@@ -1,16 +1,16 @@
 package tech.ydb.example;
 
+import java.nio.file.Paths;
+import java.util.concurrent.CompletableFuture;
+
 import tech.ydb.auth.iam.CloudAuthProvider;
+import tech.ydb.core.Result;
 import tech.ydb.core.auth.AuthProvider;
 import tech.ydb.core.grpc.GrpcTransport;
+import tech.ydb.table.SessionRetryContext;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.transaction.TxControl;
-
-import java.nio.file.Paths;
-import java.util.concurrent.CompletableFuture;
-import tech.ydb.core.Result;
-import tech.ydb.table.SessionRetryContext;
 
 import yandex.cloud.sdk.auth.provider.ApiKeyCredentialProvider;
 
@@ -40,7 +40,7 @@ public final class Main {
 
                 retryCtx.supplyResult(session -> {
                     ResultSetReader rsReader = session.executeDataQuery("SELECT 1;", TxControl.serializableRw())
-                            .join().expect("ok").getResultSet(0);
+                            .join().getValue().getResultSet(0);
 
                     rsReader.next();
                     System.out.println(rsReader.getColumn(0).getInt32());

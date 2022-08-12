@@ -17,7 +17,7 @@ public class ExplainDataQuery extends SimpleExample {
         String tablePath = pathPrefix + getClass().getSimpleName();
         try (
                 TableClient tableClient = TableClient.newClient(transport).build();
-                Session session = tableClient.createSession(Duration.ofSeconds(5)).join().expect("create session")
+                Session session = tableClient.createSession(Duration.ofSeconds(5)).join().getValue()
                 ) {
 
             session.dropTable(tablePath)
@@ -31,13 +31,13 @@ public class ExplainDataQuery extends SimpleExample {
                     ");";
             session.executeSchemeQuery(query1)
                 .join()
-                .expect("cannot create table");
+                .expectSuccess("cannot create table");
 
 
             String query2 = "SELECT * FROM [" + tablePath + "];";
             ExplainDataQueryResult result = session.explainDataQuery(query2)
                 .join()
-                .expect("cannot explain query");
+                .getValue();
 
             System.out.println("--[ast]----------------------\n" + result.getQueryAst());
             System.out.println();

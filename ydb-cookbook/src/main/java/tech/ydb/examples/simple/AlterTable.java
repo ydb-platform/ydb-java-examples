@@ -24,7 +24,7 @@ public class AlterTable extends SimpleExample {
 
         Session session = tableClient.createSession(Duration.ofSeconds(5))
             .join()
-            .expect("cannot create session");
+            .getValue();
 
         session.dropTable(tablePath)
             .join();
@@ -37,18 +37,18 @@ public class AlterTable extends SimpleExample {
             ");";
         session.executeSchemeQuery(query)
             .join()
-            .expect("cannot create table");
+            .expectSuccess("cannot create table");
 
         session.alterTable(tablePath, new AlterTableSettings()
                 .setTraceId("some-trace-id")
-                .addColumn("name", OptionalType.of(PrimitiveType.string()))
-                .addColumn("age", OptionalType.of(PrimitiveType.uint32()))
+                .addColumn("name", OptionalType.of(PrimitiveType.Text))
+                .addColumn("age", OptionalType.of(PrimitiveType.Uint32))
                 .dropColumn("value")
-            ).join().expect("cannot alter table");
+            ).join().expectSuccess("cannot alter table");
 
         TableDescription description = session.describeTable(tablePath)
             .join()
-            .expect("cannot describe table");
+            .getValue();
 
         System.out.println("--[primary keys]-------------");
         int i = 1;

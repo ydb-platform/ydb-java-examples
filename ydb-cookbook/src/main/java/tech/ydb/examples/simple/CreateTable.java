@@ -26,7 +26,7 @@ public class CreateTable extends SimpleExample {
     @Override
     void run(GrpcTransport transport, String pathPrefix) {
         try (TableClient tableClient = TableClient.newClient(transport).build()) {
-            try (Session session = tableClient.createSession(Duration.ofSeconds(5)).join().expect("cannot create session")) {
+            try (Session session = tableClient.createSession(Duration.ofSeconds(5)).join().getValue()) {
                 checkTable(session, pathPrefix + "UniformPartitionedTable", this::createUniformPartitionedTable);
                 checkTable(session, pathPrefix + "ManuallyPartitionedTable", this::createManuallyPartitionedTable);
                 checkTable(session, pathPrefix + "TableWithIndexes", this::createTableWithIndexes);
@@ -43,10 +43,10 @@ public class CreateTable extends SimpleExample {
 
     private void createTableWithIndexes(String tablePath, Session session) {
         TableDescription description = TableDescription.newBuilder()
-            .addNullableColumn("uid", PrimitiveType.uint64())
-            .addNullableColumn("login", PrimitiveType.utf8())
-            .addNullableColumn("firstName", PrimitiveType.utf8())
-            .addNullableColumn("lastName", PrimitiveType.utf8())
+            .addNullableColumn("uid", PrimitiveType.Uint64)
+            .addNullableColumn("login", PrimitiveType.Text)
+            .addNullableColumn("firstName", PrimitiveType.Text)
+            .addNullableColumn("lastName", PrimitiveType.Text)
             .setPrimaryKey("uid")
             .addGlobalIndex("loginIdx", ImmutableList.of("login"))
             .addGlobalIndex("nameIdx", ImmutableList.of("firstName", "lastName"))
@@ -54,7 +54,7 @@ public class CreateTable extends SimpleExample {
 
         session.createTable(tablePath, description)
             .join()
-            .expect("cannot create table " + tablePath);
+            .expectSuccess("cannot create table " + tablePath);
     }
 
     /**
@@ -66,9 +66,9 @@ public class CreateTable extends SimpleExample {
      */
     private void createUniformPartitionedTable(String tablePath, Session session) {
         TableDescription description = TableDescription.newBuilder()
-            .addNullableColumn("hash", PrimitiveType.uint32())
-            .addNullableColumn("name", PrimitiveType.utf8())
-            .addNullableColumn("salary", PrimitiveType.float64())
+            .addNullableColumn("hash", PrimitiveType.Uint32)
+            .addNullableColumn("name", PrimitiveType.Text)
+            .addNullableColumn("salary", PrimitiveType.Double)
             .setPrimaryKeys("hash", "name")  // uniform partitioning requires Uint32 / Uint64 as a first key column
             .build();
 
@@ -77,7 +77,7 @@ public class CreateTable extends SimpleExample {
 
         session.createTable(tablePath, description, settings)
             .join()
-            .expect("cannot create table " + tablePath);
+            .expectSuccess("cannot create table " + tablePath);
     }
 
     /**
@@ -88,8 +88,8 @@ public class CreateTable extends SimpleExample {
      */
     private void createManuallyPartitionedTable(String tablePath, Session session) {
         TableDescription description = TableDescription.newBuilder()
-            .addNullableColumn("name", PrimitiveType.utf8())
-            .addNullableColumn("salary", PrimitiveType.float64())
+            .addNullableColumn("name", PrimitiveType.Text)
+            .addNullableColumn("salary", PrimitiveType.Double)
             .setPrimaryKey("name")
             .build();
 
@@ -100,7 +100,7 @@ public class CreateTable extends SimpleExample {
 
         session.createTable(tablePath, description, settings)
             .join()
-            .expect("cannot create table " + tablePath);
+            .expectSuccess("cannot create table " + tablePath);
     }
 
     /**
@@ -108,8 +108,8 @@ public class CreateTable extends SimpleExample {
      */
     private void createTableWithReplicas(String tablePath, Session session) {
         TableDescription description = TableDescription.newBuilder()
-            .addNullableColumn("id", PrimitiveType.uint64())
-            .addNullableColumn("value", PrimitiveType.utf8())
+            .addNullableColumn("id", PrimitiveType.Uint64)
+            .addNullableColumn("value", PrimitiveType.Text)
             .setPrimaryKey("id")
             .build();
 
@@ -121,17 +121,17 @@ public class CreateTable extends SimpleExample {
 
         session.createTable(tablePath, description, settings)
             .join()
-            .expect("cannot create table " + tablePath);
+            .expectSuccess("cannot create table " + tablePath);
     }
 
     private static TupleValue makeKey(String value) {
-        return TupleValue.of(PrimitiveValue.utf8(value).makeOptional());
+        return TupleValue.of(PrimitiveValue.newText(value).makeOptional());
     }
 
     private void printTableScheme(String tablePath, Session session) {
         TableDescription description = session.describeTable(tablePath)
             .join()
-            .expect("cannot describe table " + tablePath);
+            .getValue();
 
         System.out.println("--[" + tablePath + "]-----------");
         System.out.println("primary keys:");

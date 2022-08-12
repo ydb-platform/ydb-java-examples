@@ -26,7 +26,7 @@ public abstract class SimpleExample {
         System.err.println("PATH=" + path);
         System.err.println();
 
-        try (GrpcTransport transport = GrpcTransport.forHost(host, port)
+        try (GrpcTransport transport = GrpcTransport.forHost(host, port, path)
             .withCallExecutor(Executors.newFixedThreadPool(3))
             .build()) {
             run(transport, path);

@@ -9,16 +9,13 @@ import tech.ydb.examples.AppRunner;
 import tech.ydb.table.SessionRetryContext;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.description.TableDescription;
-import tech.ydb.table.query.DataQueryResult;
 import tech.ydb.table.query.Params;
 import tech.ydb.table.transaction.TxControl;
 import tech.ydb.table.values.ListValue;
 import tech.ydb.table.values.PrimitiveType;
+import tech.ydb.table.values.PrimitiveValue;
 import tech.ydb.table.values.StructValue;
 import tech.ydb.table.values.Value;
-
-import static tech.ydb.table.values.PrimitiveValue.uint64;
-import static tech.ydb.table.values.PrimitiveValue.utf8;
 
 public class BatchUpload implements App {
     private static final String TABLE_NAME = "batch_upload";
@@ -65,10 +62,10 @@ public class BatchUpload implements App {
                     remain, url, urlUid, hostUid);
 
             return StructValue.of(
-                    "HostUid", uint64(hostUid),
-                    "UrlUid", uint64(urlUid),
-                    "Url", utf8(url),
-                    "Page", utf8(page)
+                    "HostUid", PrimitiveValue.newUint64(hostUid),
+                    "UrlUid", PrimitiveValue.newUint64(urlUid),
+                    "Url", PrimitiveValue.newText(url),
+                    "Page", PrimitiveValue.newText(page)
             );
         }
     }
@@ -103,25 +100,24 @@ public class BatchUpload implements App {
         }
     }
 
-    private DataQueryResult executeBatch(String query, ArrayList<Value<?>> pack) {
+    private void executeBatch(String query, ArrayList<Value<?>> pack) {
         Value<?>[] values = new Value<?>[pack.size()];
         pack.toArray(values);
 
         Params params = Params.of("$items", ListValue.of(values));
 
         TxControl txControl = TxControl.serializableRw().setCommitTx(true);
-        return retryCtx
+        retryCtx
                 .supplyResult(session -> session.executeDataQuery(query, txControl, params))
-                .join()
-                .expect("expected success result");
+                .join().getStatus().expectSuccess("expected success result");
     }
 
     private void createTables() {
         TableDescription seriesTable = TableDescription.newBuilder()
-                .addNullableColumn("HostUid", PrimitiveType.uint64())
-                .addNullableColumn("UrlUid", PrimitiveType.uint64())
-                .addNullableColumn("Url", PrimitiveType.utf8())
-                .addNullableColumn("Page", PrimitiveType.utf8())
+                .addNullableColumn("HostUid", PrimitiveType.Uint64)
+                .addNullableColumn("UrlUid", PrimitiveType.Uint64)
+                .addNullableColumn("Url", PrimitiveType.Text)
+                .addNullableColumn("Page", PrimitiveType.Text)
                 .setPrimaryKeys("HostUid", "UrlUid")
                 .build();
 

@@ -5,7 +5,6 @@ import tech.ydb.core.auth.AuthProvider;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.result.ResultSetReader;
-import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.transaction.TxControl;
 
 import java.util.concurrent.CompletableFuture;
@@ -41,7 +40,7 @@ public final class Main {
 
                 retryCtx.supplyResult(session -> {
                     ResultSetReader rsReader = session.executeDataQuery("SELECT 1;", TxControl.serializableRw())
-                            .join().expect("ok").getResultSet(0);
+                            .join().getValue().getResultSet(0);
 
                     rsReader.next();
                     System.out.println(rsReader.getColumn(0).getInt32());

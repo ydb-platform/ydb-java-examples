@@ -1,17 +1,17 @@
 package tech.ydb.example;
 
+import java.util.concurrent.CompletableFuture;
+
 import tech.ydb.auth.iam.CloudAuthProvider;
+import tech.ydb.core.Result;
 import tech.ydb.core.auth.AuthProvider;
 import tech.ydb.core.grpc.GrpcTransport;
+import tech.ydb.table.SessionRetryContext;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.transaction.TxControl;
 
 import yandex.cloud.sdk.auth.provider.ComputeEngineCredentialProvider;
-
-import java.util.concurrent.CompletableFuture;
-import tech.ydb.core.Result;
-import tech.ydb.table.SessionRetryContext;
 
 public final class Main {
     public static void main(String[] args) {
@@ -38,7 +38,7 @@ public final class Main {
 
                 retryCtx.supplyResult(session -> {
                     ResultSetReader rsReader = session.executeDataQuery("SELECT 1;", TxControl.serializableRw())
-                            .join().expect("ok").getResultSet(0);
+                            .join().getValue().getResultSet(0);
 
                     rsReader.next();
                     System.out.println(rsReader.getColumn(0).getInt32());

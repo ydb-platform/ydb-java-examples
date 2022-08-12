@@ -20,12 +20,12 @@ public class DecimalExample extends SimpleExample {
 
         try (
                 TableClient tableClient = TableClient.newClient(transport).build();
-                Session session = tableClient.createSession(Duration.ofSeconds(5)).join().expect("create session")
+                Session session = tableClient.createSession(Duration.ofSeconds(5)).join().getValue()
                 ) {
             String query = "SELECT CAST(\"12.345\" AS Decimal(13, 3));";
             DataQueryResult result = session.executeDataQuery(query, TxControl.serializableRw().setCommitTx(true))
                 .join()
-                .expect("query failed");
+                .getValue();
 
             ResultSetReader resultSet = result.getResultSet(0);
             resultSet.next();

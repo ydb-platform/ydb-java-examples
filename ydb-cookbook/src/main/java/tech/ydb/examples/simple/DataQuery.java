@@ -23,16 +23,16 @@ public class DataQuery extends SimpleExample {
         String tablePath = pathPrefix + getClass().getSimpleName();
         try (
                 TableClient tableClient = TableClient.newClient(transport).build();
-                Session session = tableClient.createSession(Duration.ofSeconds(5)).join().expect("cannot create session");
+                Session session = tableClient.createSession(Duration.ofSeconds(5)).join().getValue();
                 ) {
 
             session.dropTable(tablePath)
                 .join();
 
             TableDescription tableDescription = TableDescription.newBuilder()
-                .addNullableColumn("id", PrimitiveType.uint32())
-                .addNullableColumn("login", PrimitiveType.string())
-                .addNullableColumn("age", PrimitiveType.uint32())
+                .addNullableColumn("id", PrimitiveType.Uint32)
+                .addNullableColumn("login", PrimitiveType.Text)
+                .addNullableColumn("age", PrimitiveType.Uint32)
                 .setPrimaryKey("id")
                 .build();
 
@@ -43,20 +43,18 @@ public class DataQuery extends SimpleExample {
 
             session.createTable(tablePath, tableDescription, settings)
                 .join()
-                .expect("cannot create table");
+                .expectSuccess("cannot create table");
 
 
             String query1 = "INSERT INTO [" + tablePath + "] (id, login, age) VALUES (1, 'Jamel', 99);";
             DataQueryResult result1 = session.executeDataQuery(query1, TxControl.serializableRw().setCommitTx(true))
-                .join()
-                .expect("query failed");
+                .join().getValue();
             DataQueryResults.print(result1);
 
 
             String query2 = "SELECT * FROM [" + tablePath + "];";
             DataQueryResult result2 = session.executeDataQuery(query2, TxControl.serializableRw().setCommitTx(true))
-                .join()
-                .expect("query failed");
+                .join().getValue();
             DataQueryResults.print(result2);
         }
     }

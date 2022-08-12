@@ -21,11 +21,11 @@ import tech.ydb.table.values.Value;
  */
 public class LogRecord {
     public static final StructType COLUMNS = StructType.of(
-        "app", PrimitiveType.utf8(),
-        "timestamp", PrimitiveType.timestamp(),
-        "host", PrimitiveType.utf8(),
-        "http_code", PrimitiveType.uint32(),
-        "message", PrimitiveType.utf8()
+        "app", PrimitiveType.Text,
+        "timestamp", PrimitiveType.Timestamp,
+        "host", PrimitiveType.Text,
+        "http_code", PrimitiveType.Uint32,
+        "message", PrimitiveType.Text
     );
 
     public static final List<String> PRIMARY_KEYS = Arrays.asList(
@@ -82,11 +82,11 @@ public class LogRecord {
 
     private Map<String, Value> toValue() {
         return ImmutableMap.of(
-            "app", PrimitiveValue.utf8(app),
-            "timestamp", PrimitiveValue.timestamp(timestamp),
-            "host", PrimitiveValue.utf8(host),
-            "http_code", PrimitiveValue.uint32(httpCode),
-            "message", PrimitiveValue.utf8(message)
+            "app", PrimitiveValue.newText(app),
+            "timestamp", PrimitiveValue.newTimestamp(timestamp),
+            "host", PrimitiveValue.newText(host),
+            "http_code", PrimitiveValue.newUint32(httpCode),
+            "message", PrimitiveValue.newText(message)
         );
     }
 
