@@ -5,7 +5,7 @@
     <parent>
         <groupId>tech.ydb.examples</groupId>
         <artifactId>ydb-sdk-examples</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>1.0.0</version>
     </parent>
 
     <artifactId>ydb-basic-example</artifactId>

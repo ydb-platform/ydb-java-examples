@@ -5,7 +5,7 @@
 
     <groupId>tech.ydb.examples</groupId>
     <artifactId>ydb-sdk-examples</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
 
     <packaging>pom</packaging>
 
@@ -24,7 +24,7 @@
         
         <maven.javadoc.skip>true</maven.javadoc.skip>
 
-        <ydb.sdk.version>2.0.0-RC1</ydb.sdk.version>
+        <ydb.sdk.version>2.0.0-RC2</ydb.sdk.version>
     </properties>
 
     <modules>
