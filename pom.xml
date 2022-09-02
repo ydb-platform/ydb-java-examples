@@ -22,8 +22,6 @@
         <jcommander.version>1.81</jcommander.version>
         <testcontainers.version>1.15.2</testcontainers.version>
         
-        <maven.javadoc.skip>true</maven.javadoc.skip>
-
         <ydb.sdk.version>2.0.0-RC2</ydb.sdk.version>
     </properties>
 
