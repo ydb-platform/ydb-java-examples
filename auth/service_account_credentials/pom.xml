@@ -19,7 +19,7 @@
         </dependency>
         <dependency>
             <groupId>tech.ydb.auth</groupId>
-            <artifactId>yc-auth-creditals</artifactId>
+            <artifactId>yc-auth-provider</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
