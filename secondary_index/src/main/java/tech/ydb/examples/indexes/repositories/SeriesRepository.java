@@ -213,8 +213,8 @@ public class SeriesRepository {
 
     private static Series extractSeries(ResultSetReader resultSet) {
         long seriesId = resultSet.getColumn(0).getUint64();
-        String title = resultSet.getColumn(1).getUtf8();
-        String seriesInfo = resultSet.getColumn(2).getUtf8();
+        String title = resultSet.getColumn(1).getText();
+        String seriesInfo = resultSet.getColumn(2).getText();
         LocalDate releaseDate = LocalDate.ofEpochDay(resultSet.getColumn(3).getUint32());
         long views = resultSet.getColumn(4).getUint64();
         return new Series(seriesId, title, seriesInfo, releaseDate, views);

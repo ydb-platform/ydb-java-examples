@@ -110,7 +110,7 @@ public class BasicWorkflow extends SimpleExample {
         System.out.println("-------------------------------------");
         while (resultSet.next()) {
             long id = resultSet.getColumn("id").getUint32();
-            String security = resultSet.getColumn("security").getUtf8();
+            String security = resultSet.getColumn("security").getText();
             System.out.println(String.format("ID=%d, security=%s", id, security));
         }
 

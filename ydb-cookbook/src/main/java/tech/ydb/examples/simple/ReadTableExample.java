@@ -44,7 +44,7 @@ public class ReadTableExample extends SimpleExample {
 
             while (resultSet.next()) {
                 long key = resultSet.getColumn(keyIdx).getUint32();
-                String value = resultSet.getColumn(valueIdx).getUtf8();
+                String value = resultSet.getColumn(valueIdx).getText();
                 System.out.printf("key=%d, value=%s\n", key, value);
             }
         }).join().expectSuccess("readTable failed");

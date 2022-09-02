@@ -230,7 +230,7 @@ public final class App implements Runnable, AutoCloseable {
         while (rs.next()) {
             logger.info("read series with id {}, title {} and release_date {}",
                     rs.getColumn("series_id").getUint64(),
-                    rs.getColumn("title").getUtf8(),
+                    rs.getColumn("title").getText(),
                     rs.getColumn("release_date").getDate()
             );
         }
@@ -261,8 +261,8 @@ public final class App implements Runnable, AutoCloseable {
         ResultSetReader rs = result.getResultSet(0);
         while (rs.next()) {
             logger.info("read season with title {} for series {}",
-                    rs.getColumn("season_title").getUtf8(),
-                    rs.getColumn("series_title").getUtf8()
+                    rs.getColumn("season_title").getText(),
+                    rs.getColumn("series_title").getText()
             );
         }
     }
@@ -289,9 +289,9 @@ public final class App implements Runnable, AutoCloseable {
             return session.executeScanQuery(query, params, settings, rs -> {
                 while (rs.next()) {
                     logger.info("read episode {} of {} for {}",
-                            rs.getColumn("episode_title").getUtf8(),
-                            rs.getColumn("season_title").getUtf8(),
-                            rs.getColumn("series_title").getUtf8()
+                            rs.getColumn("episode_title").getText(),
+                            rs.getColumn("season_title").getText(),
+                            rs.getColumn("series_title").getText()
                     );
                 }
             });
@@ -348,7 +348,7 @@ public final class App implements Runnable, AutoCloseable {
             ResultSetReader rs = res2.getResultSet(0);
             while (rs.next()) {
                 logger.info("read episode {} with air date {}",
-                        rs.getColumn("title").getUtf8(),
+                        rs.getColumn("title").getText(),
                         rs.getColumn("air_date").getDate()
                 );
             }

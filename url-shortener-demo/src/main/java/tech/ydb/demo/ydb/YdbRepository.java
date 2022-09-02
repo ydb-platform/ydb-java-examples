@@ -104,8 +104,8 @@ public class YdbRepository {
                 return Optional.empty();
             }
 
-            String rowHash = rs.getColumn("hash").getUtf8();
-            String rowSource = rs.getColumn("src").getUtf8();
+            String rowHash = rs.getColumn("hash").getText();
+            String rowSource = rs.getColumn("src").getText();
 
             return Optional.of(new UrlRecord(rowHash, rowSource));
         } catch (UnexpectedResultException e) {

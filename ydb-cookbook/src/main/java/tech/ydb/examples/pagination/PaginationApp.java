@@ -182,9 +182,9 @@ public class PaginationApp implements App {
         ResultSetReader resultSet = result.getResultSet(0);
         List<School> schools = new ArrayList<>(resultSet.getRowCount());
         while (resultSet.next()) {
-            String city = resultSet.getColumn("city").getUtf8();
+            String city = resultSet.getColumn("city").getText();
             int number = (int) resultSet.getColumn("number").getUint32();
-            String address = resultSet.getColumn("address").getUtf8();
+            String address = resultSet.getColumn("address").getText();
             schools.add(new School(city, number, address));
         }
         return schools;
