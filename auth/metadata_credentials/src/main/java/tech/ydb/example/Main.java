@@ -2,7 +2,7 @@ package tech.ydb.example;
 
 import java.util.concurrent.CompletableFuture;
 
-import tech.ydb.auth.iam.CloudAuthProvider;
+import tech.ydb.auth.iam.CloudAuthHelper;
 import tech.ydb.core.Result;
 import tech.ydb.core.auth.AuthProvider;
 import tech.ydb.core.grpc.GrpcTransport;
@@ -11,7 +11,6 @@ import tech.ydb.table.TableClient;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.transaction.TxControl;
 
-import yandex.cloud.sdk.auth.provider.ComputeEngineCredentialProvider;
 
 public final class Main {
     public static void main(String[] args) {
@@ -22,10 +21,7 @@ public final class Main {
         String connectionString = args[0];
 
         // Use metadata credentials
-        AuthProvider authProvider = CloudAuthProvider.newAuthProvider(
-            ComputeEngineCredentialProvider.builder()
-                .build()
-        );
+        AuthProvider authProvider = CloudAuthHelper.getMetadataAuthProvider();
 
         try ( GrpcTransport transport = GrpcTransport.forConnectionString(connectionString)
                 .withAuthProvider(authProvider) // Or this method could not be called at all

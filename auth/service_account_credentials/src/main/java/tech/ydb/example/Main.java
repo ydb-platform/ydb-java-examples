@@ -1,9 +1,8 @@
 package tech.ydb.example;
 
-import java.nio.file.Paths;
 import java.util.concurrent.CompletableFuture;
 
-import tech.ydb.auth.iam.CloudAuthProvider;
+import tech.ydb.auth.iam.CloudAuthHelper;
 import tech.ydb.core.Result;
 import tech.ydb.core.auth.AuthProvider;
 import tech.ydb.core.grpc.GrpcTransport;
@@ -12,7 +11,6 @@ import tech.ydb.table.TableClient;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.transaction.TxControl;
 
-import yandex.cloud.sdk.auth.provider.ApiKeyCredentialProvider;
 
 public final class Main {
     public static void main(String[] args) {
@@ -23,11 +21,7 @@ public final class Main {
         String connectionString = args[0];
         String saKeyFile = args[1];
 
-        AuthProvider authProvider = CloudAuthProvider.newAuthProvider(
-            ApiKeyCredentialProvider.builder()
-                .fromFile(Paths.get(saKeyFile))
-                .build()
-        );
+        AuthProvider authProvider = CloudAuthHelper.getServiceAccountFileAuthProvider(saKeyFile);
 
         try ( GrpcTransport transport = GrpcTransport.forConnectionString(connectionString)
                 .withAuthProvider(authProvider) // Or this method could not be called at all

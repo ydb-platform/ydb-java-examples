@@ -32,7 +32,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-
 public final class App implements Runnable, AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(App.class);
 

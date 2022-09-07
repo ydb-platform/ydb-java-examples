@@ -1,19 +1,19 @@
 package tech.ydb.example;
 
-import tech.ydb.auth.iam.CloudAuthProvider;
+import java.util.concurrent.CompletableFuture;
+
+import tech.ydb.core.Result;
 import tech.ydb.core.auth.AuthProvider;
+import tech.ydb.core.auth.TokenAuthProvider;
 import tech.ydb.core.grpc.GrpcTransport;
+import tech.ydb.table.SessionRetryContext;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.transaction.TxControl;
 
-import java.util.concurrent.CompletableFuture;
-
-import tech.ydb.core.Result;
-import tech.ydb.table.SessionRetryContext;
-import yandex.cloud.sdk.auth.provider.IamTokenCredentialProvider;
 
 public final class Main {
+
     public static void main(String[] args) {
         if (args.length != 2) {
             System.err.println("Usage: java -jar ydb-access-token-example.jar <connection-string> <access-token>");
@@ -23,12 +23,7 @@ public final class Main {
         String accessToken = args[1];
 
         // Access token credentials
-        AuthProvider authProvider = CloudAuthProvider.newAuthProvider(
-            IamTokenCredentialProvider.builder()
-                .token(accessToken)
-                .build()
-        );
-        
+        AuthProvider authProvider = new TokenAuthProvider(accessToken);
 
         try ( GrpcTransport transport = GrpcTransport.forConnectionString(connectionString)
                 .withAuthProvider(authProvider) // Or this method could not be called at all

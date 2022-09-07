@@ -22,7 +22,7 @@
         <jcommander.version>1.81</jcommander.version>
         <testcontainers.version>1.15.2</testcontainers.version>
         
-        <ydb.sdk.version>2.0.0-RC2</ydb.sdk.version>
+        <ydb.sdk.version>2.0.0-SNAPSHOT</ydb.sdk.version>
     </properties>
 
     <modules>
