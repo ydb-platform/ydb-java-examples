@@ -40,7 +40,7 @@ public final class Main {
                     System.out.println(rsReader.getColumn(0).getInt32());
 
                     return CompletableFuture.completedFuture(Result.success(Boolean.TRUE));
-                });
+                }).join();
             }
         }
     }

@@ -11,6 +11,7 @@
 
     <packaging>pom</packaging>
 
+    <groupId>tech.ydb.examples.auth</groupId>
     <artifactId>ydb-sdk-auth-examples</artifactId>
     <name>YDB Auth examples</name>
     <description>Examples of various auth providers for YDB</description>
@@ -21,5 +22,6 @@
         <module>environ</module>
         <module>metadata_credentials</module>
         <module>service_account_credentials</module>
+        <module>static_credentials</module>
     </modules>
 </project>

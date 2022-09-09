@@ -8,6 +8,7 @@ import java.util.concurrent.TimeUnit;
 import tech.ydb.core.Status;
 import tech.ydb.core.UnexpectedResultException;
 import tech.ydb.core.grpc.GrpcTransport;
+import tech.ydb.core.grpc.GrpcTransportBuilder;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.description.TableDescription;
@@ -19,8 +20,6 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy;
 import org.testcontainers.shaded.org.apache.commons.io.IOUtils;
-
-import tech.ydb.core.grpc.GrpcTransportBuilder;
 
 /**
  *

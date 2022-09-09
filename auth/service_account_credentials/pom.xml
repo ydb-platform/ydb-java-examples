@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>tech.ydb.examples</groupId>
+        <groupId>tech.ydb.examples.auth</groupId>
         <artifactId>ydb-sdk-auth-examples</artifactId>
         <version>1.0.0</version>
     </parent>
