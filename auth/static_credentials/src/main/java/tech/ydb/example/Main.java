@@ -5,7 +5,7 @@ import java.util.concurrent.CompletableFuture;
 
 import tech.ydb.core.Result;
 import tech.ydb.core.auth.AuthProvider;
-import tech.ydb.core.auth.CredentialsAuthProvider;
+import tech.ydb.core.auth.StaticCredentials;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.table.SessionRetryContext;
 import tech.ydb.table.TableClient;
@@ -28,7 +28,7 @@ public final class Main {
         String password = args.length > 2 ? args[2] : "";
 
         // Use credentials auth provider with username and password
-        AuthProvider authProvider = new CredentialsAuthProvider(username, password);
+        AuthProvider authProvider = new StaticCredentials(username, password);
 
         try ( GrpcTransport transport = GrpcTransport.forConnectionString(connectionString)
                 .withAuthProvider(authProvider) // Or this method could not be called at all
