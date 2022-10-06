@@ -8,6 +8,9 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import tech.ydb.auth.iam.CloudAuthHelper;
 import tech.ydb.core.Status;
 import tech.ydb.core.grpc.GrpcTransport;
@@ -28,19 +31,17 @@ import tech.ydb.table.values.PrimitiveType;
 import tech.ydb.table.values.PrimitiveValue;
 import tech.ydb.table.values.StructType;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 
 public final class App implements Runnable, AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(App.class);
 
-    private final String database;
+    private final GrpcTransport transport;
     private final TableClient tableClient;
+    private final String database;
     private final SessionRetryContext retryCtx;
 
     private App(String connectionString) {
-        GrpcTransport transport = GrpcTransport.forConnectionString(connectionString)
+        this.transport = GrpcTransport.forConnectionString(connectionString)
                 .withAuthProvider(CloudAuthHelper.getAuthProviderFromEnviron())
                 .build();
         this.tableClient = TableClient.newClient(transport).build();
@@ -70,6 +71,7 @@ public final class App implements Runnable, AutoCloseable {
     @Override
     public void close() {
         tableClient.close();
+        transport.close();
     }
 
     private void createTables() {
