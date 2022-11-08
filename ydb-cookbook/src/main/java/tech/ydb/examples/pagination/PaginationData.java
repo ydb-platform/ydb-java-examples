@@ -6,6 +6,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableMap;
+
 import tech.ydb.examples.pagination.model.School;
 import tech.ydb.table.values.ListType;
 import tech.ydb.table.values.ListValue;
@@ -49,7 +50,7 @@ final class PaginationData {
 
     private PaginationData() { }
 
-    private static <T> ListValue toListValue(T[] items, StructType type, Function<T, Map<String, Value>> mapper) {
+    private static <T> ListValue toListValue(T[] items, StructType type, Function<T, Map<String, Value<?>>> mapper) {
         ListType listType = ListType.of(type);
         return listType.newValue(Arrays.stream(items)
             .map(e -> type.newValue(mapper.apply(e)))

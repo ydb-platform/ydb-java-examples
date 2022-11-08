@@ -8,6 +8,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableMap;
+
 import tech.ydb.table.values.ListType;
 import tech.ydb.table.values.ListValue;
 import tech.ydb.table.values.PrimitiveType;
@@ -80,7 +81,7 @@ public class LogRecord {
             '}';
     }
 
-    private Map<String, Value> toValue() {
+    private Map<String, Value<?>> toValue() {
         return ImmutableMap.of(
             "app", PrimitiveValue.newText(app),
             "timestamp", PrimitiveValue.newTimestamp(timestamp),
