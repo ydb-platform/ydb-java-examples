@@ -5,7 +5,8 @@ import java.nio.file.Paths;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
-import tech.ydb.core.auth.TokenAuthProvider;
+
+import tech.ydb.auth.TokenAuthProvider;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.core.grpc.GrpcTransportBuilder;
 

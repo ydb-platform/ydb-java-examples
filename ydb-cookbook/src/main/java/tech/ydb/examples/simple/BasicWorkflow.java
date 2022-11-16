@@ -1,9 +1,10 @@
 package tech.ydb.examples.simple;
 
+import java.time.Duration;
 import java.util.UUID;
 
 import tech.ydb.core.Result;
-import tech.ydb.table.SchemeClient;
+import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.description.TableDescription;
@@ -11,14 +12,9 @@ import tech.ydb.table.query.DataQuery;
 import tech.ydb.table.query.DataQueryResult;
 import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
-import tech.ydb.table.rpc.grpc.GrpcSchemeRpc;
 import tech.ydb.table.settings.DropTableSettings;
 import tech.ydb.table.transaction.TxControl;
 import tech.ydb.table.values.PrimitiveType;
-
-import java.time.Duration;
-
-import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.table.values.PrimitiveValue;
 
 

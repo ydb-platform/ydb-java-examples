@@ -2,9 +2,9 @@ package tech.ydb.example;
 
 import java.util.concurrent.CompletableFuture;
 
+import tech.ydb.auth.AuthProvider;
+import tech.ydb.auth.TokenAuthProvider;
 import tech.ydb.core.Result;
-import tech.ydb.core.auth.AuthProvider;
-import tech.ydb.core.auth.TokenAuthProvider;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.table.SessionRetryContext;
 import tech.ydb.table.TableClient;

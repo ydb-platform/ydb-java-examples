@@ -5,18 +5,18 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
-import tech.ydb.core.auth.TokenAuthProvider;
-import tech.ydb.core.grpc.GrpcTransport;
-import tech.ydb.core.grpc.GrpcTransportBuilder;
-import tech.ydb.examples.indexes.configuration.IndexesConfigurationProperties;
-import tech.ydb.examples.indexes.repositories.SeriesRepository;
-import tech.ydb.table.TableClient;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+
+import tech.ydb.auth.TokenAuthProvider;
+import tech.ydb.core.grpc.GrpcTransport;
+import tech.ydb.core.grpc.GrpcTransportBuilder;
+import tech.ydb.examples.indexes.configuration.IndexesConfigurationProperties;
+import tech.ydb.examples.indexes.repositories.SeriesRepository;
+import tech.ydb.table.TableClient;
 
 @SpringBootApplication
 public class Application {
