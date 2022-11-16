@@ -5,6 +5,8 @@ import java.util.UUID;
 
 import tech.ydb.core.Result;
 import tech.ydb.core.grpc.GrpcTransport;
+import tech.ydb.scheme.SchemeClient;
+import tech.ydb.scheme.impl.GrpcSchemeRpc;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.description.TableDescription;

@@ -1,12 +1,12 @@
 package tech.ydb.examples.simple;
 
 import java.util.UUID;
-import tech.ydb.core.grpc.GrpcTransport;
 
-import tech.ydb.table.SchemeClient;
-import tech.ydb.table.description.DescribePathResult;
-import tech.ydb.table.description.ListDirectoryResult;
-import tech.ydb.table.rpc.grpc.GrpcSchemeRpc;
+import tech.ydb.core.grpc.GrpcTransport;
+import tech.ydb.scheme.SchemeClient;
+import tech.ydb.scheme.description.DescribePathResult;
+import tech.ydb.scheme.description.ListDirectoryResult;
+import tech.ydb.scheme.impl.GrpcSchemeRpc;
 
 
 /**
