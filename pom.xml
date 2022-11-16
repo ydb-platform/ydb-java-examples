@@ -37,23 +37,10 @@
         <dependencies>
             <dependency>
                 <groupId>tech.ydb</groupId>
-                <artifactId>ydb-sdk-core</artifactId>
+                <artifactId>ydb-sdk-bom</artifactId>
                 <version>${ydb.sdk.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>tech.ydb</groupId>
-                <artifactId>ydb-sdk-table</artifactId>
-                <version>${ydb.sdk.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>tech.ydb</groupId>
-                <artifactId>ydb-sdk-scheme</artifactId>
-                <version>${ydb.sdk.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>tech.ydb.auth</groupId>
-                <artifactId>yc-auth-provider</artifactId>
-                <version>${ydb.sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
 
             <dependency>
