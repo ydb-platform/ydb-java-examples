@@ -6,7 +6,6 @@ import java.util.UUID;
 import tech.ydb.core.Result;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.scheme.SchemeClient;
-import tech.ydb.scheme.impl.GrpcSchemeRpc;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.description.TableDescription;
@@ -123,7 +122,7 @@ public class BasicWorkflow extends SimpleExample {
         final String workDirPath = rootPath + "/MyData";
         final String ordersTablePath = workDirPath + "/Orders";
 
-        final SchemeClient schemeClient = SchemeClient.newClient(GrpcSchemeRpc.useTransport(transport)).build();
+        final SchemeClient schemeClient = SchemeClient.newClient(transport).build();
 
         try (TableClient tableClient = TableClient.newClient(transport).build()) {
             try (Session session = makeSession(tableClient)) {

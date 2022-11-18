@@ -6,7 +6,6 @@ import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.scheme.SchemeClient;
 import tech.ydb.scheme.description.DescribePathResult;
 import tech.ydb.scheme.description.ListDirectoryResult;
-import tech.ydb.scheme.impl.GrpcSchemeRpc;
 
 
 /**
@@ -17,7 +16,7 @@ public class Scheme extends SimpleExample {
     @Override
     void run(GrpcTransport transport, String pathPrefix) {
         String directoryPath = pathPrefix + UUID.randomUUID().toString();
-        SchemeClient schemeClient = SchemeClient.newClient(GrpcSchemeRpc.useTransport(transport)).build();
+        SchemeClient schemeClient = SchemeClient.newClient(transport).build();
 
         schemeClient.makeDirectory(directoryPath)
             .join()
