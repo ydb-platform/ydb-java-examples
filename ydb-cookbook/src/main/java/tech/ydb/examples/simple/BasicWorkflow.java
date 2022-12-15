@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import tech.ydb.core.Result;
 import tech.ydb.core.grpc.GrpcTransport;
+import tech.ydb.examples.SimpleExample;
 import tech.ydb.scheme.SchemeClient;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
@@ -117,7 +118,7 @@ public class BasicWorkflow extends SimpleExample {
     }
 
     @Override
-    void run(GrpcTransport transport, String pathPrefix) {
+    protected void run(GrpcTransport transport, String pathPrefix) {
         final String rootPath = pathPrefix + UUID.randomUUID().toString();
         final String workDirPath = rootPath + "/MyData";
         final String ordersTablePath = workDirPath + "/Orders";
@@ -140,6 +141,6 @@ public class BasicWorkflow extends SimpleExample {
     }
 
     public static void main(String[] args) {
-        new BasicWorkflow().doMain();
+        new BasicWorkflow().doMain(args);
     }
 }

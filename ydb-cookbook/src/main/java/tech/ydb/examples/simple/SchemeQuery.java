@@ -2,6 +2,7 @@ package tech.ydb.examples.simple;
 
 import java.time.Duration;
 import tech.ydb.core.grpc.GrpcTransport;
+import tech.ydb.examples.SimpleExample;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
 
@@ -37,6 +38,6 @@ public class SchemeQuery extends SimpleExample {
     }
 
     public static void main(String[] args) {
-        new SchemeQuery().doMain();
+        new SchemeQuery().doMain(args);
     }
 }

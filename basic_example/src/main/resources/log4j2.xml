@@ -25,6 +25,9 @@
         <Logger name="tech.ydb.table.Session" level="info" additivity="false">
             <AppenderRef ref="Console"/>
         </Logger>
+        <Logger name="tech.ydb.topic" level="info" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
 
         <Root level="debug" >
             <AppenderRef ref="Console"/>

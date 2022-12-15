@@ -3,6 +3,7 @@ package tech.ydb.examples.simple;
 import java.util.UUID;
 
 import tech.ydb.core.grpc.GrpcTransport;
+import tech.ydb.examples.SimpleExample;
 import tech.ydb.scheme.SchemeClient;
 import tech.ydb.scheme.description.DescribePathResult;
 import tech.ydb.scheme.description.ListDirectoryResult;
@@ -14,7 +15,7 @@ import tech.ydb.scheme.description.ListDirectoryResult;
 public class Scheme extends SimpleExample {
 
     @Override
-    void run(GrpcTransport transport, String pathPrefix) {
+    protected void run(GrpcTransport transport, String pathPrefix) {
         String directoryPath = pathPrefix + UUID.randomUUID().toString();
         SchemeClient schemeClient = SchemeClient.newClient(transport).build();
 
@@ -61,6 +62,6 @@ public class Scheme extends SimpleExample {
     }
 
     public static void main(String[] args) {
-        new Scheme().doMain();
+        new Scheme().doMain(args);
     }
 }

@@ -4,6 +4,7 @@ import java.util.concurrent.ForkJoinPool;
 
 import tech.ydb.core.Result;
 import tech.ydb.core.grpc.GrpcTransport;
+import tech.ydb.examples.SimpleExample;
 import tech.ydb.table.SessionRetryContext;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.query.DataQueryResult;
@@ -18,7 +19,7 @@ import tech.ydb.table.transaction.TxControl;
 public class RetryExample extends SimpleExample {
 
     @Override
-    void run(GrpcTransport transport, String pathPrefix) {
+    protected void run(GrpcTransport transport, String pathPrefix) {
         try (TableClient tableClient = TableClient.newClient(transport).build()) {
             SessionRetryContext ctx = SessionRetryContext.create(tableClient)
                 .executor(ForkJoinPool.commonPool())
@@ -41,6 +42,6 @@ public class RetryExample extends SimpleExample {
     }
 
     public static void main(String[] args) {
-        new RetryExample().doMain();
+        new RetryExample().doMain(args);
     }
 }

@@ -4,6 +4,7 @@ package tech.ydb.examples.simple;
 import java.time.Duration;
 
 import tech.ydb.core.grpc.GrpcTransport;
+import tech.ydb.examples.SimpleExample;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.settings.ReadTableSettings;
@@ -17,7 +18,7 @@ import tech.ydb.table.values.PrimitiveValue;
 public class ReadTableExample extends SimpleExample {
 
     @Override
-    void run(GrpcTransport transport, String pathPrefix) {
+    protected void run(GrpcTransport transport, String pathPrefix) {
         try (
                 TableClient tableClient = TableClient.newClient(transport).build();
                 Session session = tableClient.createSession(Duration.ofSeconds(5)).join().getValue()
@@ -71,6 +72,6 @@ public class ReadTableExample extends SimpleExample {
     }
 
     public static void main(String[] args) {
-        new ReadTableExample().doMain();
+        new ReadTableExample().doMain(args);
     }
 }
