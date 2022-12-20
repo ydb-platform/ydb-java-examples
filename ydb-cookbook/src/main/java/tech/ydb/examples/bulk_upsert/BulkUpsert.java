@@ -4,6 +4,10 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.examples.App;
 import tech.ydb.examples.AppRunner;
 import tech.ydb.table.SessionRetryContext;
@@ -11,9 +15,6 @@ import tech.ydb.table.TableClient;
 import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.settings.BulkUpsertSettings;
 import tech.ydb.table.values.ListValue;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import tech.ydb.core.grpc.GrpcTransport;
 
 public class BulkUpsert implements App {
     private static final Logger log = LoggerFactory.getLogger(BulkUpsert.class);

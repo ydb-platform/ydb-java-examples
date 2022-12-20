@@ -42,13 +42,8 @@
         </dependency>
 
         <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>testcontainers</artifactId>
+            <groupId>tech.ydb.test</groupId>
+            <artifactId>ydb-junit5-support</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
