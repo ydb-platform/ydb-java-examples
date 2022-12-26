@@ -9,10 +9,10 @@ import org.slf4j.LoggerFactory;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.examples.SimpleExample;
 import tech.ydb.topic.TopicClient;
-import tech.ydb.topic.settings.WriteSessionSettings;
+import tech.ydb.topic.settings.WriterSettings;
 import tech.ydb.topic.settings.WriteSettings;
 import tech.ydb.topic.write.WriteAck;
-import tech.ydb.topic.write.WriteSession;
+import tech.ydb.topic.write.Writer;
 
 /**
  * @author Nikolay Perfilov
@@ -28,23 +28,23 @@ public class WriteSync extends SimpleExample {
 
         TopicClient topicClient = TopicClient.newClient(transport).build();
 
-        WriteSessionSettings settings = WriteSessionSettings.newBuilder()
+        WriterSettings settings = WriterSettings.newBuilder()
                 .setTopicPath(topicPath)
                 .setProducerId(producerId)
                 .setMessageGroupId(messageGroupId)
                 .build();
 
-        WriteSession writeSession = topicClient.createWriteSession(settings);
+        Writer writer = topicClient.createWriter(settings);
 
         // Init in background
-        writeSession.start();
+        writer.start();
 
         // Blocking call
-        writeSession.send("message1".getBytes());
+        writer.send("message1".getBytes());
 
         try {
             // Blocking call
-            writeSession.send("message2".getBytes(), WriteSettings.newBuilder()
+            writer.send("message2".getBytes(), WriteSettings.newBuilder()
                     .setTimeout(Duration.ofSeconds(10))
                     .setCreateTimestamp(Instant.now())
                     .setSeqNo(2)
@@ -57,7 +57,7 @@ public class WriteSync extends SimpleExample {
         }
 
         try {
-            WriteAck ack = writeSession.newMessage()
+            WriteAck ack = writer.newMessage()
                     .setData("message3".getBytes())
                     .setTimeout(Duration.ofSeconds(1))
                     .setSeqNo(3)
@@ -83,8 +83,8 @@ public class WriteSync extends SimpleExample {
             logger.error("Timeout sending message 3");
         }
 
-        writeSession.close();
-        writeSession.waitForFinish();
+        writer.close();
+        writer.waitForFinish();
     }
 
     public static void main(String[] args) {

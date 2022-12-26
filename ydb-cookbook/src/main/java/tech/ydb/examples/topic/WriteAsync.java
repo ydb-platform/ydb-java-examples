@@ -11,10 +11,10 @@ import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.examples.SimpleExample;
 import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.description.Codec;
-import tech.ydb.topic.settings.WriteSessionSettings;
+import tech.ydb.topic.settings.WriterSettings;
 import tech.ydb.topic.settings.WriteSettings;
 import tech.ydb.topic.write.WriteAck;
-import tech.ydb.topic.write.WriteSession;
+import tech.ydb.topic.write.Writer;
 
 /**
  * @author Nikolay Perfilov
@@ -30,7 +30,7 @@ public class WriteAsync extends SimpleExample {
 
         TopicClient topicClient = TopicClient.newClient(transport).build();
 
-        WriteSessionSettings settings = WriteSessionSettings.newBuilder()
+        WriterSettings settings = WriterSettings.newBuilder()
                 .setTopicPath(topicPath)
                 .setProducerId(producerId)
                 .setMessageGroupId(messageGroupId)
@@ -41,18 +41,18 @@ public class WriteAsync extends SimpleExample {
                 .setMaxMemoryUsageBytes(50 * 1024 * 1024)
                 .build();
 
-        WriteSession writeSession = topicClient.createWriteSession(settings);
+        Writer writer = topicClient.createWriter(settings);
 
         // Init in background
-        writeSession.start();
+        writer.start();
 
         // Non-blocking call
-        CompletableFuture<WriteAck> future1 = writeSession.sendAsync("message1".getBytes());
+        CompletableFuture<WriteAck> future1 = writer.sendAsync("message1".getBytes());
 
         logger.info("Message 1 sent");
 
         // Non-blocking call
-        CompletableFuture<WriteAck> future2 = writeSession.sendAsync("message2".getBytes(), WriteSettings.newBuilder()
+        CompletableFuture<WriteAck> future2 = writer.sendAsync("message2".getBytes(), WriteSettings.newBuilder()
                 .setTimeout(Duration.ofSeconds(10))
                 .setCreateTimestamp(Instant.now())
                 .setSeqNo(2)
@@ -61,7 +61,7 @@ public class WriteAsync extends SimpleExample {
 
         logger.info("Message 2 sent");
 
-        CompletableFuture<WriteAck> future3 = writeSession.newMessage()
+        CompletableFuture<WriteAck> future3 = writer.newMessage()
                 .setData("message3".getBytes())
                 .setTimeout(Duration.ofSeconds(1))
                 .setSeqNo(3)
@@ -96,8 +96,8 @@ public class WriteAsync extends SimpleExample {
             }
         }
 
-        writeSession.close();
-        writeSession.waitForFinish();
+        writer.close();
+        writer.waitForFinish();
     }
 
     public static void main(String[] args) {

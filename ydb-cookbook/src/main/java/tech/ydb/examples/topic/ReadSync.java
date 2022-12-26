@@ -9,8 +9,8 @@ import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.examples.SimpleExample;
 import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.read.Message;
-import tech.ydb.topic.read.ReadSession;
-import tech.ydb.topic.settings.ReadSessionSettings;
+import tech.ydb.topic.read.Reader;
+import tech.ydb.topic.settings.ReaderSettings;
 import tech.ydb.topic.settings.TopicReadSettings;
 
 /**
@@ -26,7 +26,7 @@ public class ReadSync extends SimpleExample {
 
         TopicClient topicClient = TopicClient.newClient(transport).build();
 
-        ReadSessionSettings settings = ReadSessionSettings.newBuilder()
+        ReaderSettings settings = ReaderSettings.newBuilder()
                 .setConsumerName(consumerName)
                 .addTopic(TopicReadSettings.newBuilder()
                         .setPath(topicPath)
@@ -35,18 +35,18 @@ public class ReadSync extends SimpleExample {
                         .build())
                 .build();
 
-        ReadSession readSession = topicClient.createReadSession(settings);
+        Reader reader = topicClient.createReader(settings);
 
         // Init in background ?
-        readSession.start();
+        reader.start();
 
-        Message message = readSession.receive();
+        Message message = reader.receive();
 
         logger.info("Message received: " + message.getData());
 
         message.commit();
 
-        readSession.close();
+        reader.close();
 
     }
 

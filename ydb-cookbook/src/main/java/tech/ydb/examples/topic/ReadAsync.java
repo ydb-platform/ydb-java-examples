@@ -12,11 +12,11 @@ import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.read.Message;
 import tech.ydb.topic.read.events.DataReceivedEvent;
 import tech.ydb.topic.read.events.DefaultReadEventHandler;
-import tech.ydb.topic.read.ReadSession;
+import tech.ydb.topic.read.Reader;
 import tech.ydb.topic.read.events.StartPartitionSessionEvent;
 import tech.ydb.topic.read.events.StopPartitionSessionEvent;
 import tech.ydb.topic.settings.ReadEventHandlersSettings;
-import tech.ydb.topic.settings.ReadSessionSettings;
+import tech.ydb.topic.settings.ReaderSettings;
 import tech.ydb.topic.settings.TopicReadSettings;
 
 /**
@@ -33,7 +33,7 @@ public class ReadAsync extends SimpleExample {
 
         TopicClient topicClient = TopicClient.newClient(transport).build();
 
-        ReadSessionSettings settings = ReadSessionSettings.newBuilder()
+        ReaderSettings settings = ReaderSettings.newBuilder()
                 .setConsumerName(consumerName)
                 .addTopic(TopicReadSettings.newBuilder()
                         .setPath(topicPath)
@@ -47,11 +47,11 @@ public class ReadAsync extends SimpleExample {
                         .build())
                 .build();
 
-        ReadSession readSession = topicClient.createReadSession(settings);
+        Reader reader = topicClient.createReader(settings);
 
-        readSession.start();
+        reader.start();
 
-        readSession.waitForFinish();
+        reader.waitForFinish();
     }
 
     private static class Handler extends DefaultReadEventHandler {
