@@ -12,7 +12,7 @@ import tech.ydb.examples.SimpleExample;
 import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.description.Codec;
 import tech.ydb.topic.settings.WriterSettings;
-import tech.ydb.topic.settings.WriteSettings;
+import tech.ydb.topic.write.Message;
 import tech.ydb.topic.write.WriteAck;
 import tech.ydb.topic.write.Writer;
 
@@ -51,27 +51,27 @@ public class WriteAsync extends SimpleExample {
 
         logger.info("Message 1 sent");
 
-        // Non-blocking call
-        CompletableFuture<WriteAck> future2 = writer.sendAsync("message2".getBytes(), WriteSettings.newBuilder()
-                .setTimeout(Duration.ofSeconds(10))
-                .setCreateTimestamp(Instant.now())
-                .setSeqNo(2)
-                .setBlockingTimeout(Duration.ofSeconds(5))
-                .build());
+
+        CompletableFuture<WriteAck> future2 = writer.sendAsync(Message.newBuilder()
+                        .setData("message2".getBytes())
+                        .setCreateTimestamp(Instant.now())
+                        .setSeqNo(2)
+                        .build()
+                , Duration.ofSeconds(5));
 
         logger.info("Message 2 sent");
 
         CompletableFuture<WriteAck> future3 = writer.newMessage()
                 .setData("message3".getBytes())
-                .setTimeout(Duration.ofSeconds(1))
                 .setSeqNo(3)
+                .setBlockingTimeout(Duration.ofSeconds(1))
                 .sendAsync();
 
         CompletableFuture.allOf(future1, future2, future3);
 
         for (CompletableFuture<WriteAck> future : Arrays.asList(future1, future2, future3)) {
             try {
-                WriteAck ack = future.get();
+                WriteAck ack = future.join();
 
                 switch (ack.getState()) {
                     case WRITTEN:
@@ -89,8 +89,6 @@ public class WriteAsync extends SimpleExample {
                     default:
                         break;
                 }
-            } catch (InterruptedException exception) {
-                logger.error("Message sending was interrupted");
             } catch (Exception exception) {
                 logger.error("Exception while sending a message: " + exception);
             }
