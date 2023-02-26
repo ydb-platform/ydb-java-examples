@@ -1,10 +1,11 @@
 package tech.ydb.examples.topic;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
+import com.google.common.util.concurrent.MoreExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tech.ydb.core.grpc.GrpcTransport;
@@ -12,9 +13,10 @@ import tech.ydb.examples.SimpleExample;
 import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.description.Codec;
 import tech.ydb.topic.settings.WriterSettings;
+import tech.ydb.topic.write.AsyncWriter;
 import tech.ydb.topic.write.Message;
+import tech.ydb.topic.write.QueueOverflowException;
 import tech.ydb.topic.write.WriteAck;
-import tech.ydb.topic.write.Writer;
 
 /**
  * @author Nikolay Perfilov
@@ -24,9 +26,9 @@ public class WriteAsync extends SimpleExample {
 
     @Override
     protected void run(GrpcTransport transport, String pathPrefix) {
-        String topicPath = pathPrefix + "test_topic";
-        String producerId = "producer1";
-        String messageGroupId = "mg1";
+        String topicPath = pathPrefix + "topic-java";
+        String producerId = "messageGroup1";
+        String messageGroupId = "messageGroup1";
 
         TopicClient topicClient = TopicClient.newClient(transport).build();
 
@@ -34,68 +36,64 @@ public class WriteAsync extends SimpleExample {
                 .setTopicPath(topicPath)
                 .setProducerId(producerId)
                 .setMessageGroupId(messageGroupId)
-                .setBatchFlushInterval(Duration.ofSeconds(1))
-                .setBatchFlushSiseBytes(2 * 1024 * 1024)
-                .setCodec(Codec.ZSTD)
+                .setCodec(Codec.RAW)
                 .setCompressionLevel(3)
-                .setMaxMemoryUsageBytes(50 * 1024 * 1024)
+                .setMaxSendBufferMemorySize(50 * 1024 * 1024)
+                .setCompressionExecutor(MoreExecutors.directExecutor())
                 .build();
 
-        Writer writer = topicClient.createWriter(settings);
+        AsyncWriter writer = topicClient.createAsyncWriter(settings);
 
         // Init in background
-        writer.start();
+        writer.init()
+                .thenRun(() -> logger.info("init finished successfully"))
+                .exceptionally(ex -> {
+                    logger.error("init failed with ex: ", ex);
+                    return null;
+                });
 
-        // Non-blocking call
-        CompletableFuture<WriteAck> future1 = writer.sendAsync("message1".getBytes());
-
-        logger.info("Message 1 sent");
-
-
-        CompletableFuture<WriteAck> future2 = writer.sendAsync(Message.newBuilder()
-                        .setData("message2".getBytes())
-                        .setCreateTimestamp(Instant.now())
-                        .setSeqNo(2)
-                        .build()
-                , Duration.ofSeconds(5));
-
-        logger.info("Message 2 sent");
-
-        CompletableFuture<WriteAck> future3 = writer.newMessage()
-                .setData("message3".getBytes())
-                .setSeqNo(3)
-                .setBlockingTimeout(Duration.ofSeconds(1))
-                .sendAsync();
-
-        CompletableFuture.allOf(future1, future2, future3);
-
-        for (CompletableFuture<WriteAck> future : Arrays.asList(future1, future2, future3)) {
+        for (int i = 1; i <= 5; i++) {
+            final int index = i;
             try {
-                WriteAck ack = future.join();
+                // Blocks until the message is put into sending buffer
+                writer.send(Message.of("message1".getBytes())).whenComplete((result, ex) -> {
+                    if (ex != null) {
+                        logger.error("exception while sending message {}: ", index, ex);
+                    } else {
+                        logger.info("message {} ack received", index);
 
-                switch (ack.getState()) {
-                    case WRITTEN:
-                        WriteAck.Details details = ack.getDetails();
-                        logger.info("Message was written successfully."
-                                + " PartitionId: " + details.getPartitionId()
-                                + ", offset: " + details.getOffset());
-                        break;
-                    case DISCARDED:
-                        logger.warn("Message was discarded");
-                        break;
-                    case ALREADY_WRITTEN:
-                        logger.warn("Message was already written");
-                        break;
-                    default:
-                        break;
-                }
-            } catch (Exception exception) {
-                logger.error("Exception while sending a message: " + exception);
+                        switch (result.getState()) {
+                            case WRITTEN:
+                                WriteAck.Details details = result.getDetails();
+                                logger.info("Message was written successfully."
+                                        + ", offset: " + details.getOffset());
+                                break;
+                            case ALREADY_WRITTEN:
+                                logger.warn("Message was already written");
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                });
+            } catch (QueueOverflowException exception) {
+                logger.error("Queue overflow exception while sending message{}: ", index, exception);
+                // Send queue is full. Need retry with backoff or skip
             }
+
+            logger.info("Message {} is sent", index);
         }
 
-        writer.close();
-        writer.waitForFinish();
+        long timeoutSeconds = 10;
+        try {
+            writer.shutdown().get(timeoutSeconds, TimeUnit.SECONDS);
+        } catch(TimeoutException exception) {
+            logger.error("Timeout exception during writer termination ({} seconds): ",timeoutSeconds , exception);
+        } catch(ExecutionException exception) {
+            logger.error("Execution exception during writer termination: ", exception);
+        } catch(InterruptedException exception) {
+            logger.error("Writer termination was interrupted: ", exception);
+        }
     }
 
     public static void main(String[] args) {

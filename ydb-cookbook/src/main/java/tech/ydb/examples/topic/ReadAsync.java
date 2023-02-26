@@ -2,17 +2,19 @@ package tech.ydb.examples.topic;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.examples.SimpleExample;
 import tech.ydb.topic.TopicClient;
+import tech.ydb.topic.read.AsyncReader;
 import tech.ydb.topic.read.Message;
 import tech.ydb.topic.read.events.DataReceivedEvent;
-import tech.ydb.topic.read.events.DefaultReadEventHandler;
-import tech.ydb.topic.read.Reader;
+import tech.ydb.topic.read.events.AbstractReadEventHandler;
 import tech.ydb.topic.read.events.StartPartitionSessionEvent;
 import tech.ydb.topic.read.events.StopPartitionSessionEvent;
 import tech.ydb.topic.settings.ReadEventHandlersSettings;
@@ -26,6 +28,8 @@ public class ReadAsync extends SimpleExample {
     private static final Logger logger = LoggerFactory.getLogger(ReadAsync.class);
     private static final long MAX_MEMORY_USAGE_BYTES = 500 * 1024 * 1024; // 500 Mb
 
+    private static final CompletableFuture<Void> messageReceivedFuture = new CompletableFuture<>();
+
     @Override
     protected void run(GrpcTransport transport, String pathPrefix) {
         String topicPath = pathPrefix + "test_topic";
@@ -33,7 +37,7 @@ public class ReadAsync extends SimpleExample {
 
         TopicClient topicClient = TopicClient.newClient(transport).build();
 
-        ReaderSettings settings = ReaderSettings.newBuilder()
+        ReaderSettings readerSettings = ReaderSettings.newBuilder()
                 .setConsumerName(consumerName)
                 .addTopic(TopicReadSettings.newBuilder()
                         .setPath(topicPath)
@@ -41,27 +45,35 @@ public class ReadAsync extends SimpleExample {
                         .setMaxLag(Duration.ofMinutes(30))
                         .build())
                 .setMaxMemoryUsageBytes(MAX_MEMORY_USAGE_BYTES)
-                .setHandlersSettings(ReadEventHandlersSettings.newBuilder()
-                        .setExecutor(ForkJoinPool.commonPool())
-                        .setEventHandler(new Handler())
-                        .build())
                 .build();
 
-        Reader reader = topicClient.createReader(settings);
+        ReadEventHandlersSettings handlerSettings = ReadEventHandlersSettings.newBuilder()
+                .setExecutor(ForkJoinPool.commonPool())
+                .setEventHandler(new Handler())
+                .build();
 
-        reader.start();
+        AsyncReader reader = topicClient.createAsyncReader(readerSettings, handlerSettings);
 
-        reader.waitForFinish();
+        reader.init();
+
+        messageReceivedFuture.join();
+
+        reader.shutdown().join();
     }
 
-    private static class Handler extends DefaultReadEventHandler {
+    private static class Handler extends AbstractReadEventHandler {
 
         @Override
         public void onMessages(DataReceivedEvent event) {
             for (Message message : event.getMessages()) {
                 logger.info("Message received: " + message.getData());
             }
-            event.commit();
+            event.commit().thenRun(() -> {
+                logger.info("Message committed");
+                messageReceivedFuture.complete(null);
+            });
+            // or:
+            // event.commitMessages();
         }
 
         @Override
@@ -82,6 +94,7 @@ public class ReadAsync extends SimpleExample {
         @Override
         public void onError(Throwable throwable) {
             logger.error("Error occurred while reading: " + throwable);
+            messageReceivedFuture.completeExceptionally(throwable);
         }
     }
 

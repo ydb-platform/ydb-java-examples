@@ -1,7 +1,7 @@
 package tech.ydb.examples.topic;
 
-import java.time.Duration;
-import java.time.Instant;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.slf4j.Logger;
@@ -9,10 +9,11 @@ import org.slf4j.LoggerFactory;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.examples.SimpleExample;
 import tech.ydb.topic.TopicClient;
+import tech.ydb.topic.description.Codec;
 import tech.ydb.topic.settings.WriterSettings;
 import tech.ydb.topic.write.Message;
-import tech.ydb.topic.write.WriteAck;
-import tech.ydb.topic.write.Writer;
+import tech.ydb.topic.write.QueueOverflowException;
+import tech.ydb.topic.write.SyncWriter;
 
 /**
  * @author Nikolay Perfilov
@@ -22,9 +23,9 @@ public class WriteSync extends SimpleExample {
 
     @Override
     protected void run(GrpcTransport transport, String pathPrefix) {
-        String topicPath = pathPrefix + "test_topic";
-        String producerId = "producer1";
-        String messageGroupId = "mg1";
+        String topicPath = pathPrefix + "topic-java";
+        String producerId = "messageGroup1";
+        String messageGroupId = "messageGroup1";
 
         TopicClient topicClient = TopicClient.newClient(transport).build();
 
@@ -32,88 +33,50 @@ public class WriteSync extends SimpleExample {
                 .setTopicPath(topicPath)
                 .setProducerId(producerId)
                 .setMessageGroupId(messageGroupId)
+                .setCodec(Codec.RAW)
+                .setMaxSendBufferMessagesCount(100)
                 .build();
 
-        Writer writer = topicClient.createWriter(settings);
+        SyncWriter writer = topicClient.createSyncWriter(settings);
 
-        // Init in background
-        writer.start();
-
-        // Blocks if in-flight or memory usage limit is reached
-        writer.send("message1".getBytes());
-
-        // Blocks if in-flight or memory usage limit is reached
-        writer.send(Message.of("message2".getBytes()));
-
-        // Blocks if in-flight or memory usage limit is reached
-        writer.send(Message.newBuilder()
-                        .setData("message3".getBytes())
-                        .setSeqNo(3)
-                        .setCreateTimestamp(Instant.now())
-                .build());
+        logger.info("SyncWriter created ");
 
         try {
-            // Blocks if in-flight or memory usage limit is reached, but no longer than for 1 second
-            writer.send("message4".getBytes(), Duration.ofSeconds(1));
-
-            logger.info("Message 4 sent");
-        } catch (TimeoutException timeout) {
-            logger.error("Timeout sending message 4");
+            writer.initAndWait();
+            logger.info("Init finished");
+        } catch (Exception exception) {
+            logger.error("Exception while initializing writer: ", exception);
+            return;
         }
 
-        try {
-            // Blocks if in-flight or memory usage limit is reached, but no longer than for 2 seconds
-            writer.send(Message.newBuilder()
-                        .setData("message5".getBytes())
-                        .setSeqNo(5)
-                        .setCreateTimestamp(Instant.now())
-                    .build(),
-                    Duration.ofSeconds(2));
+        long timeoutSeconds = 5; // How long should we wait for a message to be put into sending buffer
 
-            logger.info("Message 5 sent, confirmation received");
-        } catch (TimeoutException timeout) {
-            logger.error("Timeout sending message 5");
-        }
-
-        try {
-            WriteAck ack = writer.sendWithAck(Message.newBuilder()
-                        .setData("message6".getBytes()).setSeqNo(6)
-                        .setCreateTimestamp(Instant.now())
-                    .build(),
-                    Duration.ofSeconds(2));
-
-            switch (ack.getState()) {
-                case WRITTEN:
-                    WriteAck.Details details = ack.getDetails();
-                    logger.info("Message 6 was written successfully."
-                            + " PartitionId: " + details.getPartitionId()
-                            + ", offset: " + details.getOffset());
-                    break;
-                case DISCARDED:
-                    logger.warn("Message 6 was discarded");
-                    break;
-                case ALREADY_WRITTEN:
-                    logger.warn("Message 6 was already written");
-                    break;
-                default:
-                    break;
+        for (int i = 1; i <= 5; i++) {
+            try {
+                // Non-blocking call
+                writer.send(
+                        Message.of(("message" + i).getBytes()),
+                        timeoutSeconds,
+                        TimeUnit.SECONDS
+                );
+            } catch(TimeoutException exception) {
+                logger.error("Send queue is full. Couldn't put message {} into sending queue within {} seconds",
+                        i, timeoutSeconds);
+            } catch (InterruptedException | ExecutionException exception) {
+                logger.error("Couldn't put message {} into sending queue due to exception: ", i, exception);
             }
-        } catch (TimeoutException timeout) {
-            logger.error("Timeout sending message 6");
         }
 
+        writer.flush();
+        logger.info("flush finished");
+        long shutdownTimeoutSeconds = 10;
         try {
-            writer.newMessage()
-                    .setData("message7".getBytes())
-                    .setSeqNo(7)
-                    .setBlockingTimeout(Duration.ofSeconds(4))
-                    .send();
-        } catch (TimeoutException timeout) {
-            logger.error("Timeout sending message 7");
+            writer.shutdown(shutdownTimeoutSeconds, TimeUnit.SECONDS);
+        } catch(TimeoutException exception) {
+            logger.error("Shutdown was not finished within {} seconds: ", timeoutSeconds, exception);
+        } catch (InterruptedException | ExecutionException exception) {
+            logger.error("Shutdown was not finished due to exception: ", exception);
         }
-
-        writer.close();
-        writer.waitForFinish();
     }
 
     public static void main(String[] args) {

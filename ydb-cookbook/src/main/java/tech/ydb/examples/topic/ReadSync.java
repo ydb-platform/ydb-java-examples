@@ -9,7 +9,7 @@ import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.examples.SimpleExample;
 import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.read.Message;
-import tech.ydb.topic.read.Reader;
+import tech.ydb.topic.read.SyncReader;
 import tech.ydb.topic.settings.ReaderSettings;
 import tech.ydb.topic.settings.TopicReadSettings;
 
@@ -35,19 +35,26 @@ public class ReadSync extends SimpleExample {
                         .build())
                 .build();
 
-        Reader reader = topicClient.createReader(settings);
+        SyncReader reader = topicClient.createSyncReader(settings);
 
         // Init in background ?
-        reader.start();
+        reader.init();
 
         Message message = reader.receive();
 
         logger.info("Message received: " + message.getData());
 
-        message.commit();
+        message.commit()
+                .whenComplete((result, ex) -> {
+                    if (ex != null) {
+                        logger.error("exception while committing message: ", ex);
+                    } else {
+                        logger.info("message committed successfully");
+                    }
+                })
+                .join();
 
-        reader.close();
-
+        reader.shutdown();
     }
 
     public static void main(String[] args) {
