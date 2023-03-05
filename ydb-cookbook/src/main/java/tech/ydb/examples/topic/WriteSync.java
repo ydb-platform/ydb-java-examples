@@ -12,7 +12,6 @@ import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.description.Codec;
 import tech.ydb.topic.settings.WriterSettings;
 import tech.ydb.topic.write.Message;
-import tech.ydb.topic.write.QueueOverflowException;
 import tech.ydb.topic.write.SyncWriter;
 
 /**
@@ -33,7 +32,7 @@ public class WriteSync extends SimpleExample {
                 .setTopicPath(topicPath)
                 .setProducerId(producerId)
                 .setMessageGroupId(messageGroupId)
-                .setCodec(Codec.RAW)
+                .setCodec(Codec.ZSTD)
                 .setMaxSendBufferMessagesCount(100)
                 .build();
 
@@ -53,12 +52,14 @@ public class WriteSync extends SimpleExample {
 
         for (int i = 1; i <= 5; i++) {
             try {
+                String messageString = "message" + i;
                 // Non-blocking call
                 writer.send(
-                        Message.of(("message" + i).getBytes()),
+                        Message.of(messageString.getBytes()),
                         timeoutSeconds,
                         TimeUnit.SECONDS
                 );
+                logger.info("Message '{}' is sent.", messageString);
             } catch(TimeoutException exception) {
                 logger.error("Send queue is full. Couldn't put message {} into sending queue within {} seconds",
                         i, timeoutSeconds);
@@ -68,7 +69,7 @@ public class WriteSync extends SimpleExample {
         }
 
         writer.flush();
-        logger.info("flush finished");
+        logger.info("Flush finished");
         long shutdownTimeoutSeconds = 10;
         try {
             writer.shutdown(shutdownTimeoutSeconds, TimeUnit.SECONDS);

@@ -1,6 +1,5 @@
 package tech.ydb.examples.topic;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -36,8 +35,7 @@ public class WriteAsync extends SimpleExample {
                 .setTopicPath(topicPath)
                 .setProducerId(producerId)
                 .setMessageGroupId(messageGroupId)
-                .setCodec(Codec.RAW)
-                .setCompressionLevel(3)
+                .setCodec(Codec.GZIP)
                 .setMaxSendBufferMemorySize(50 * 1024 * 1024)
                 .setCompressionExecutor(MoreExecutors.directExecutor())
                 .build();
@@ -46,21 +44,22 @@ public class WriteAsync extends SimpleExample {
 
         // Init in background
         writer.init()
-                .thenRun(() -> logger.info("init finished successfully"))
+                .thenRun(() -> logger.info("Init finished successfully"))
                 .exceptionally(ex -> {
-                    logger.error("init failed with ex: ", ex);
+                    logger.error("Init failed with ex: ", ex);
                     return null;
                 });
 
         for (int i = 1; i <= 5; i++) {
             final int index = i;
             try {
+                String messageString = "message" + i;
                 // Blocks until the message is put into sending buffer
-                writer.send(Message.of("message1".getBytes())).whenComplete((result, ex) -> {
+                writer.send(Message.of(messageString.getBytes())).whenComplete((result, ex) -> {
                     if (ex != null) {
-                        logger.error("exception while sending message {}: ", index, ex);
+                        logger.error("Exception while sending message {}: ", index, ex);
                     } else {
-                        logger.info("message {} ack received", index);
+                        logger.info("Message {} ack received", index);
 
                         switch (result.getState()) {
                             case WRITTEN:
