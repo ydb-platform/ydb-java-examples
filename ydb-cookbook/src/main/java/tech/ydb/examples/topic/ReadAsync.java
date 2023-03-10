@@ -35,30 +35,33 @@ public class ReadAsync extends SimpleExample {
         String topicPath = pathPrefix + "test_topic";
         String consumerName = "consumer1";
 
-        TopicClient topicClient = TopicClient.newClient(transport).build();
+        try (TopicClient topicClient = TopicClient.newClient(transport)
+                .setCompressionPoolThreadCount(8)
+                .build()) {
 
-        ReaderSettings readerSettings = ReaderSettings.newBuilder()
-                .setConsumerName(consumerName)
-                .addTopic(TopicReadSettings.newBuilder()
-                        .setPath(topicPath)
-                        .setReadFrom(Instant.now().minus(Duration.ofHours(24)))
-                        .setMaxLag(Duration.ofMinutes(30))
-                        .build())
-                .setMaxMemoryUsageBytes(MAX_MEMORY_USAGE_BYTES)
-                .build();
+            ReaderSettings readerSettings = ReaderSettings.newBuilder()
+                    .setConsumerName(consumerName)
+                    .addTopic(TopicReadSettings.newBuilder()
+                            .setPath(topicPath)
+                            .setReadFrom(Instant.now().minus(Duration.ofHours(24)))
+                            .setMaxLag(Duration.ofMinutes(30))
+                            .build())
+                    .setMaxMemoryUsageBytes(MAX_MEMORY_USAGE_BYTES)
+                    .build();
 
-        ReadEventHandlersSettings handlerSettings = ReadEventHandlersSettings.newBuilder()
-                .setExecutor(ForkJoinPool.commonPool())
-                .setEventHandler(new Handler())
-                .build();
+            ReadEventHandlersSettings handlerSettings = ReadEventHandlersSettings.newBuilder()
+                    .setExecutor(ForkJoinPool.commonPool())
+                    .setEventHandler(new Handler())
+                    .build();
 
-        AsyncReader reader = topicClient.createAsyncReader(readerSettings, handlerSettings);
+            AsyncReader reader = topicClient.createAsyncReader(readerSettings, handlerSettings);
 
-        reader.init();
+            reader.init();
 
-        messageReceivedFuture.join();
+            messageReceivedFuture.join();
 
-        reader.shutdown().join();
+            reader.shutdown().join();
+        }
     }
 
     private static class Handler extends AbstractReadEventHandler {

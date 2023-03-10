@@ -24,37 +24,38 @@ public class ReadSync extends SimpleExample {
         String topicPath = pathPrefix + "test_topic";
         String consumerName = "consumer1";
 
-        TopicClient topicClient = TopicClient.newClient(transport).build();
+        try (TopicClient topicClient = TopicClient.newClient(transport).build()) {
 
-        ReaderSettings settings = ReaderSettings.newBuilder()
-                .setConsumerName(consumerName)
-                .addTopic(TopicReadSettings.newBuilder()
-                        .setPath(topicPath)
-                        .setReadFrom(Instant.now().minus(Duration.ofHours(24)))
-                        .setMaxLag(Duration.ofMinutes(30))
-                        .build())
-                .build();
+            ReaderSettings settings = ReaderSettings.newBuilder()
+                    .setConsumerName(consumerName)
+                    .addTopic(TopicReadSettings.newBuilder()
+                            .setPath(topicPath)
+                            .setReadFrom(Instant.now().minus(Duration.ofHours(24)))
+                            .setMaxLag(Duration.ofMinutes(30))
+                            .build())
+                    .build();
 
-        SyncReader reader = topicClient.createSyncReader(settings);
+            SyncReader reader = topicClient.createSyncReader(settings);
 
-        // Init in background ?
-        reader.init();
+            // Init in background ?
+            reader.init();
 
-        Message message = reader.receive();
+            Message message = reader.receive();
 
-        logger.info("Message received: " + message.getData());
+            logger.info("Message received: " + message.getData());
 
-        message.commit()
-                .whenComplete((result, ex) -> {
-                    if (ex != null) {
-                        logger.error("exception while committing message: ", ex);
-                    } else {
-                        logger.info("message committed successfully");
-                    }
-                })
-                .join();
+            message.commit()
+                    .whenComplete((result, ex) -> {
+                        if (ex != null) {
+                            logger.error("exception while committing message: ", ex);
+                        } else {
+                            logger.info("message committed successfully");
+                        }
+                    })
+                    .join();
 
-        reader.shutdown();
+            reader.shutdown();
+        }
     }
 
     public static void main(String[] args) {
