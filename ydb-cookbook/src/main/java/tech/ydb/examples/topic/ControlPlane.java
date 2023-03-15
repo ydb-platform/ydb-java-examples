@@ -62,9 +62,9 @@ public class ControlPlane extends SimpleExample {
                                         .setImportant(false)
                                         .setReadFrom(Instant.now().minus(Duration.ofHours(10)))
                                         .build())
-                                .build()
-                                .setOperationTimeout(Duration.ofSeconds(3))
-                                .setTimeout(Duration.ofSeconds(4)))
+                                .withOperationTimeout(Duration.ofSeconds(3))
+                                .withRequestTimeout(Duration.ofSeconds(4))
+                                .build())
                         .join()
                         .expectSuccess("cannot create topic: " + topicPath);
             }
@@ -180,7 +180,10 @@ public class ControlPlane extends SimpleExample {
 
             {
                 // Drop topic
-                topicClient.dropTopic(topicPath, new DropTopicSettings().setTimeout(Duration.ofMillis(1500)))
+                topicClient.dropTopic(topicPath, DropTopicSettings.newBuilder()
+                                .withOperationTimeout(Duration.ofSeconds(3))
+                                .withRequestTimeout(Duration.ofSeconds(4))
+                                .build())
                         .join()
                         .expectSuccess("cannot drop topic: " + topicPath);
                 transport.close();

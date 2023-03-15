@@ -2,9 +2,11 @@ package tech.ydb.examples.topic;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +34,7 @@ public class ReadAsync extends SimpleExample {
 
     @Override
     protected void run(GrpcTransport transport, String pathPrefix) {
-        String topicPath = pathPrefix + "test_topic";
+        String topicPath = pathPrefix + "topic-java";
         String consumerName = "consumer1";
 
         try (TopicClient topicClient = TopicClient.newClient(transport)
@@ -50,7 +52,7 @@ public class ReadAsync extends SimpleExample {
                     .build();
 
             ReadEventHandlersSettings handlerSettings = ReadEventHandlersSettings.newBuilder()
-                    .setExecutor(ForkJoinPool.commonPool())
+                    //.setExecutor(ForkJoinPool.commonPool())
                     .setEventHandler(new Handler())
                     .build();
 
@@ -65,18 +67,33 @@ public class ReadAsync extends SimpleExample {
     }
 
     private static class Handler extends AbstractReadEventHandler {
+        private final AtomicInteger messageCounter = new AtomicInteger(0);
 
         @Override
         public void onMessages(DataReceivedEvent event) {
             for (Message message : event.getMessages()) {
-                logger.info("Message received: " + message.getData());
+                StringBuilder str = new StringBuilder();
+                str.append("Message received: \"").append(Arrays.toString(message.getData())).append("\"\n")
+                        .append("  offset: ").append(message.getOffset()).append("\n")
+                        .append("  seqNo: ").append(message.getSeqNo()).append("\n")
+                        .append("  createdAt: ").append(message.getCreatedAt()).append("\n")
+                        .append("  messageGroupId: ").append(message.getMessageGroupId()).append("\n")
+                        .append("  producerId: ").append(message.getProducerId()).append("\n")
+                        .append("  writtenAt: ").append(message.getWrittenAt()).append("\n");
+                if (!message.getWriteSessionMeta().isEmpty()) {
+                    str.append("  writeSessionMeta:\n");
+                    message.getWriteSessionMeta().forEach((key, value) ->
+                            str.append("    ").append(key).append(": ").append(value).append("\n"));
+                }
+                logger.info(str.toString());
+                message.commit().thenRun(() -> {
+                    logger.info("Message committed");
+                    if (messageCounter.incrementAndGet() >= 5) {
+                        logger.info("5 messages committed. Finishing reading.");
+                        messageReceivedFuture.complete(null);
+                    }
+                });
             }
-            event.commit().thenRun(() -> {
-                logger.info("Message committed");
-                messageReceivedFuture.complete(null);
-            });
-            // or:
-            // event.commitMessages();
         }
 
         @Override
