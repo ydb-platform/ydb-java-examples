@@ -16,6 +16,7 @@ import tech.ydb.examples.SimpleExample;
 import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.read.AsyncReader;
 import tech.ydb.topic.read.Message;
+import tech.ydb.topic.read.PartitionSession;
 import tech.ydb.topic.read.events.DataReceivedEvent;
 import tech.ydb.topic.read.events.AbstractReadEventHandler;
 import tech.ydb.topic.read.events.StartPartitionSessionEvent;
@@ -100,9 +101,16 @@ public class ReadAsync extends SimpleExample {
 
         @Override
         public void onStartPartitionSession(StartPartitionSessionEvent event) {
-            logger.info("Partition session started." +
-                    " Committed offset: " + event.getCommittedOffset() +
-                    " End offset: " + event.getEndOffset());
+            StringBuilder str = new StringBuilder();
+            PartitionSession partitionSession = event.getPartitionSession();
+            str.append("Partition session started.\n")
+                    .append("  Partition session Id: ").append(partitionSession.getId()).append("\n")
+                    .append("  Partition Id: ").append(partitionSession.getPartitionId()).append("\n")
+                    .append("  Path: ").append(partitionSession.getPath()).append("\n")
+                    .append("  Committed offset: ").append(event.getCommittedOffset()).append("\n")
+                    .append("  Partition offsets: [").append(event.getPartitionOffsets().getStart()).append(", ")
+                    .append(event.getPartitionOffsets().getEnd()).append(")");
+            logger.info(str.toString());
             event.confirm();
         }
 

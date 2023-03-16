@@ -44,7 +44,7 @@ public class ReadSync extends SimpleExample {
 
             try {
                 // Reading 5 messages
-                for (int i = 0; i < 1; i++) {
+                for (int i = 0; i < 5; i++) {
                     Message message = reader.receive();
                     logger.info("Message received: {}", new String(message.getData(), StandardCharsets.UTF_8));
 
