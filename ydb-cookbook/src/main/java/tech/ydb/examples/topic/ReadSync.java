@@ -22,7 +22,7 @@ public class ReadSync extends SimpleExample {
 
     @Override
     protected void run(GrpcTransport transport, String pathPrefix) {
-        String topicPath = pathPrefix + "topic-java-bad";
+        String topicPath = pathPrefix + "topic-java";
         String consumerName = "consumer1";
 
         try (TopicClient topicClient = TopicClient.newClient(transport).build()) {
