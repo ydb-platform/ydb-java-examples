@@ -1,5 +1,6 @@
 package tech.ydb.examples.topic;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
@@ -73,7 +74,8 @@ public class ReadAsync extends SimpleExample {
         public void onMessages(DataReceivedEvent event) {
             for (Message message : event.getMessages()) {
                 StringBuilder str = new StringBuilder();
-                str.append("Message received: \"").append(Arrays.toString(message.getData())).append("\"\n")
+                str.append("Message received: \"").append(new String(message.getData(), StandardCharsets.UTF_8))
+                        .append("\"\n")
                         .append("  offset: ").append(message.getOffset()).append("\n")
                         .append("  seqNo: ").append(message.getSeqNo()).append("\n")
                         .append("  createdAt: ").append(message.getCreatedAt()).append("\n")

@@ -1,5 +1,6 @@
 package tech.ydb.examples.topic;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -21,7 +22,7 @@ public class ReadSync extends SimpleExample {
 
     @Override
     protected void run(GrpcTransport transport, String pathPrefix) {
-        String topicPath = pathPrefix + "test_topic";
+        String topicPath = pathPrefix + "topic-java-bad";
         String consumerName = "consumer1";
 
         try (TopicClient topicClient = TopicClient.newClient(transport).build()) {
@@ -37,22 +38,30 @@ public class ReadSync extends SimpleExample {
 
             SyncReader reader = topicClient.createSyncReader(settings);
 
-            // Init in background ?
+            // Init in background
             reader.init();
 
-            Message message = reader.receive();
 
-            logger.info("Message received: " + message.getData());
+            try {
+                // Reading 5 messages
+                for (int i = 0; i < 1; i++) {
+                    Message message = reader.receive();
+                    logger.info("Message received: {}", new String(message.getData(), StandardCharsets.UTF_8));
 
-            message.commit()
-                    .whenComplete((result, ex) -> {
-                        if (ex != null) {
-                            logger.error("exception while committing message: ", ex);
-                        } else {
-                            logger.info("message committed successfully");
-                        }
-                    })
-                    .join();
+                    message.commit()
+                            .whenComplete((result, ex) -> {
+                                if (ex != null) {
+                                    logger.error("exception while committing message: ", ex);
+                                } else {
+                                    logger.info("message committed successfully");
+                                }
+                            })
+                            // Usually it is a bad idea to block on message commit. Doing this to simplify the example
+                            .join();
+                }
+            } catch (InterruptedException exception) {
+                logger.error("Interrupted exception while waiting for message: ", exception);
+            }
 
             reader.shutdown();
         }
