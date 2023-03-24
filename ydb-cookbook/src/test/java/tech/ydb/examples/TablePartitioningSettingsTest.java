@@ -1,33 +1,48 @@
-package tech.ydb.examples.suites;
+package tech.ydb.examples;
+
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 import tech.ydb.core.Result;
 import tech.ydb.core.Status;
 import tech.ydb.table.SessionRetryContext;
 import tech.ydb.table.description.TableColumn;
 import tech.ydb.table.description.TableDescription;
+import tech.ydb.table.impl.SimpleTableClient;
+import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.settings.AlterTableSettings;
 import tech.ydb.table.settings.CreateTableSettings;
 import tech.ydb.table.settings.DescribeTableSettings;
 import tech.ydb.table.settings.PartitioningSettings;
 import tech.ydb.table.values.PrimitiveType;
-import org.junit.jupiter.api.Assertions;
+import tech.ydb.test.junit5.GrpcTransportExtention;
 
 /**
  *
  * @author Alexandr Gorshenin
  */
-public class TableWithPartitioningSettings {
-    private static final String TABLE_NAME = "test1_table";
-    private final SessionRetryContext ctx;
-    private final String tablePath;
+public class TablePartitioningSettingsTest {
+    @RegisterExtension
+    public final GrpcTransportExtention ydb = new GrpcTransportExtention();
 
-    public TableWithPartitioningSettings(SessionRetryContext ctx, String path) {
-        this.ctx = ctx;
-        this.tablePath = path + "/" + TABLE_NAME;
+    private final String TABLE_NAME = "test1_table";
 
+    private SimpleTableClient tableClient;
+    private SessionRetryContext ctx;
+    private String tablePath;
+
+    @BeforeEach
+    public void before() {
+        tableClient =  SimpleTableClient.newClient(GrpcTableRpc.useTransport(ydb)).build();
+        ctx = SessionRetryContext.create(tableClient).build();
+        tablePath = ydb.getDatabase() + "/" + TABLE_NAME;
     }
 
-    public void run() {
+
+    @Test
+    public void testPartitioningSettings() {
         PartitioningSettings initSettings = new PartitioningSettings();
         initSettings.setPartitionSize(2500);       // 2000 by default
         initSettings.setMinPartitionsCount(5);     // 1 by default
@@ -63,7 +78,7 @@ public class TableWithPartitioningSettings {
         alterTable(updateSettings);
         describeTable(tableDescription, mergedSettings, true);
 
-        dropTable();
+//        dropTable();
     }
 
     private void createTable(TableDescription tableDescription) {
@@ -93,17 +108,11 @@ public class TableWithPartitioningSettings {
 
         TableDescription description = describeResult.getValue();
 
-        Assertions.assertEquals(
-                tableDescription.getColumns().size(),
-                description.getColumns().size(),
-                "Table description columns size"
-        );
+        Assertions.assertEquals(tableDescription.getColumns().size(), description.getColumns().size(),
+                "Table description columns size");
 
-        Assertions.assertEquals(
-                tableDescription.getPrimaryKeys().size(),
-                description.getPrimaryKeys().size(),
-                "Table description primary keys size"
-        );
+        Assertions.assertEquals(tableDescription.getPrimaryKeys().size(), description.getPrimaryKeys().size(),
+                "Table description primary keys size");
 
         for (int idx = 0; idx < tableDescription.getColumns().size(); idx += 1) {
             TableColumn one = tableDescription.getColumns().get(idx);
@@ -123,16 +132,16 @@ public class TableWithPartitioningSettings {
         Assertions.assertNotNull(settings, "Table partitioning settings");
 
         assert (settings != null);
-        Assertions.assertEquals(partitioning.getPartitionSizeMb(),
-                settings.getPartitionSizeMb(), "Partition Size Mb");
-        Assertions.assertEquals(partitioning.getMinPartitionsCount(),
-                settings.getMinPartitionsCount(), "Min Partitions Count");
-        Assertions.assertEquals(partitioning.getMaxPartitionsCount(),
-                settings.getMaxPartitionsCount(), "Max Partitions Count");
-        Assertions.assertEquals(partitioning.getPartitioningByLoad(),
-                settings.getPartitioningByLoad(), "Partitioning By Load");
-        Assertions.assertEquals(partitioning.getPartitioningBySize(),
-                settings.getPartitioningBySize(), "Partitioning By Size");
+        Assertions.assertEquals(
+                partitioning.getPartitionSizeMb(), settings.getPartitionSizeMb(), "Partition Size Mb");
+        Assertions.assertEquals(
+                partitioning.getMinPartitionsCount(), settings.getMinPartitionsCount(), "Min Partitions Count");
+        Assertions.assertEquals(
+                partitioning.getMaxPartitionsCount(), settings.getMaxPartitionsCount(), "Max Partitions Count");
+        Assertions.assertEquals(
+                partitioning.getPartitioningByLoad(), settings.getPartitioningByLoad(), "Partitioning By Load");
+        Assertions.assertEquals(
+                partitioning.getPartitioningBySize(), settings.getPartitioningBySize(), "Partitioning By Size");
 
         if (fetchStats) {
             Assertions.assertNotNull(description.getTableStats(),
