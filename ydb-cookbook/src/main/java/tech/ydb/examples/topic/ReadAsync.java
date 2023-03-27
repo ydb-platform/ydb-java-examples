@@ -3,10 +3,7 @@ package tech.ydb.examples.topic;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
@@ -19,6 +16,8 @@ import tech.ydb.topic.read.Message;
 import tech.ydb.topic.read.PartitionSession;
 import tech.ydb.topic.read.events.DataReceivedEvent;
 import tech.ydb.topic.read.events.AbstractReadEventHandler;
+import tech.ydb.topic.read.events.PartitionSessionClosedEvent;
+import tech.ydb.topic.read.events.ReaderClosedEvent;
 import tech.ydb.topic.read.events.StartPartitionSessionEvent;
 import tech.ydb.topic.read.events.StopPartitionSessionEvent;
 import tech.ydb.topic.settings.ReadEventHandlersSettings;
@@ -54,7 +53,6 @@ public class ReadAsync extends SimpleExample {
                     .build();
 
             ReadEventHandlersSettings handlerSettings = ReadEventHandlersSettings.newBuilder()
-                    //.setExecutor(ForkJoinPool.commonPool())
                     .setEventHandler(new Handler())
                     .build();
 
@@ -116,15 +114,24 @@ public class ReadAsync extends SimpleExample {
 
         @Override
         public void onStopPartitionSession(StopPartitionSessionEvent event) {
-            logger.info("Partition session stopped." +
-                    " Committed offset: " + event.getCommittedOffset());
+            logger.info("Partition session {} stopped. Committed offset: {}", event.getPartitionSessionId(),
+                    event.getCommittedOffset());
+            // This event means that no more messages will be received by server
+            // Received messages still can be read from ReaderBuffer
+            // Messages still can be committed, until confirm() method is called
+
+            // Confirm that session can be closed
             event.confirm();
         }
 
         @Override
-        public void onError(Throwable throwable) {
-            logger.error("Error occurred while reading: " + throwable);
-            messageReceivedFuture.completeExceptionally(throwable);
+        public void onPartitionSessionClosed(PartitionSessionClosedEvent event) {
+            logger.info("Partition session {} is closed.", event.getPartitionSession().getPartitionId());
+        }
+
+        @Override
+        public void onReaderClosed(ReaderClosedEvent event) {
+            logger.info("Reader is closed.");
         }
     }
 
