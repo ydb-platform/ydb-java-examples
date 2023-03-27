@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.UUID;
 import tech.ydb.core.grpc.GrpcTransport;
 
+import tech.ydb.examples.SimpleExample;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.query.DataQueryResult;
@@ -17,7 +18,7 @@ import tech.ydb.table.transaction.TxControl;
 public class UuidExample extends SimpleExample {
 
     @Override
-    void run(GrpcTransport transport, String pathPrefix) {
+    protected void run(GrpcTransport transport, String pathPrefix) {
         try (
                 TableClient tableClient = TableClient.newClient(transport).build();
                 Session session = tableClient.createSession(Duration.ofSeconds(5)).join().getValue()
@@ -36,6 +37,6 @@ public class UuidExample extends SimpleExample {
     }
 
     public static void main(String[] args) {
-        new UuidExample().doMain();
+        new UuidExample().doMain(args);
     }
 }

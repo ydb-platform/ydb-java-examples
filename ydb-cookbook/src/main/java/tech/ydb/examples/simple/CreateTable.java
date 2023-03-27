@@ -5,6 +5,7 @@ import java.util.function.BiConsumer;
 import com.google.common.collect.ImmutableList;
 import java.time.Duration;
 import tech.ydb.core.grpc.GrpcTransport;
+import tech.ydb.examples.SimpleExample;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.description.TableColumn;
@@ -24,7 +25,7 @@ import tech.ydb.table.values.TupleValue;
 public class CreateTable extends SimpleExample {
 
     @Override
-    void run(GrpcTransport transport, String pathPrefix) {
+    protected void run(GrpcTransport transport, String pathPrefix) {
         try (TableClient tableClient = TableClient.newClient(transport).build()) {
             try (Session session = tableClient.createSession(Duration.ofSeconds(5)).join().getValue()) {
                 checkTable(session, pathPrefix + "UniformPartitionedTable", this::createUniformPartitionedTable);
@@ -157,6 +158,6 @@ public class CreateTable extends SimpleExample {
     }
 
     public static void main(String[] args) {
-        new CreateTable().doMain();
+        new CreateTable().doMain(args);
     }
 }

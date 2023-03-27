@@ -2,6 +2,7 @@ package tech.ydb.examples.simple;
 
 import java.time.Duration;
 import tech.ydb.core.grpc.GrpcTransport;
+import tech.ydb.examples.SimpleExample;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.query.ExplainDataQueryResult;
@@ -13,7 +14,7 @@ import tech.ydb.table.query.ExplainDataQueryResult;
 public class ExplainDataQuery extends SimpleExample {
 
     @Override
-    void run(GrpcTransport transport, String pathPrefix) {
+    protected void run(GrpcTransport transport, String pathPrefix) {
         String tablePath = pathPrefix + getClass().getSimpleName();
         try (
                 TableClient tableClient = TableClient.newClient(transport).build();
@@ -46,6 +47,6 @@ public class ExplainDataQuery extends SimpleExample {
     }
 
     public static void main(String[] args) {
-        new ExplainDataQuery().doMain();
+        new ExplainDataQuery().doMain(args);
     }
 }

@@ -27,6 +27,10 @@
             <artifactId>ydb-sdk-scheme</artifactId>
         </dependency>
         <dependency>
+            <groupId>tech.ydb</groupId>
+            <artifactId>ydb-sdk-topic</artifactId>
+        </dependency>
+        <dependency>
             <groupId>tech.ydb.auth</groupId>
             <artifactId>yc-auth-provider</artifactId>
         </dependency>

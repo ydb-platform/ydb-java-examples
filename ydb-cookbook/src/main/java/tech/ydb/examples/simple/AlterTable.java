@@ -2,6 +2,7 @@ package tech.ydb.examples.simple;
 
 import java.time.Duration;
 import tech.ydb.core.grpc.GrpcTransport;
+import tech.ydb.examples.SimpleExample;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.description.TableColumn;
@@ -17,7 +18,7 @@ import tech.ydb.table.values.PrimitiveType;
 public class AlterTable extends SimpleExample {
 
     @Override
-    void run(GrpcTransport transport, String pathPrefix) {
+    protected void run(GrpcTransport transport, String pathPrefix) {
         String tablePath = pathPrefix + getClass().getSimpleName();
         TableClient tableClient = TableClient.newClient(transport)
             .build();
@@ -66,6 +67,6 @@ public class AlterTable extends SimpleExample {
     }
 
     public static void main(String[] args) {
-        new AlterTable().doMain();
+        new AlterTable().doMain(args);
     }
 }

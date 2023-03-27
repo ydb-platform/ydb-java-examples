@@ -76,7 +76,7 @@ public final class App implements Runnable, AutoCloseable {
 
     private void createTables() {
         TableDescription seriesTable = TableDescription.newBuilder()
-            .addNotNullColumn("series_id", PrimitiveType.Uint64)
+            .addNonnullColumn("series_id", PrimitiveType.Uint64)
             .addNullableColumn("title", PrimitiveType.Text)
             .addNullableColumn("series_info", PrimitiveType.Text)
             .addNullableColumn("release_date", PrimitiveType.Date)
@@ -87,8 +87,8 @@ public final class App implements Runnable, AutoCloseable {
                 .join().expectSuccess("Can't create table /series");
 
         TableDescription seasonsTable = TableDescription.newBuilder()
-            .addNotNullColumn("series_id", PrimitiveType.Uint64)
-            .addNotNullColumn("season_id", PrimitiveType.Uint64)
+            .addNonnullColumn("series_id", PrimitiveType.Uint64)
+            .addNonnullColumn("season_id", PrimitiveType.Uint64)
             .addNullableColumn("title", PrimitiveType.Text)
             .addNullableColumn("first_aired", PrimitiveType.Date)
             .addNullableColumn("last_aired", PrimitiveType.Date)
@@ -99,9 +99,9 @@ public final class App implements Runnable, AutoCloseable {
                 .join().expectSuccess("Can't create table /seasons");
 
         TableDescription episodesTable = TableDescription.newBuilder()
-            .addNotNullColumn("series_id", PrimitiveType.Uint64)
-            .addNotNullColumn("season_id", PrimitiveType.Uint64)
-            .addNotNullColumn("episode_id", PrimitiveType.Uint64)
+            .addNonnullColumn("series_id", PrimitiveType.Uint64)
+            .addNonnullColumn("season_id", PrimitiveType.Uint64)
+            .addNonnullColumn("episode_id", PrimitiveType.Uint64)
             .addNullableColumn("title", PrimitiveType.Text)
             .addNullableColumn("air_date", PrimitiveType.Date)
             .setPrimaryKeys("series_id", "season_id", "episode_id")
