@@ -1,8 +1,5 @@
 package tech.ydb.examples;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
 import tech.ydb.auth.iam.CloudAuthHelper;
 import tech.ydb.core.grpc.GrpcTransport;
 
@@ -28,9 +25,7 @@ public abstract class SimpleExample {
 
         System.err.println("connection-string: " + connString + "\n");
 
-        ExecutorService executor = Executors.newFixedThreadPool(3);
         try (GrpcTransport transport = GrpcTransport.forConnectionString(connString)
-                .withCallExecutor(executor)
                 .withAuthProvider(CloudAuthHelper.getAuthProviderFromEnviron())
                 .build()) {
             run(transport,
@@ -40,8 +35,6 @@ public abstract class SimpleExample {
             );
         } catch (Throwable t) {
             t.printStackTrace();
-        } finally {
-            executor.shutdown();
         }
     }
 
