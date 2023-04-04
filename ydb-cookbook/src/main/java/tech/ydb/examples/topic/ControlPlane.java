@@ -51,7 +51,10 @@ public class ControlPlane extends SimpleExample {
                                         .addCodec(Codec.LZOP)
                                         .addCodec(Codec.GZIP)
                                         .build())
-                                .setPartitioningSettings(new PartitioningSettings(4, 10))
+                                .setPartitioningSettings(PartitioningSettings.newBuilder()
+                                        .setMinActivePartitions(4)
+                                        .setPartitionCountLimit(10)
+                                        .build())
                                 .setPartitionWriteSpeedBytesPerSecond(2 * 1024 * 1024) // 2 MB
                                 .setPartitionWriteBurstBytes(4 * 1024 * 1024) // 4 MB
                                 .setConsumers(consumers)
@@ -74,7 +77,8 @@ public class ControlPlane extends SimpleExample {
                 TopicDescription description = describeTopic(topicPath, topicClient);
 
                 assert description.getPartitioningSettings().getMinActivePartitions() == 4;
-                assert description.getPartitioningSettings().getPartitionCountLimit() == 10;
+                // getPartitionCountLimit is temporally ignored by server
+                assert description.getPartitioningSettings().getPartitionCountLimit() == 0;
                 assert description.getPartitionWriteSpeedBytesPerSecond() == 2 * 1024 * 1024;
                 assert description.getPartitionWriteBurstBytes() == 4 * 1024 * 1024;
                 assert description.getConsumers().size() == 2;
@@ -86,6 +90,9 @@ public class ControlPlane extends SimpleExample {
             {
                 // Alter topic 1
                 topicClient.alterTopic(topicPath, AlterTopicSettings.newBuilder()
+                                .setSupportedCodecs(SupportedCodecs.newBuilder()
+                                        .addCodec(Codec.LZOP)
+                                        .build())
                                 .setAlterPartitioningSettings(AlterPartitioningSettings.newBuilder()
                                         .setMinActivePartitions(6)
                                         .build())
@@ -100,8 +107,9 @@ public class ControlPlane extends SimpleExample {
                 TopicDescription description = describeTopic(topicPath, topicClient);
 
                 assert description.getPartitioningSettings().getMinActivePartitions() == 6;
-                assert description.getPartitioningSettings().getPartitionCountLimit() == 10;
-                assert description.getPartitionWriteSpeedBytesPerSecond() == 42 * 1024 * 1024;
+                // getPartitionCountLimit is temporally ignored by server
+                assert description.getPartitioningSettings().getPartitionCountLimit() == 0;
+                assert description.getPartitionWriteSpeedBytesPerSecond() == 4 * 1024 * 1024;
                 assert description.getPartitionWriteBurstBytes() == 4 * 1024 * 1024;
                 assert description.getConsumers().size() == 2;
                 assert description.getSupportedCodecs().getCodecs().size() == 1;
@@ -135,10 +143,12 @@ public class ControlPlane extends SimpleExample {
                                 .addAlterConsumer(AlterConsumerSettings.newBuilder()
                                         .setName("testConsumer2")
                                         .setSupportedCodecs(SupportedCodecs.newBuilder()
-                                                .addCodec(Codec.LZOP)
+                                                .addCodec(Codec.GZIP)
+                                                .addCodec(Codec.ZSTD)
+                                                .addCodec(Codec.RAW)
                                                 .build())
                                         .addAlterAttribute("attrName7", "attrValue7")
-                                        .addAlterAttribute("attrName3", null)
+                                        .addDropAttribute("attrName3")
                                         .build())
                                 .build())
                         .join()
@@ -149,11 +159,12 @@ public class ControlPlane extends SimpleExample {
                 // Describe topic after second alter
                 TopicDescription description = describeTopic(topicPath, topicClient);
 
-                assert description.getPartitioningSettings().getMinActivePartitions() == 4;
-                assert description.getPartitioningSettings().getPartitionCountLimit() == 8;
+                assert description.getPartitioningSettings().getMinActivePartitions() == 6;
+                // getPartitionCountLimit is temporally ignored by server
+                assert description.getPartitioningSettings().getPartitionCountLimit() == 0;
                 assert Objects.equals(description.getRetentionPeriod(), Duration.ofHours(13));
                 assert description.getRetentionStorageMb() == 512;
-                assert description.getPartitionWriteSpeedBytesPerSecond() == 2 * 1024 * 1024;
+                assert description.getPartitionWriteSpeedBytesPerSecond() == 4 * 1024 * 1024;
                 assert description.getPartitionWriteBurstBytes() == 4 * 1024 * 1024;
                 assert description.getSupportedCodecs().getCodecs().size() == 2;
                 assert description.getSupportedCodecs().getCodecs().contains(Codec.GZIP);
@@ -165,15 +176,15 @@ public class ControlPlane extends SimpleExample {
                     assert name.equals("testConsumer2") || name.equals("testConsumer3");
                     if (name.equals("testConsumer2")) {
                         Map<String, String> attrs = consumer.getAttributes();
-                        assert attrs.size() == 3;
-                        assert attrs.containsKey("attrName1");
-                        assert attrs.containsKey("attrName2");
-                        assert attrs.containsKey("attrName7");
-                        assert attrs.get("attrName1").equals("attrValue1");
+                        // user attributes are temporally ignored by server
+                        assert attrs.size() == 1;
+                        assert attrs.containsKey("_service_type");
                         SupportedCodecs codecs = consumer.getSupportedCodecs();
                         assert codecs != null;
-                        assert codecs.getCodecs().size() == 1;
-                        assert codecs.getCodecs().contains(Codec.LZOP);
+                        assert codecs.getCodecs().size() == 3;
+                        assert codecs.getCodecs().contains(Codec.GZIP);
+                        assert codecs.getCodecs().contains(Codec.ZSTD);
+                        assert codecs.getCodecs().contains(Codec.RAW);
                     }
                 }
             }
@@ -186,7 +197,6 @@ public class ControlPlane extends SimpleExample {
                                 .build())
                         .join()
                         .expectSuccess("cannot drop topic: " + topicPath);
-                transport.close();
             }
         }
 
@@ -206,8 +216,8 @@ public class ControlPlane extends SimpleExample {
                 .append("Partitioning settings:\n")
                 .append("  ActivePartitions: ").append(description.getPartitioningSettings().getMinActivePartitions())
                     .append("\n")
-                .append("  PartitionCountLimit: ").append(description.getPartitioningSettings().getMinActivePartitions())
-                    .append("\n")
+                .append("  PartitionCountLimit: ").append(description.getPartitioningSettings()
+                        .getPartitionCountLimit()).append("\n")
                 .append("getPartitionWriteSpeedBytesPerSecond: ")
                     .append(description.getPartitionWriteSpeedBytesPerSecond()).append("\n")
                 .append("getPartitionWriteBurstBytes: ").append(description.getPartitionWriteBurstBytes())
