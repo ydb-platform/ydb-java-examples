@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.org.apache.commons.io.IOUtils;
 
 import tech.ydb.test.integration.utils.PortsGenerator;
-import tech.ydb.test.junit5.YdbHelperExtention;
+import tech.ydb.test.junit5.YdbHelperExtension;
 
 /**
  *
@@ -31,7 +31,7 @@ public class DemoTest {
     private static final Logger log = LoggerFactory.getLogger(DemoTest.class);
 
     @RegisterExtension
-    private final YdbHelperExtention ydb = new YdbHelperExtention();
+    private final YdbHelperExtension ydb = new YdbHelperExtension();
 
     private Application app;
     private URI appURI;

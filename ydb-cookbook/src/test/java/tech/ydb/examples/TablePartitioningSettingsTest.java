@@ -17,7 +17,7 @@ import tech.ydb.table.settings.CreateTableSettings;
 import tech.ydb.table.settings.DescribeTableSettings;
 import tech.ydb.table.settings.PartitioningSettings;
 import tech.ydb.table.values.PrimitiveType;
-import tech.ydb.test.junit5.GrpcTransportExtention;
+import tech.ydb.test.junit5.GrpcTransportExtension;
 
 /**
  *
@@ -25,7 +25,7 @@ import tech.ydb.test.junit5.GrpcTransportExtention;
  */
 public class TablePartitioningSettingsTest {
     @RegisterExtension
-    public final GrpcTransportExtention ydb = new GrpcTransportExtention();
+    public final GrpcTransportExtension ydb = new GrpcTransportExtension();
 
     private final String TABLE_NAME = "test1_table";
 
