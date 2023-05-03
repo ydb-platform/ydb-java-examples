@@ -6,7 +6,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import tech.ydb.examples.batch_upload.BatchUpload;
 import tech.ydb.examples.bulk_upsert.BulkUpsert;
-import tech.ydb.test.junit5.YdbHelperExtention;
+import tech.ydb.test.junit5.YdbHelperExtension;
 
 /**
  *
@@ -14,7 +14,7 @@ import tech.ydb.test.junit5.YdbHelperExtention;
  */
 public class ExamplesTest {
     @RegisterExtension
-    private static final YdbHelperExtention ydb = new YdbHelperExtention();
+    private static final YdbHelperExtension ydb = new YdbHelperExtension();
 
     private String[] args() {
         return new String[] {
