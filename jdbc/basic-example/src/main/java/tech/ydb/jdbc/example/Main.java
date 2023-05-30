@@ -1,23 +1,25 @@
 package tech.ydb.jdbc.example;
 
+import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import tech.ydb.core.StatusCode;
-import tech.ydb.jdbc.YdbConnection;
 import tech.ydb.jdbc.YdbPreparedStatement;
 import tech.ydb.jdbc.exception.YdbNonRetryableException;
 
 public class Main {
     public static void main(String[] args) {
         if (args.length != 1) {
-            System.err.println("Usage: java -jar example.jar <connection_url>");
+            System.err.println("Usage: java -jar jdbc-basic-example.jar <connection_url>");
+            return;
         }
 
         String connectionUrl = args[0];
 
-        try (YdbConnection connection = (YdbConnection) DriverManager.getConnection(connectionUrl)) {
+        try (Connection connection = DriverManager.getConnection(connectionUrl)) {
             String tableName = "jdbc_table_sample";
             System.out.println(String.format("Trying to drop table %s...", tableName));
             try {
@@ -47,7 +49,8 @@ public class Main {
                     .prepareStatement("" +
                             "declare $p1 as Int32;\n" +
                             "declare $p2 as Utf8;\n" +
-                            String.format("upsert into %s (id, value) values ($p1, $p2)", tableName));
+                            String.format("upsert into %s (id, value) values ($p1, $p2)", tableName))
+                    .unwrap(YdbPreparedStatement.class);
             ps.setInt(1, 1);
             ps.setString(2, "value-1");
             ps.executeUpdate();
@@ -59,7 +62,7 @@ public class Main {
             connection.commit();
             System.out.println("Rows upserted.\n");
 
-            YdbPreparedStatement select = connection
+            PreparedStatement select = connection
                     .prepareStatement(String.format("select count(1) as cnt from %s", tableName));
 
             {
@@ -75,7 +78,8 @@ public class Main {
             YdbPreparedStatement psBatch = connection
                     .prepareStatement("" +
                             "declare $values as List<Struct<id:Int32,value:Utf8>>;\n" +
-                            "upsert into jdbc_table_sample select * from as_table($values)");
+                            "upsert into jdbc_table_sample select * from as_table($values)")
+                    .unwrap(YdbPreparedStatement.class);
             psBatch.setInt("id", 3);
             psBatch.setString("value", "value-3");
             psBatch.addBatch();

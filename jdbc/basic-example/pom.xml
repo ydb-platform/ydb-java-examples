@@ -18,4 +18,29 @@
             <artifactId>ydb-jdbc-driver</artifactId>
         </dependency>
     </dependencies>
+
+    <build>
+        <finalName>jdbc-basic-example</finalName>
+        <plugins>
+            <!-- copy dependencies to libs folder -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+            </plugin>
+            <!-- add libs folder to classpath -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <classpathPrefix>libs/</classpathPrefix>
+                            <mainClass>tech.ydb.jdbc.example.Main</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>
