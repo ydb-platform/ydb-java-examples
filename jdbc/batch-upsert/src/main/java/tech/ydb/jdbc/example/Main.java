@@ -2,21 +2,28 @@ package tech.ydb.jdbc.example;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.logging.Level;
 
+import org.apache.logging.log4j.jul.Log4jBridgeHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import tech.ydb.jdbc.exception.YdbExecutionStatusException;
 
 public class Main {
     private final static Logger LOG = LoggerFactory.getLogger(Main.class);
-    private final static String TABLE_NAME = "jdbc_table_sample";
+    private final static String TABLE_NAME = "jdbc_batch_example";
+
+    private final static String CREATE_TABLE_SQL = ""
+            + "CREATE TABLE " + TABLE_NAME + "("
+            + "app Text,"
+            + "timestamp Timestamp,"
+            + "host Text,"
+            + "http_code UInt32,"
+            + "message Text,"
+            + "PRIMARY KEY(app, timestamp, host))";
 
     private static void dropTable(Connection connection) {
         LOG.debug("Trying to drop table {}", TABLE_NAME);
@@ -34,10 +41,8 @@ public class Main {
     private static void createTable(Connection connection) throws SQLException {
         LOG.debug("Creating table table {}", TABLE_NAME);
 
-        String createSQL = "CREATE TABLE " + TABLE_NAME + "(id Int32, value Text, PRIMARY KEY(id))";
-
         try (Statement statement = connection.createStatement()) {
-            statement.execute("--jdbc:SCHEME\n" + createSQL);
+            statement.execute("--jdbc:SCHEME\n" + CREATE_TABLE_SQL);
         }
 
         LOG.debug("Table {} was successfully created.", TABLE_NAME);
@@ -60,54 +65,11 @@ public class Main {
         }
     }
 
-    private static void simpleUpsert(Connection connection) throws SQLException {
-        LOG.debug("Upserting 2 rows into table...");
-
-        String upsertSQL = "UPSERT INTO " + TABLE_NAME + " (id, value) values (?, ?)";
-
-        try (PreparedStatement ps = connection.prepareStatement(upsertSQL)) {
-            ps.setInt(1, 1);
-            ps.setString(2, "value-1");
-            ps.executeUpdate();
-
-            ps.setInt(1, 2);
-            ps.setString(2, "value-2");
-            ps.executeUpdate();
-        }
-
-        LOG.debug("Rows upserted.");
-    }
-
-    private static void batchUpsert(Connection connection) throws SQLException {
-        LOG.debug("Upserting 2 more rows into table...");
-
-        String batchUpsertSQL = ""
-                + "DECLARE $values AS List<Struct<p1:Int32, p2:Text>>;\n"
-                + "$mapper = ($row) -> (AsStruct($row.p1 as id, $row.p2 as value));\n"
-                + "UPSERT INTO " + TABLE_NAME + " SELECT * FROM AS_TABLE(ListMap($values, $mapper))";
-
-        try (PreparedStatement ps = connection.prepareStatement(batchUpsertSQL)) {
-            ps.setInt(1, 3);
-            ps.setString(2, "value-3");
-            ps.addBatch();
-
-            ps.setInt(1, 4);
-            ps.setString(2, "value-4");
-            ps.addBatch();
-
-            ps.executeBatch();
-        }
-
-        LOG.debug("Rows upserted.");
-    }
-
     public static void main(String[] args) {
-        SLF4JBridgeHandler.removeHandlersForRootLogger();
-        SLF4JBridgeHandler.install();
-        java.util.logging.Logger.getLogger("").setLevel(Level.FINEST);
+        Log4jBridgeHandler.install(true, "tech.ydb", false);
 
         if (args.length != 1) {
-            System.err.println("Usage: java -jar jdbc-basic-example.jar <connection_url>");
+            System.err.println("Usage: java -jar jdbc-batch-upsert.jar <connection_url>");
             return;
         }
 
@@ -117,15 +79,15 @@ public class Main {
             dropTable(connection);
             createTable(connection);
 
-            simpleUpsert(connection);
+//            simpleUpsert(connection);
+//
+//            long rowsCount = selectCount(connection);
+//            assert(rowsCount == 2);
+//
+//            batchUpsert(connection);
 
             long rowsCount = selectCount(connection);
-            assert(rowsCount == 2);
-
-            batchUpsert(connection);
-
-            rowsCount = selectCount(connection);
-            assert(rowsCount == 4);
+            assert(rowsCount == 0);
         } catch (SQLException e) {
             LOG.error("JDBC Example problem", e);
         }

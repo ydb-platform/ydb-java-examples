@@ -6,11 +6,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.logging.Level;
 
+import org.apache.logging.log4j.jul.Log4jBridgeHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import tech.ydb.jdbc.exception.YdbExecutionStatusException;
 
@@ -19,20 +18,20 @@ public class Main {
     private final static String TABLE_NAME = "jdbc_table_sample";
 
     private static void dropTable(Connection connection) {
-        LOG.debug("Trying to drop table {}", TABLE_NAME);
+        LOG.info("Trying to drop table {}", TABLE_NAME);
 
         String dropSQL = String.format("DROP TABLE %s", TABLE_NAME);
         try (Statement statement = connection.createStatement()) {
             statement.execute("--jdbc:SCHEME\n" + dropSQL);
         } catch (YdbExecutionStatusException e) {
-            LOG.debug("Failed to drop table {} with code {}", TABLE_NAME, e.getStatusCode());
+            LOG.info("Failed to drop table {} with code {}", TABLE_NAME, e.getStatusCode());
         } catch (SQLException e) {
             LOG.warn("Failed to drop table {}", TABLE_NAME, e);
         }
     }
 
     private static void createTable(Connection connection) throws SQLException {
-        LOG.debug("Creating table table {}", TABLE_NAME);
+        LOG.info("Creating table table {}", TABLE_NAME);
 
         String createSQL = "CREATE TABLE " + TABLE_NAME + "(id Int32, value Text, PRIMARY KEY(id))";
 
@@ -40,7 +39,7 @@ public class Main {
             statement.execute("--jdbc:SCHEME\n" + createSQL);
         }
 
-        LOG.debug("Table {} was successfully created.", TABLE_NAME);
+        LOG.info("Table {} was successfully created.", TABLE_NAME);
     }
 
     private static long selectCount(Connection connection) throws SQLException {
@@ -54,14 +53,14 @@ public class Main {
                 }
 
                 long rowsCount = rs.getLong("cnt");
-                LOG.debug("Table has {} rows", rowsCount);
+                LOG.info("Table has {} rows", rowsCount);
                 return rowsCount;
             }
         }
     }
 
     private static void simpleUpsert(Connection connection) throws SQLException {
-        LOG.debug("Upserting 2 rows into table...");
+        LOG.info("Upserting 2 rows into table...");
 
         String upsertSQL = "UPSERT INTO " + TABLE_NAME + " (id, value) values (?, ?)";
 
@@ -75,11 +74,11 @@ public class Main {
             ps.executeUpdate();
         }
 
-        LOG.debug("Rows upserted.");
+        LOG.info("Rows upserted.");
     }
 
     private static void batchUpsert(Connection connection) throws SQLException {
-        LOG.debug("Upserting 2 more rows into table...");
+        LOG.info("Upserting 2 more rows into table...");
 
         String batchUpsertSQL = ""
                 + "DECLARE $values AS List<Struct<p1:Int32, p2:Text>>;\n"
@@ -98,13 +97,11 @@ public class Main {
             ps.executeBatch();
         }
 
-        LOG.debug("Rows upserted.");
+        LOG.info("Rows upserted.");
     }
 
     public static void main(String[] args) {
-        SLF4JBridgeHandler.removeHandlersForRootLogger();
-        SLF4JBridgeHandler.install();
-        java.util.logging.Logger.getLogger("").setLevel(Level.FINEST);
+        Log4jBridgeHandler.install(true, "tech.ydb", true);
 
         if (args.length != 1) {
             System.err.println("Usage: java -jar jdbc-basic-example.jar <connection_url>");

@@ -8,19 +8,19 @@
         <version>1.1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>ydb-jdbc-basic-example</artifactId>
-    <name>Basic JDBC Example</name>
+    <artifactId>ydb-jdbc-batch-upsert</artifactId>
+    <name>Batch update JDBC Example</name>
     <packaging>jar</packaging>
 
     <dependencies>
         <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>jul-to-slf4j</artifactId>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j-impl</artifactId>
         </dependency>
 
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-slf4j-impl</artifactId>
+            <artifactId>log4j-jul</artifactId>
         </dependency>
 
         <dependency>
@@ -30,7 +30,7 @@
     </dependencies>
 
     <build>
-        <finalName>jdbc-basic-example</finalName>
+        <finalName>jdbc-batch-upsert</finalName>
         <plugins>
             <!-- copy dependencies to libs folder -->
             <plugin>
