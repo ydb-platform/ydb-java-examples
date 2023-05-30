@@ -1,24 +1,13 @@
 package tech.ydb.jdbc.example;
 
-import java.nio.file.Paths;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Properties;
 
-import tech.ydb.auth.iam.CloudAuthProvider;
 import tech.ydb.core.StatusCode;
-import tech.ydb.core.auth.AuthProvider;
 import tech.ydb.jdbc.YdbConnection;
 import tech.ydb.jdbc.YdbPreparedStatement;
 import tech.ydb.jdbc.exception.YdbNonRetryableException;
-import tech.ydb.jdbc.settings.YdbConnectionProperty;
-
-import yandex.cloud.sdk.auth.provider.ApiKeyCredentialProvider;
-import yandex.cloud.sdk.auth.provider.ComputeEngineCredentialProvider;
-import yandex.cloud.sdk.auth.provider.CredentialProvider;
-import yandex.cloud.sdk.auth.provider.IamTokenCredentialProvider;
-
 
 public class Main {
     public static void main(String[] args) {
@@ -28,28 +17,7 @@ public class Main {
 
         String connectionUrl = args[0];
 
-        CredentialProvider credentialProvider;
-        String accessToken = System.getenv("YDB_ACCESS_TOKEN_CREDENTIALS");
-        String saKeyFile = System.getenv("YDB_SERVICE_ACCOUNT_KEY_FILE_CREDENTIALS");
-        if (accessToken != null) {
-            credentialProvider = IamTokenCredentialProvider.builder()
-                    .token(accessToken)
-                    .build();
-        } else if (saKeyFile != null) {
-            credentialProvider = ApiKeyCredentialProvider.builder()
-                    .fromFile(Paths.get(saKeyFile))
-                    .build();
-        } else {
-            credentialProvider = ComputeEngineCredentialProvider.builder()
-                    .build();
-        }
-        AuthProvider authProvider = CloudAuthProvider.newAuthProvider(credentialProvider);
-
-        Properties properties = new Properties();
-        properties.put(YdbConnectionProperty.AUTH_PROVIDER.getName(), authProvider);
-        properties.put(YdbConnectionProperty.SECURE_CONNECTION.getName(), "true");
-
-        try (YdbConnection connection = (YdbConnection) DriverManager.getConnection(connectionUrl, properties)) {
+        try (YdbConnection connection = (YdbConnection) DriverManager.getConnection(connectionUrl)) {
             String tableName = "jdbc_table_sample";
             System.out.println(String.format("Trying to drop table %s...", tableName));
             try {

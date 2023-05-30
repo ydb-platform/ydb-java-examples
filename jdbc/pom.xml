@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>tech.ydb.examples</groupId>
+        <artifactId>ydb-sdk-examples</artifactId>
+        <version>1.1.0-SNAPSHOT</version>
+    </parent>
+
+    <groupId>tech.ydb.jdbc.examples</groupId>
+    <artifactId>ydb-jdbc-examples</artifactId>
+
+    <name>YDB JDBC Driver examples</name>
+
+    <packaging>pom</packaging>
+
+    <properties>
+        <ydb.jdbc.version>2.0.0-SNAPSHOT</ydb.jdbc.version>
+    </properties>
+
+    <modules>
+        <module>basic-example</module>
+    </modules>
+
+    <dependencyManagement>
+         <dependencies>
+             <dependency>
+                 <groupId>tech.ydb</groupId>
+                 <artifactId>ydb-jdbc-driver</artifactId>
+                 <version>${ydb.jdbc.version}</version>
+             </dependency>
+         </dependencies>
+    </dependencyManagement>
+</project>
