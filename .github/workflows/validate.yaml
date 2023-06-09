@@ -1,0 +1,36 @@
+name: Validate YDB Examples
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: Validate YDB Examples
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        java: [ '8', '11', '17']
+
+    env:
+        MAVEN_ARGS: --batch-mode --update-snapshots -Dstyle.color=always
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Download dependencies
+        run: mvn $MAVEN_ARGS dependency:go-offline
+
+      - name: Build with Maven
+        run: mvn $MAVEN_ARGS package
+

@@ -1,4 +1,5 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/ydb-platform/ydb-java-examples/blob/main/LICENSE)
+[![Build](https://img.shields.io/github/actions/workflow/status/ydb-platform/ydb-java-examples/validate.yaml)](https://github.com/ydb-platform/ydb-java-examples/actions/workflows/validate.yaml)
 
 ## YDB Java SDK examples
 

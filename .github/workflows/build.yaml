@@ -1,0 +1,84 @@
+name: Build YDB Examples
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+  pull_request:
+      type: [opened, reopened, edited]
+
+jobs:
+  build:
+    name: Build YDB Examples
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        java: [ '8', '11', '17']
+
+    env:
+        MAVEN_ARGS: --batch-mode --update-snapshots -Dstyle.color=always
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Extract SDK version
+        id: getversion
+        uses: mavrosxristoforos/get-xml-info@1.1.1
+        with:
+          xml-file: 'pom.xml'
+          xpath: '//*[local-name()="ydb.sdk.version"]'
+
+      - name: Check SDK version
+        run: |
+          echo "NEED_SDK=${{ endsWith(steps.getversion.outputs.info, 'SNAPSHOT') }}" >> "$GITHUB_ENV"
+
+      - name: Checkout YDB Java SDK
+        if: ${{ env.NEED_SDK }}
+        uses: actions/checkout@v3
+        with:
+          repository: ydb-platform/ydb-java-sdk
+          ref: develop
+          path: ydb-java-sdk
+
+      - name: Build YDB Java SDK
+        working-directory: ./ydb-java-sdk
+        if: ${{ env.NEED_SDK }}
+        run: mvn $MAVEN_ARGS -DskipTests=true -Dmaven.javadoc.skip=true install
+
+      - name: Remove YDB Java SDK
+        if: ${{ env.NEED_SDK }}
+        run: rm -rf ydb-java-sdk
+
+      - name: Checkout YDB YC Auth Provider
+        if: ${{ env.NEED_SDK }}
+        uses: actions/checkout@v3
+        with:
+          repository: ydb-platform/ydb-java-yc
+          ref: develop
+          path: ydb-java-yc
+
+      - name: Build YDB YC Auth Provider
+        working-directory: ./ydb-java-yc
+        if: ${{ env.NEED_SDK }}
+        run: mvn $MAVEN_ARGS -DskipTests=true -Dmaven.javadoc.skip=true install
+
+      - name: Remove YDB YC Auth Provider
+        if: ${{ env.NEED_SDK }}
+        run: rm -rf ydb-java-yc
+
+      - name: Download dependencies
+        run: mvn $MAVEN_ARGS dependency:go-offline
+
+      - name: Build with Maven
+        run: mvn $MAVEN_ARGS package
+
