@@ -32,13 +32,15 @@ jobs:
           cache: 'maven'
 
       - name: Extract SDK version
-        run: |
-          VERSION=$(mvn help:evaluate -Dexpression=ydb.sdk.version -q -DforceStdout)
-          echo "SDK_VERSION=$VERSION" >> "$GITHUB_ENV"
+        id: getversion
+        uses: mavrosxristoforos/get-xml-info@1.1.1
+        with:
+          xml-file: 'pom.xml'
+          xpath: '//*[local-name()="ydb.sdk.version"]'
 
       - name: Check SDK version
         run: |
-          echo "NEED_SDK=${{ endsWith(env.SDK_VERSION, 'SNAPSHOT') }}" >> "$GITHUB_ENV"
+          echo "NEED_SDK=${{ endsWith(steps.getversion.outputs.info, 'SNAPSHOT') }}" >> "$GITHUB_ENV"
 
       - name: Checkout YDB Java SDK
         if: ${{ env.NEED_SDK }}
@@ -51,7 +53,7 @@ jobs:
       - name: Build YDB Java SDK
         working-directory: ./ydb-java-sdk
         if: ${{ env.NEED_SDK }}
-        run: mvn $MAVEN_ARGS install
+        run: mvn $MAVEN_ARGS -DskipTests=true -Dmaven.javadoc.skip=true install
 
       - name: Remove YDB Java SDK
         if: ${{ env.NEED_SDK }}
@@ -61,14 +63,14 @@ jobs:
         if: ${{ env.NEED_SDK }}
         uses: actions/checkout@v3
         with:
-          repository: ydb-platform/ydb-java-sdk
+          repository: ydb-platform/ydb-java-yc
           ref: develop
           path: ydb-java-yc
 
       - name: Build YDB YC Auth Provider
         working-directory: ./ydb-java-yc
         if: ${{ env.NEED_SDK }}
-        run: mvn $MAVEN_ARGS install
+        run: mvn $MAVEN_ARGS -DskipTests=true -Dmaven.javadoc.skip=true install
 
       - name: Remove YDB YC Auth Provider
         if: ${{ env.NEED_SDK }}
