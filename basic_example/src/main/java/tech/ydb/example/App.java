@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import tech.ydb.auth.iam.CloudAuthHelper;
 import tech.ydb.core.Status;
+import tech.ydb.core.grpc.GrpcReadStream;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.table.SessionRetryContext;
 import tech.ydb.table.TableClient;
@@ -206,7 +207,7 @@ public final class App implements Runnable, AutoCloseable {
                 + "VALUES (2, 6, 1, \"TBD\");";
 
         // Begin new transaction with SerializableRW mode
-        TxControl txControl = TxControl.serializableRw().setCommitTx(true);
+        TxControl<?> txControl = TxControl.serializableRw().setCommitTx(true);
 
         // Executes data query with specified transaction control settings.
         retryCtx.supplyResult(session -> session.executeDataQuery(query, txControl))
@@ -219,7 +220,7 @@ public final class App implements Runnable, AutoCloseable {
                 + "FROM series WHERE series_id = 1;";
 
         // Begin new transaction with SerializableRW mode
-        TxControl txControl = TxControl.serializableRw().setCommitTx(true);
+        TxControl<?> txControl = TxControl.serializableRw().setCommitTx(true);
 
         // Executes data query with specified transaction control settings.
         DataQueryResult result = retryCtx.supplyResult(session -> session.executeDataQuery(query, txControl))
@@ -246,7 +247,7 @@ public final class App implements Runnable, AutoCloseable {
                 + "WHERE sa.series_id = $seriesId AND sa.season_id = $seasonId";
 
         // Begin new transaction with SerializableRW mode
-        TxControl txControl = TxControl.serializableRw().setCommitTx(true);
+        TxControl<?> txControl = TxControl.serializableRw().setCommitTx(true);
 
         // Type of parameter values should be exactly the same as in DECLARE statements.
         Params params = Params.of(
@@ -287,7 +288,8 @@ public final class App implements Runnable, AutoCloseable {
         logger.info("--[ ExecuteScanQueryWithParams ]--");
         retryCtx.supplyStatus(session -> {
             ExecuteScanQuerySettings settings = ExecuteScanQuerySettings.newBuilder().build();
-            return session.executeScanQuery(query, params, settings, rs -> {
+            GrpcReadStream<ResultSetReader> scan = session.executeScanQuery(query, params, settings);
+            return scan.start(rs -> {
                 while (rs.next()) {
                     logger.info("read episode {} of {} for {}",
                             rs.getColumn("episode_title").getText(),
@@ -310,7 +312,7 @@ public final class App implements Runnable, AutoCloseable {
             // Execute first query to get the required values to the client.
             // Transaction control settings don't set CommitTx flag to keep transaction active
             // after query execution.
-            TxControl tx1 = TxControl.serializableRw().setCommitTx(false);
+            TxControl<?> tx1 = TxControl.serializableRw().setCommitTx(false);
             DataQueryResult res1 = session.executeDataQuery(query1, tx1, Params.of(
                     "$seriesId", PrimitiveValue.newUint64(seriesID),
                     "$seasonId", PrimitiveValue.newUint64(seasonID)
@@ -338,7 +340,7 @@ public final class App implements Runnable, AutoCloseable {
             // Execute second query.
             // Transaction control settings continues active transaction (tx) and
             // commits it at the end of second query execution.
-            TxControl tx2 = TxControl.id(txId).setCommitTx(true);
+            TxControl<?> tx2 = TxControl.id(txId).setCommitTx(true);
             DataQueryResult res2 = session.executeDataQuery(query2, tx2, Params.of(
                 "$seriesId", PrimitiveValue.newUint64(seriesID),
                 "$fromDate", PrimitiveValue.newDate(fromDate),
@@ -371,7 +373,7 @@ public final class App implements Runnable, AutoCloseable {
 
             // Execute data query.
             // Transaction control settings continues active transaction (tx)
-            TxControl txControl = TxControl.id(transaction).setCommitTx(false);
+            TxControl<?> txControl = TxControl.id(transaction).setCommitTx(false);
             DataQueryResult result = session.executeDataQuery(query, txControl, params)
                 .join().getValue();
 

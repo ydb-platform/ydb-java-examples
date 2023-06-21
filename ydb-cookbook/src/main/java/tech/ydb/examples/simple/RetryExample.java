@@ -27,7 +27,7 @@ public class RetryExample extends SimpleExample {
                 .build();
 
             Result<DataQueryResult> result = ctx.supplyResult(session -> {
-                TxControl txControl = TxControl.serializableRw()
+                TxControl<?> txControl = TxControl.serializableRw()
                     .setCommitTx(true);
                 return session.executeDataQuery("SELECT 1 + 2;", txControl);
             }).join();

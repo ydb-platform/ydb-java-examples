@@ -7,18 +7,21 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.eclipse.jetty.servlet.DefaultServlet;
+
 import tech.ydb.demo.Application;
 import tech.ydb.demo.ydb.HashTool;
 import tech.ydb.demo.ydb.UrlRecord;
 import tech.ydb.demo.ydb.YdbException;
 import tech.ydb.demo.ydb.YdbRepository;
-import org.eclipse.jetty.servlet.DefaultServlet;
 
 /**
  *
  * @author Alexandr Gorshenin
  */
 public class RedirectServlet extends DefaultServlet {
+    private static final long serialVersionUID = -3978776572966824296L;
+
     private YdbRepository repository() {
         return new YdbRepository(Application.ydp());
     }

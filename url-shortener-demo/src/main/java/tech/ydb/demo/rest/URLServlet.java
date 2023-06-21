@@ -11,6 +11,7 @@ import javax.servlet.http.HttpServletResponse;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.stream.JsonWriter;
+
 import tech.ydb.demo.Application;
 import tech.ydb.demo.ydb.UrlRecord;
 import tech.ydb.demo.ydb.YdbException;
@@ -21,6 +22,7 @@ import tech.ydb.demo.ydb.YdbRepository;
  * @author Alexandr Gorshenin
  */
 public class URLServlet extends HttpServlet {
+    private static final long serialVersionUID = -1410806003624620851L;
 
     private YdbRepository repository() {
         return new YdbRepository(Application.ydp());
