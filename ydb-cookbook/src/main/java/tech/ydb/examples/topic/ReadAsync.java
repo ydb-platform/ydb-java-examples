@@ -30,8 +30,10 @@ import tech.ydb.topic.settings.TopicReadSettings;
 public class ReadAsync extends SimpleExample {
     private static final Logger logger = LoggerFactory.getLogger(ReadAsync.class);
     private static final long MAX_MEMORY_USAGE_BYTES = 500 * 1024 * 1024; // 500 Mb
+    private static final int MESSAGES_COUNT = 5;
 
-    private static final CompletableFuture<Void> messageReceivedFuture = new CompletableFuture<>();
+    private final CompletableFuture<Void> messageReceivedFuture = new CompletableFuture<>();
+    private long lastSeqNo = -1;
 
     @Override
     protected void run(GrpcTransport transport, String pathPrefix) {
@@ -66,31 +68,51 @@ public class ReadAsync extends SimpleExample {
         }
     }
 
-    private static class Handler extends AbstractReadEventHandler {
+    private class Handler extends AbstractReadEventHandler {
         private final AtomicInteger messageCounter = new AtomicInteger(0);
 
         @Override
         public void onMessages(DataReceivedEvent event) {
             for (Message message : event.getMessages()) {
-                StringBuilder str = new StringBuilder();
-                str.append("Message received: \"").append(new String(message.getData(), StandardCharsets.UTF_8))
-                        .append("\"\n")
-                        .append("  offset: ").append(message.getOffset()).append("\n")
-                        .append("  seqNo: ").append(message.getSeqNo()).append("\n")
-                        .append("  createdAt: ").append(message.getCreatedAt()).append("\n")
-                        .append("  messageGroupId: ").append(message.getMessageGroupId()).append("\n")
-                        .append("  producerId: ").append(message.getProducerId()).append("\n")
-                        .append("  writtenAt: ").append(message.getWrittenAt()).append("\n");
-                if (!message.getWriteSessionMeta().isEmpty()) {
-                    str.append("  writeSessionMeta:\n");
-                    message.getWriteSessionMeta().forEach((key, value) ->
-                            str.append("    ").append(key).append(": ").append(value).append("\n"));
+                StringBuilder str = new StringBuilder("Message received");
+                if (logger.isTraceEnabled()) {
+                    str.append(": \"").append(new String(message.getData(), StandardCharsets.UTF_8)).append("\"");
                 }
-                logger.info(str.toString());
+                str.append("\n");
+                if (logger.isDebugEnabled()) {
+                    str.append("  offset: ").append(message.getOffset()).append("\n")
+                            .append("  seqNo: ").append(message.getSeqNo()).append("\n")
+                            .append("  createdAt: ").append(message.getCreatedAt()).append("\n")
+                            .append("  messageGroupId: ").append(message.getMessageGroupId()).append("\n")
+                            .append("  producerId: ").append(message.getProducerId()).append("\n")
+                            .append("  writtenAt: ").append(message.getWrittenAt()).append("\n")
+                            .append("  partitionSession: ").append(message.getPartitionSession().getId()).append("\n")
+                            .append("  partitionId: ").append(message.getPartitionSession().getPartitionId())
+                            .append("\n");
+                    if (!message.getWriteSessionMeta().isEmpty()) {
+                        str.append("  writeSessionMeta:\n");
+                        message.getWriteSessionMeta().forEach((key, value) ->
+                                str.append("    ").append(key).append(": ").append(value).append("\n"));
+                    }
+                    if (logger.isTraceEnabled()) {
+                        logger.trace(str.toString());
+                    } else {
+                        logger.debug(str.toString());
+                    }
+                } else {
+                    logger.info("Message received. SeqNo={}, offset={}", message.getSeqNo(), message.getOffset());
+                }
+                if (lastSeqNo > message.getSeqNo()) {
+                    logger.error("Received a message with seqNo {}. Previously got a message with seqNo {}",
+                            message.getSeqNo(), lastSeqNo);
+                    messageReceivedFuture.complete(null);
+                } else {
+                    lastSeqNo = message.getSeqNo();
+                }
                 message.commit().thenRun(() -> {
                     logger.info("Message committed");
-                    if (messageCounter.incrementAndGet() >= 5) {
-                        logger.info("5 messages committed. Finishing reading.");
+                    if (messageCounter.incrementAndGet() >= MESSAGES_COUNT) {
+                        logger.info("{} messages committed. Finishing reading.", MESSAGES_COUNT);
                         messageReceivedFuture.complete(null);
                     }
                 });
