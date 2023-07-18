@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import tech.ydb.core.grpc.GrpcTransport;
-
 import tech.ydb.examples.App;
 import tech.ydb.examples.AppRunner;
 import tech.ydb.examples.pagination.model.School;
@@ -131,7 +130,7 @@ public class PaginationApp implements App {
             path);
 
         Params params = Params.of("$schoolsData", PaginationData.SCHOOL_DATA);
-        TxControl txControl = TxControl.serializableRw().setCommitTx(true);
+        TxControl<?> txControl = TxControl.serializableRw().setCommitTx(true);
 
         session.executeDataQuery(query, txControl, params)
             .join()
@@ -173,7 +172,7 @@ public class PaginationApp implements App {
             "$lastCity", PrimitiveValue.newText(lastSchool.getCity()),
             "$lastNumber", PrimitiveValue.newUint32(lastSchool.getNumber()));
 
-        TxControl txControl = TxControl.serializableRw().setCommitTx(true);
+        TxControl<?> txControl = TxControl.serializableRw().setCommitTx(true);
 
         DataQueryResult result = session.executeDataQuery(query, txControl, params)
                 .join()

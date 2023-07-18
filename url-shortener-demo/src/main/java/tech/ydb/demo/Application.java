@@ -7,13 +7,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.time.Duration;
 
-import tech.ydb.core.grpc.GrpcTransport;
-import tech.ydb.demo.rest.RedirectServlet;
-import tech.ydb.demo.rest.URLServlet;
-import tech.ydb.demo.ydb.YdbDriver;
-import tech.ydb.demo.ydb.YdbRepository;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
@@ -22,7 +16,13 @@ import org.eclipse.jetty.util.resource.Resource;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.core.grpc.GrpcTransportBuilder;
+import tech.ydb.demo.rest.RedirectServlet;
+import tech.ydb.demo.rest.URLServlet;
+import tech.ydb.demo.ydb.YdbDriver;
+import tech.ydb.demo.ydb.YdbRepository;
 
 /**
  *
@@ -90,8 +90,7 @@ public class Application {
         String database = prms.database();
 
         log.info("Creating rpc transport for endpoint={} database={}", endpoint, database);
-        GrpcTransportBuilder builder = GrpcTransport.forEndpoint(endpoint, database)
-                .withReadTimeout(Duration.ofSeconds(10));
+        GrpcTransportBuilder builder = GrpcTransport.forEndpoint(endpoint, database);
 
         if (prms.certPath() != null) {
             builder.withSecureConnection(Files.readAllBytes(Paths.get(prms.certPath())));

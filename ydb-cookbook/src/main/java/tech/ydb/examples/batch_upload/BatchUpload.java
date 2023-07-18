@@ -106,7 +106,7 @@ public class BatchUpload implements App {
 
         Params params = Params.of("$items", ListValue.of(values));
 
-        TxControl txControl = TxControl.serializableRw().setCommitTx(true);
+        TxControl<?> txControl = TxControl.serializableRw().setCommitTx(true);
         retryCtx
                 .supplyResult(session -> session.executeDataQuery(query, txControl, params))
                 .join().getStatus().expectSuccess("expected success result");

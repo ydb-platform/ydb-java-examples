@@ -2,6 +2,9 @@ package tech.ydb.demo.ydb;
 
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import tech.ydb.core.Status;
 import tech.ydb.core.UnexpectedResultException;
 import tech.ydb.table.description.TableDescription;
@@ -11,8 +14,6 @@ import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.transaction.TxControl;
 import tech.ydb.table.values.PrimitiveType;
 import tech.ydb.table.values.PrimitiveValue;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -67,7 +68,7 @@ public class YdbRepository {
                 "$hash", PrimitiveValue.newText(record.hash())
             );
 
-            TxControl txControl = TxControl.serializableRw().setCommitTx(true);
+            TxControl<?> txControl = TxControl.serializableRw().setCommitTx(true);
 
             driver.retryCtx()
                     .supplyResult(session -> session.executeDataQuery(query, txControl, params))
@@ -88,7 +89,7 @@ public class YdbRepository {
                 "$hash", PrimitiveValue.newText(hash)
             );
 
-            TxControl txControl = TxControl.serializableRw();
+            TxControl<?> txControl = TxControl.serializableRw();
 
             DataQueryResult result = driver.retryCtx()
                     .supplyResult(session -> session.executeDataQuery(query, txControl, params))

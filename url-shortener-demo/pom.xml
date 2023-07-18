@@ -14,7 +14,7 @@
     <description>Demo application of usage Java SDK for YDB</description>
 
     <properties>
-        <jetty.version>9.4.45.v20220203</jetty.version>
+        <jetty.version>10.0.14</jetty.version>
         <gson.version>2.9.0</gson.version>
     </properties>
 
@@ -45,7 +45,7 @@
 
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-slf4j-impl</artifactId>
+            <artifactId>log4j-slf4j2-impl</artifactId>
         </dependency>
 
         <dependency>
@@ -74,4 +74,16 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <profiles>
+        <profile>
+            <id>jdk8-jetty-downgrade</id>
+            <activation>
+                <jdk>1.8</jdk>
+            </activation>
+            <properties>
+                <jetty.version>9.4.45.v20220203</jetty.version>
+            </properties>
+        </profile>
+    </profiles>
 </project>
