@@ -74,4 +74,16 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <profiles>
+        <profile>
+            <id>jdk8-jetty-downgrade</id>
+            <activation>
+                <jdk>1.8</jdk>
+            </activation>
+            <properties>
+                <jetty.version>9.4.45.v20220203</jetty.version>
+            </properties>
+        </profile>
+    </profiles>
 </project>
