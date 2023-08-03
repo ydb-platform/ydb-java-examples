@@ -42,20 +42,19 @@ import tech.ydb.topic.write.SyncWriter;
 public class ReadWriteWorkload extends SimpleExample {
     private static final Logger logger = LoggerFactory.getLogger(ReadWriteWorkload.class);
     private static final int WRITE_TIMEOUT_SECONDS = 60;
-    private static final int MESSAGE_LENGTH_BYTES = 1_000;
-    private static final int WRITE_BUFFER_SIZE_BYTES = 10_000_000; // 10 Mb
+    private static final int MESSAGE_LENGTH_BYTES = 10_000_000; // 10 Mb
+    private static final int WRITE_BUFFER_SIZE_BYTES = 50_000_000; // 50 Mb
     private static final long MAX_READER_MEMORY_USAGE_BYTES = 500_000_000; // 500 Mb
-    private static final int SHUTDOWN_TIMEOUT_SECONDS = 30;
+    private static final int SHUTDOWN_TIMEOUT_SECONDS = 60;
     private final AtomicInteger unreadMessagesCount = new AtomicInteger(0);
-
-    private final AtomicBoolean writeFinished = new AtomicBoolean(false);
 
     private final AtomicInteger messagesSent = new AtomicInteger(0);
     private final AtomicInteger messagesReceived = new AtomicInteger(0);
     private final AtomicInteger messagesCommitted = new AtomicInteger(0);
     private final AtomicLong bytesWritten = new AtomicLong(0);
     private long lastSeqNo = -1;
-    CountDownLatch readLatch = new CountDownLatch(1);
+    CountDownLatch writeFinishedLatch = new CountDownLatch(1);
+    CountDownLatch readFinishedLatch = new CountDownLatch(1);
 
     @Override
     protected void run(GrpcTransport transport, String pathPrefix) {
@@ -95,10 +94,10 @@ public class ReadWriteWorkload extends SimpleExample {
                         writer.send(Message.of(messageData), WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
                         messagesSent.incrementAndGet();
                         bytesWritten.addAndGet(MESSAGE_LENGTH_BYTES);
+                        unreadMessagesCount.incrementAndGet();
                         logger.debug("Message {} is sent", index);
                     } catch (TimeoutException exception) {
-                        logger.error("Timeout exception on writing a message ({} seconds): ",
-                                WRITE_TIMEOUT_SECONDS, exception);
+                        logger.error("Timeout exception on writing a message ({} seconds)", WRITE_TIMEOUT_SECONDS);
                         break;
                     } catch (ExecutionException exception) {
                         logger.error("Execution exception on writing a message: ", exception);
@@ -111,21 +110,17 @@ public class ReadWriteWorkload extends SimpleExample {
                 }
                 logger.info("Received a signal to stop writing");
 
-                writeFinished.set(true);
-                if (unreadMessagesCount.get() == 0) {
-                    readLatch.countDown();
-                }
-
                 try {
                     writer.shutdown(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
                 } catch (TimeoutException exception) {
-                    logger.error("Timeout exception during writer termination ({} seconds): ", SHUTDOWN_TIMEOUT_SECONDS,
-                            exception);
+                    logger.error("Timeout exception during writer termination ({} seconds)", SHUTDOWN_TIMEOUT_SECONDS);
                 } catch (ExecutionException exception) {
                     logger.error("Execution exception during writer termination: ", exception);
                 } catch (InterruptedException exception) {
                     logger.error("Writer termination was interrupted: ", exception);
                 }
+
+                writeFinishedLatch.countDown();
                 logger.info("Writing thread finished");
             };
 
@@ -133,7 +128,7 @@ public class ReadWriteWorkload extends SimpleExample {
                 Instant lastCheck = startTime;
                 long lastTimeBytesWritten = 0;
                 try {
-                    while (!readLatch.await(1, TimeUnit.SECONDS)) {
+                    while (!writeFinishedLatch.await(1, TimeUnit.SECONDS)) {
                         long bytesWrittenTotal = bytesWritten.get();
                         long bytesWrittenSinceLastTime = bytesWrittenTotal - lastTimeBytesWritten;
                         Instant now = Instant.now();
@@ -177,11 +172,22 @@ public class ReadWriteWorkload extends SimpleExample {
                 logger.info("Reader initialized");
 
                 try {
-                    readLatch.await();
+                    writeFinishedLatch.await();
+                    logger.info("Reading thread: writing was finished. Waiting for reading to finish...");
+                } catch (InterruptedException exception) {
+                    logger.error("Waiting for writing to finish was interrupted");
+                }
+
+                try {
+                    if (unreadMessagesCount.get() <= 0
+                            || readFinishedLatch.await(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                        logger.info("All messages are read");
+                    } else {
+                        logger.error("Reading was not finished after {} seconds ", SHUTDOWN_TIMEOUT_SECONDS);
+                    }
                 } catch (InterruptedException exception) {
                     logger.error("Waiting for reading to finish was interrupted");
                 }
-                logger.info("All messages are read");
 
                 reader.shutdown().join();
                 logger.info("Reading thread finished");
@@ -208,8 +214,10 @@ public class ReadWriteWorkload extends SimpleExample {
 
             taskExecutor.shutdown();
             try {
-                if (taskExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
+                if (taskExecutor.awaitTermination(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
                     logger.info("All tasks completed successfully");
+                } else {
+                    logger.error("Tasks were not finished in {} seconds", SHUTDOWN_TIMEOUT_SECONDS);
                 }
             } catch (InterruptedException exception) {
                 logger.error("Exception while waiting for tasks termination: ", exception);
@@ -219,7 +227,6 @@ public class ReadWriteWorkload extends SimpleExample {
 
         logger.info("messagesSent: {}\nmessagesReceived: {}\nmessagesCommitted: {}", messagesSent, messagesReceived,
                 messagesCommitted);
-
     }
 
     private static String doubleToStr(double value, int maximumFractionDigits) {
@@ -265,9 +272,9 @@ public class ReadWriteWorkload extends SimpleExample {
                     logger.trace("Message committed");
                     unreadMessagesCount.decrementAndGet();
                     messagesCommitted.incrementAndGet();
-                    if (writeFinished.get() && unreadMessagesCount.get() == 0) {
+                    if (writeFinishedLatch.getCount() == 0 && unreadMessagesCount.get() == 0) {
                         logger.info("All messages were read and committed. Finishing reading.");
-                        readLatch.countDown();
+                        readFinishedLatch.countDown();
                     }
                 });
             }
