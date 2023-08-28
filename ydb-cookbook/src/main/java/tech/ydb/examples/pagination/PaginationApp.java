@@ -1,6 +1,5 @@
 package tech.ydb.examples.pagination;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -8,7 +7,7 @@ import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.examples.App;
 import tech.ydb.examples.AppRunner;
 import tech.ydb.examples.pagination.model.School;
-import tech.ydb.table.Session;
+import tech.ydb.table.SessionRetryContext;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.description.TableColumn;
 import tech.ydb.table.description.TableDescription;
@@ -21,23 +20,30 @@ import tech.ydb.table.values.PrimitiveValue;
 
 
 /**
- *
  * @author Sergey Polovko
+ * <p>
+ * To organize paginated output, we recommend selecting data sorted by primary key sequentially, limiting the number
+ * of rows with the LIMIT keyword.
+ * </p>
  */
 public class PaginationApp implements App {
-
     private static final int MAX_PAGES = 10;
-
     private final String path;
     private final TableClient tableClient;
-    private final Session session;
+    private final SessionRetryContext retryCtx;
 
     PaginationApp(GrpcTransport transport, String path) {
         this.path = path;
         this.tableClient = TableClient.newClient(transport).build();
-        this.session = tableClient.createSession(Duration.ofSeconds(5))
-            .join()
-            .getValue();
+        this.retryCtx = SessionRetryContext.create(tableClient).build();
+    }
+
+    public static void main(String[] args) {
+        AppRunner.run("PaginationApp", PaginationApp::new, args);
+    }
+
+    public static int test(String[] args, String paginationTest) {
+        return AppRunner.safeRun("PaginationApp", PaginationApp::new, args);
     }
 
     @Override
@@ -50,8 +56,6 @@ public class PaginationApp implements App {
 
         System.out.println("--[ Pagination ] -----------------------");
         System.out.println("limit: " + limit);
-
-        // TODO: prepare query here
 
         int page = 0;
         School.Key lastKey = new School.Key("", 0);
@@ -77,15 +81,15 @@ public class PaginationApp implements App {
      */
     private void createTable() {
         TableDescription schoolTable = TableDescription.newBuilder()
-            .addNullableColumn("city", PrimitiveType.Text)
-            .addNullableColumn("number", PrimitiveType.Uint32)
-            .addNullableColumn("address", PrimitiveType.Text)
-            .setPrimaryKeys("city", "number")
-            .build();
+                .addNullableColumn("city", PrimitiveType.Text)
+                .addNullableColumn("number", PrimitiveType.Uint32)
+                .addNullableColumn("address", PrimitiveType.Text)
+                .setPrimaryKeys("city", "number")
+                .build();
 
-        session.createTable(path + "/schools", schoolTable)
-            .join()
-            .expectSuccess("cannot create schools table");
+        retryCtx.supplyStatus(session -> session.createTable(path + "/schools", schoolTable))
+                .join()
+                .expectSuccess("cannot create schools table");
     }
 
     /**
@@ -95,9 +99,9 @@ public class PaginationApp implements App {
         System.out.println("--[ DescribeTable ]---------------------------------------");
 
         String tablePath = path + "/schools";
-        TableDescription tableDesc = session.describeTable(tablePath)
-            .join()
-            .getValue();
+        TableDescription tableDesc = retryCtx.supplyResult(session -> session.describeTable(tablePath))
+                .join()
+                .getValue();
 
         System.out.println(tablePath + ':');
         List<String> primaryKeys = tableDesc.getPrimaryKeys();
@@ -112,74 +116,56 @@ public class PaginationApp implements App {
      * Fills sample table with data in single parameterized data query.
      */
     private void fillTableDataTransaction() {
-        String query = String.format(
-            "\n" +
-            "PRAGMA TablePathPrefix(\"%s\");\n" +
-            "\n" +
-            "DECLARE $schoolsData AS List<Struct<\n" +
-            "    city: Utf8,\n" +
-            "    number: Uint32,\n" +
-            "    address: Utf8>>;\n" +
-            "\n" +
-            "REPLACE INTO schools\n" +
-            "SELECT\n" +
-            "    city,\n" +
-            "    number,\n" +
-            "    address\n" +
-            "FROM AS_TABLE($schoolsData);",
-            path);
+        String query =
+                "DECLARE $schoolsData AS List<Struct<\n" +
+                        "    city: Text,\n" +
+                        "    number: Uint32,\n" +
+                        "    address: Text>>;\n" +
+                        "\n" +
+                        "REPLACE INTO schools\n" +
+                        "SELECT\n" +
+                        "    city,\n" +
+                        "    number,\n" +
+                        "    address\n" +
+                        "FROM AS_TABLE($schoolsData);";
 
         Params params = Params.of("$schoolsData", PaginationData.SCHOOL_DATA);
         TxControl<?> txControl = TxControl.serializableRw().setCommitTx(true);
 
-        session.executeDataQuery(query, txControl, params)
-            .join()
-            .getValue();
+        retryCtx.supplyResult(session -> session.executeDataQuery(query, txControl, params))
+                .join()
+                .getValue();
     }
 
     private List<School> selectPaging(long limit, School.Key lastSchool) {
-        String query = String.format(
-            "\n" +
-            "PRAGMA TablePathPrefix(\"%s\");\n" +
-            "\n" +
-            "DECLARE $limit AS Uint64;\n" +
-            "DECLARE $lastCity AS Utf8;\n" +
-            "DECLARE $lastNumber AS Uint32;\n" +
-            "\n" +
-            "$part1 = (\n" +
-            "    SELECT * FROM schools\n" +
-            "    WHERE city = $lastCity AND number > $lastNumber\n" +
-            "    ORDER BY city, number LIMIT $limit\n" +
-            ");\n" +
-            "\n" +
-            "$part2 = (\n" +
-            "    SELECT * FROM schools\n" +
-            "    WHERE city > $lastCity\n" +
-            "    ORDER BY city, number LIMIT $limit\n" +
-            ");\n" +
-            "$union = (\n" +
-            "    SELECT * FROM $part1\n" +
-            "    UNION ALL\n" +
-            "    SELECT * FROM $part2\n" +
-            ");\n" +
-            "\n" +
-            "SELECT * FROM $union\n" +
-            "ORDER BY city, number LIMIT $limit;",
-            path);
+        String query =
+                "DECLARE $limit AS Uint64;\n" +
+                        "DECLARE $lastCity AS Text;\n" +
+                        "DECLARE $lastNumber AS Uint32;\n" +
+                        "\n" +
+                        "SELECT * FROM schools\n" +
+                        "WHERE (city, number) > ($lastCity, $lastNumber)\n" +
+                        "ORDER BY city, number\n" +
+                        "LIMIT $limit;";
+
+        /* In the query example shown above, the WHERE clause uses a tuple comparison to select the next set of rows.
+         Tuples are compared element by element from left to right, so the order of the fields in the tuple must
+         match the order of the fields in the primary key to avoid table full scan. */
 
         Params params = Params.of(
-            "$limit", PrimitiveValue.newUint64(limit),
-            "$lastCity", PrimitiveValue.newText(lastSchool.getCity()),
-            "$lastNumber", PrimitiveValue.newUint32(lastSchool.getNumber()));
+                "$limit", PrimitiveValue.newUint64(limit),
+                "$lastCity", PrimitiveValue.newText(lastSchool.getCity()),
+                "$lastNumber", PrimitiveValue.newUint32(lastSchool.getNumber()));
 
         TxControl<?> txControl = TxControl.serializableRw().setCommitTx(true);
 
-        DataQueryResult result = session.executeDataQuery(query, txControl, params)
+        DataQueryResult result = retryCtx.supplyResult(session -> session.executeDataQuery(query, txControl, params))
                 .join()
                 .getValue();
 
         ResultSetReader resultSet = result.getResultSet(0);
         List<School> schools = new ArrayList<>(resultSet.getRowCount());
+
         while (resultSet.next()) {
             String city = resultSet.getColumn("city").getText();
             int number = (int) resultSet.getColumn("number").getUint32();
@@ -191,11 +177,6 @@ public class PaginationApp implements App {
 
     @Override
     public void close() {
-        session.close();
         tableClient.close();
-    }
-
-    public static void main(String[] args) {
-        AppRunner.run("PaginationApp", PaginationApp::new, args);
     }
 }
