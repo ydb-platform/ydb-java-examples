@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import tech.ydb.examples.batch_upload.BatchUpload;
 import tech.ydb.examples.bulk_upsert.BulkUpsert;
+import tech.ydb.examples.pagination.PaginationApp;
 import tech.ydb.test.junit5.YdbHelperExtension;
 
 /**
@@ -31,5 +32,10 @@ public class ExamplesTest {
     @Test
     public void testBulkUpsert() {
         Assertions.assertEquals(0, BulkUpsert.test(args()), "Bulk upsert test");
+    }
+
+    @Test
+    public void testPagination() {
+        Assertions.assertEquals(0, PaginationApp.test(args(), "Pagination test"));
     }
 }

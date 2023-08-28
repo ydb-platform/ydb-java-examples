@@ -42,6 +42,10 @@ public class PaginationApp implements App {
         AppRunner.run("PaginationApp", PaginationApp::new, args);
     }
 
+    public static int test(String[] args, String paginationTest) {
+        return AppRunner.safeRun("PaginationApp", PaginationApp::new, args);
+    }
+
     @Override
     public void run() {
         createTable();
@@ -114,9 +118,9 @@ public class PaginationApp implements App {
     private void fillTableDataTransaction() {
         String query =
                 "DECLARE $schoolsData AS List<Struct<\n" +
-                        "    city: Utf8,\n" +
+                        "    city: Text,\n" +
                         "    number: Uint32,\n" +
-                        "    address: Utf8>>;\n" +
+                        "    address: Text>>;\n" +
                         "\n" +
                         "REPLACE INTO schools\n" +
                         "SELECT\n" +
@@ -136,7 +140,7 @@ public class PaginationApp implements App {
     private List<School> selectPaging(long limit, School.Key lastSchool) {
         String query =
                 "DECLARE $limit AS Uint64;\n" +
-                        "DECLARE $lastCity AS Utf8;\n" +
+                        "DECLARE $lastCity AS Text;\n" +
                         "DECLARE $lastNumber AS Uint32;\n" +
                         "\n" +
                         "SELECT * FROM schools\n" +
