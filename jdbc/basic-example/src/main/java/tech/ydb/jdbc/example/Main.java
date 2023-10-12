@@ -17,9 +17,53 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
 
 public class Main {
-    private final static Logger LOG = LoggerFactory.getLogger(Main.class);
+    private final static Logger logger = LoggerFactory.getLogger(Main.class);
+
+    public static void main(String[] args) {
+        // Enable redirect Java Util Logging to SLF4J
+        LogManager.getLogManager().reset();
+        SLF4JBridgeHandler.install();
+        java.util.logging.Logger.getLogger("").setLevel(Level.FINEST);
+
+        if (args.length != 1) {
+            System.err.println("Usage: java -jar jdbc-basic-example.jar <connection_url>");
+            return;
+        }
+
+        String connectionUrl = args[0];
+
+        try (Connection connection = DriverManager.getConnection(connectionUrl)) {
+            try {
+                dropTable(connection);
+            } catch (SQLException ex) {
+                logger.warn("Can't drop table with message {}", ex.getMessage());
+            }
+
+            createTable(connection);
+
+            simpleInsert(connection);
+            select(connection);
+            assertRowsCount(2, selectCount(connection));
+
+            batchInsert(connection);
+            select(connection);
+            assertRowsCount(4, selectCount(connection));
+
+            updateInTransaction(connection);
+            select(connection);
+            assertRowsCount(4, selectCount(connection));
+
+            deleteEmpty(connection);
+            select(connection);
+            assertRowsCount(2, selectCount(connection));
+
+        } catch (SQLException e) {
+            logger.error("JDBC Example problem", e);
+        }
+    }
+
     private static void dropTable(Connection connection) throws SQLException {
-        LOG.info("Trying to drop table...");
+        logger.info("Trying to drop table...");
 
         try (Statement statement = connection.createStatement()) {
             statement.execute("DROP TABLE jdbc_basic_example");
@@ -27,7 +71,7 @@ public class Main {
     }
 
     private static void createTable(Connection connection) throws SQLException {
-        LOG.info("Creating table table jdbc_basic_example");
+        logger.info("Creating table table jdbc_basic_example");
 
         try (Statement statement = connection.createStatement()) {
             statement.execute(""
@@ -42,19 +86,19 @@ public class Main {
             );
         }
 
-        LOG.info("Table jdbc_basic_example was successfully created.");
+        logger.info("Table jdbc_basic_example was successfully created.");
     }
 
     private static long selectCount(Connection connection) throws SQLException {
         try (Statement statement = connection.createStatement()) {
             try (ResultSet rs = statement.executeQuery("SELECT COUNT(*) AS cnt FROM jdbc_basic_example")) {
                 if (!rs.next()) {
-                    LOG.warn("empty response");
+                    logger.warn("empty response");
                     return 0;
                 }
 
                 long rowsCount = rs.getLong("cnt");
-                LOG.info("Table has {} rows", rowsCount);
+                logger.info("Table has {} rows", rowsCount);
                 return rowsCount;
             }
         }
@@ -64,11 +108,11 @@ public class Main {
         try (Statement statement = connection.createStatement()) {
             try (ResultSet rs = statement.executeQuery("SELECT * FROM jdbc_basic_example")) {
                 while (rs.next()) {
-                    LOG.info("read new row with id {}", rs.getInt("id"));
-                    LOG.info("   text    = {}", rs.getString("c_text"));
-                    LOG.info("   instant = {}", rs.getTimestamp("c_instant"));
-                    LOG.info("   date    = {}", String.valueOf(rs.getDate("c_date")));
-                    LOG.info("   bytes   = {}", rs.getBytes("c_bytes"));
+                    logger.info("read new row with id {}", rs.getInt("id"));
+                    logger.info("   text    = {}", rs.getString("c_text"));
+                    logger.info("   instant = {}", rs.getTimestamp("c_instant"));
+                    logger.info("   date    = {}", String.valueOf(rs.getDate("c_date")));
+                    logger.info("   bytes   = {}", rs.getBytes("c_bytes"));
                 }
             }
         }
@@ -76,7 +120,7 @@ public class Main {
 
 
     private static void simpleInsert(Connection connection) throws SQLException {
-        LOG.info("Inserting 2 rows into table...");
+        logger.info("Inserting 2 rows into table...");
 
         Instant instant = Instant.parse("2023-04-03T12:30:25.000Z");
         byte[] byteArray = { (byte)0x00, (byte)0x23, (byte)0x45, (byte)0x98 };
@@ -101,11 +145,11 @@ public class Main {
             ps.executeUpdate();
         }
 
-        LOG.info("Rows inserted.");
+        logger.info("Rows inserted.");
     }
 
     private static void batchInsert(Connection connection) throws SQLException {
-        LOG.info("Inserting 2 more rows into table...");
+        logger.info("Inserting 2 more rows into table...");
 
         Instant instant = Instant.parse("2002-02-20T13:44:55.123Z");
         byte[] byteArray = { (byte)0x32, (byte)0x00, (byte)0x89, (byte)0x54 };
@@ -133,11 +177,11 @@ public class Main {
             ps.executeBatch();
         }
 
-        LOG.info("Rows inserted.");
+        logger.info("Rows inserted.");
     }
 
     private static void updateInTransaction(Connection connection) throws SQLException {
-        LOG.info("Update some rows in transaction...");
+        logger.info("Update some rows in transaction...");
 
         connection.setAutoCommit(false);
 
@@ -165,7 +209,7 @@ public class Main {
     }
 
     private static void deleteEmpty(Connection connection) throws SQLException {
-        LOG.info("Deleting empty rows from into table...");
+        logger.info("Deleting empty rows from into table...");
 
         try (Statement statement = connection.createStatement()) {
             statement.execute("DELETE FROM jdbc_basic_example WHERE c_instant IS NULL");
@@ -175,49 +219,6 @@ public class Main {
     private static void assertRowsCount(long rowsCount, long expectedRows) {
         if (rowsCount != expectedRows) {
             throw new AssertionError("Unexpected count of rows, expected " + expectedRows + ", but got " + rowsCount);
-        }
-    }
-
-    public static void main(String[] args) {
-        // Enable redirect Java Util Logging to SLF4J
-        LogManager.getLogManager().reset();
-        SLF4JBridgeHandler.install();
-        java.util.logging.Logger.getLogger("").setLevel(Level.FINEST);
-
-        if (args.length != 1) {
-            System.err.println("Usage: java -jar jdbc-basic-example.jar <connection_url>");
-            return;
-        }
-
-        String connectionUrl = args[0];
-
-        try (Connection connection = DriverManager.getConnection(connectionUrl)) {
-            try {
-                dropTable(connection);
-            } catch (SQLException ex) {
-                LOG.warn("Can't drop table with message {}", ex.getMessage());
-            }
-
-            createTable(connection);
-
-            simpleInsert(connection);
-            select(connection);
-            assertRowsCount(2, selectCount(connection));
-
-            batchInsert(connection);
-            select(connection);
-            assertRowsCount(4, selectCount(connection));
-
-            updateInTransaction(connection);
-            select(connection);
-            assertRowsCount(4, selectCount(connection));
-
-            deleteEmpty(connection);
-            select(connection);
-            assertRowsCount(2, selectCount(connection));
-
-        } catch (SQLException e) {
-            LOG.error("JDBC Example problem", e);
         }
     }
 }
