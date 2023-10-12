@@ -19,6 +19,11 @@
         </dependency>
 
         <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>jul-to-slf4j</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>tech.ydb.jdbc</groupId>
             <artifactId>ydb-jdbc-driver-shaded</artifactId>
         </dependency>

@@ -16,11 +16,11 @@
 
     <properties>
         <ydb.jdbc.version>2.0.2</ydb.jdbc.version>
+        <slf4j.version>1.7.25</slf4j.version>
     </properties>
 
     <modules>
         <module>basic-example</module>
-        <module>batch-upsert</module>
     </modules>
 
     <dependencyManagement>
@@ -30,6 +30,12 @@
                  <artifactId>ydb-jdbc-driver-shaded</artifactId>
                  <version>${ydb.jdbc.version}</version>
              </dependency>
+
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>jul-to-slf4j</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
          </dependencies>
     </dependencyManagement>
 </project>

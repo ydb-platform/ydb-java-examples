@@ -1,51 +1,53 @@
 package tech.ydb.jdbc.example;
 
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.logging.Level;
+import java.util.logging.LogManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import tech.ydb.jdbc.exception.YdbExecutionStatusException;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 public class Main {
     private final static Logger LOG = LoggerFactory.getLogger(Main.class);
-    private final static String TABLE_NAME = "jdbc_table_sample";
+    private static void dropTable(Connection connection) throws SQLException {
+        LOG.info("Trying to drop table...");
 
-    private static void dropTable(Connection connection) {
-        LOG.info("Trying to drop table {}", TABLE_NAME);
-
-        String dropSQL = String.format("DROP TABLE %s", TABLE_NAME);
         try (Statement statement = connection.createStatement()) {
-            statement.execute("--jdbc:SCHEME\n" + dropSQL);
-        } catch (YdbExecutionStatusException e) {
-            LOG.info("Failed to drop table {} with code {}", TABLE_NAME, e.getStatusCode());
-        } catch (SQLException e) {
-            LOG.warn("Failed to drop table {}", TABLE_NAME, e);
+            statement.execute("DROP TABLE jdbc_basic_example");
         }
     }
 
     private static void createTable(Connection connection) throws SQLException {
-        LOG.info("Creating table table {}", TABLE_NAME);
-
-        String createSQL = "CREATE TABLE " + TABLE_NAME + "(id Int32, value Text, PRIMARY KEY(id))";
+        LOG.info("Creating table table jdbc_basic_example");
 
         try (Statement statement = connection.createStatement()) {
-            statement.execute("--jdbc:SCHEME\n" + createSQL);
+            statement.execute(""
+                    + "CREATE TABLE jdbc_basic_example ("
+                    + "  id Int32 NOT NULL, "
+                    + "  c_text Text, "
+                    + "  c_instant Timestamp, "
+                    + "  c_date Date, "
+                    + "  c_bytes Bytes, "
+                    + "  PRIMARY KEY(id)"
+                    + ")"
+            );
         }
 
-        LOG.info("Table {} was successfully created.", TABLE_NAME);
+        LOG.info("Table jdbc_basic_example was successfully created.");
     }
 
     private static long selectCount(Connection connection) throws SQLException {
-        String selectSQL = "SELECT count(*) AS cnt FROM " + TABLE_NAME;
-
         try (Statement statement = connection.createStatement()) {
-            try (ResultSet rs = statement.executeQuery(selectSQL)) {
+            try (ResultSet rs = statement.executeQuery("SELECT COUNT(*) AS cnt FROM jdbc_basic_example")) {
                 if (!rs.next()) {
                     LOG.warn("empty response");
                     return 0;
@@ -58,48 +60,130 @@ public class Main {
         }
     }
 
-    private static void simpleUpsert(Connection connection) throws SQLException {
-        LOG.info("Upserting 2 rows into table...");
+    private static void select(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            try (ResultSet rs = statement.executeQuery("SELECT * FROM jdbc_basic_example")) {
+                while (rs.next()) {
+                    LOG.info("read new row with id {}", rs.getInt("id"));
+                    LOG.info("   text    = {}", rs.getString("c_text"));
+                    LOG.info("   instant = {}", rs.getTimestamp("c_instant"));
+                    LOG.info("   date    = {}", String.valueOf(rs.getDate("c_date")));
+                    LOG.info("   bytes   = {}", rs.getBytes("c_bytes"));
+                }
+            }
+        }
+    }
 
-        String upsertSQL = "UPSERT INTO " + TABLE_NAME + " (id, value) values (?, ?)";
 
-        try (PreparedStatement ps = connection.prepareStatement(upsertSQL)) {
+    private static void simpleInsert(Connection connection) throws SQLException {
+        LOG.info("Inserting 2 rows into table...");
+
+        Instant instant = Instant.parse("2023-04-03T12:30:25.000Z");
+        byte[] byteArray = { (byte)0x00, (byte)0x23, (byte)0x45, (byte)0x98 };
+
+        try (PreparedStatement ps = connection.prepareStatement(
+                "INSERT INTO jdbc_basic_example (id, c_text, c_instant, c_date, c_bytes) VALUES (?, ?, ?, ?, ?)"
+        )) {
+            // Insert row with data
             ps.setInt(1, 1);
-            ps.setString(2, "value-1");
+            ps.setString(2, "Text one");
+            ps.setTimestamp(3, Timestamp.from(instant));
+            ps.setDate(4, new Date(instant.toEpochMilli()));
+            ps.setBytes(5, byteArray);
             ps.executeUpdate();
 
+            // Insert row without data - all columns except id are NULL
             ps.setInt(1, 2);
-            ps.setString(2, "value-2");
+            ps.setString(2, null);
+            ps.setTimestamp(3, null);
+            ps.setDate(4, null);
+            ps.setBytes(5, null);
             ps.executeUpdate();
         }
 
-        LOG.info("Rows upserted.");
+        LOG.info("Rows inserted.");
     }
 
-    private static void batchUpsert(Connection connection) throws SQLException {
-        LOG.info("Upserting 2 more rows into table...");
+    private static void batchInsert(Connection connection) throws SQLException {
+        LOG.info("Inserting 2 more rows into table...");
 
-        String batchUpsertSQL = ""
-                + "DECLARE $values AS List<Struct<p1:Int32, p2:Text>>;\n"
-                + "$mapper = ($row) -> (AsStruct($row.p1 as id, $row.p2 as value));\n"
-                + "UPSERT INTO " + TABLE_NAME + " SELECT * FROM AS_TABLE(ListMap($values, $mapper))";
+        Instant instant = Instant.parse("2002-02-20T13:44:55.123Z");
+        byte[] byteArray = { (byte)0x32, (byte)0x00, (byte)0x89, (byte)0x54 };
 
-        try (PreparedStatement ps = connection.prepareStatement(batchUpsertSQL)) {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "INSERT INTO jdbc_basic_example (id, c_text, c_instant, c_date, c_bytes) VALUES (?, ?, ?, ?, ?)"
+        )) {
+            // Add row with data to batch
             ps.setInt(1, 3);
-            ps.setString(2, "value-3");
+            ps.setString(2, "Other text");
+            ps.setTimestamp(3, Timestamp.from(instant));
+            ps.setDate(4, new Date(instant.toEpochMilli()));
+            ps.setBytes(5, byteArray);
             ps.addBatch();
 
+            // Add row without data to batch
             ps.setInt(1, 4);
-            ps.setString(2, "value-4");
+            ps.setString(2, null);
+            ps.setTimestamp(3, null);
+            ps.setDate(4, null);
+            ps.setBytes(5, null);
             ps.addBatch();
 
+            // Execute batch
             ps.executeBatch();
         }
 
-        LOG.info("Rows upserted.");
+        LOG.info("Rows inserted.");
+    }
+
+    private static void updateInTransaction(Connection connection) throws SQLException {
+        LOG.info("Update some rows in transaction...");
+
+        connection.setAutoCommit(false);
+
+        try (PreparedStatement ps = connection.prepareStatement(
+                "UPDATE jdbc_basic_example SET c_text = ? WHERE id = ?"
+        )) {
+            ps.setString(1, "Updated text");
+            ps.setInt(2, 1);
+            ps.executeUpdate();
+
+            ps.setString(1, "New text");
+            ps.setInt(2, 2);
+            ps.executeUpdate();
+
+            connection.commit();
+
+            ps.setString(1, "Old text");
+            ps.setInt(2, 1);
+            ps.executeUpdate();
+
+            connection.rollback();
+        } finally {
+            connection.setAutoCommit(true);
+        }
+    }
+
+    private static void deleteEmpty(Connection connection) throws SQLException {
+        LOG.info("Deleting empty rows from into table...");
+
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("DELETE FROM jdbc_basic_example WHERE c_instant IS NULL");
+        }
+    }
+
+    private static void assertRowsCount(long rowsCount, long expectedRows) {
+        if (rowsCount != expectedRows) {
+            throw new AssertionError("Unexpected count of rows, expected " + expectedRows + ", but got " + rowsCount);
+        }
     }
 
     public static void main(String[] args) {
+        // Enable redirect Java Util Logging to SLF4J
+        LogManager.getLogManager().reset();
+        SLF4JBridgeHandler.install();
+        java.util.logging.Logger.getLogger("").setLevel(Level.FINEST);
+
         if (args.length != 1) {
             System.err.println("Usage: java -jar jdbc-basic-example.jar <connection_url>");
             return;
@@ -108,18 +192,30 @@ public class Main {
         String connectionUrl = args[0];
 
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
-            dropTable(connection);
+            try {
+                dropTable(connection);
+            } catch (SQLException ex) {
+                LOG.warn("Can't drop table with message {}", ex.getMessage());
+            }
+
             createTable(connection);
 
-            simpleUpsert(connection);
+            simpleInsert(connection);
+            select(connection);
+            assertRowsCount(2, selectCount(connection));
 
-            long rowsCount = selectCount(connection);
-            assert(rowsCount == 2);
+            batchInsert(connection);
+            select(connection);
+            assertRowsCount(4, selectCount(connection));
 
-            batchUpsert(connection);
+            updateInTransaction(connection);
+            select(connection);
+            assertRowsCount(4, selectCount(connection));
 
-            rowsCount = selectCount(connection);
-            assert(rowsCount == 4);
+            deleteEmpty(connection);
+            select(connection);
+            assertRowsCount(2, selectCount(connection));
+
         } catch (SQLException e) {
             LOG.error("JDBC Example problem", e);
         }
