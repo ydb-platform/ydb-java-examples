@@ -7,7 +7,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import org.apache.logging.log4j.jul.Log4jBridgeHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -101,8 +100,6 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        Log4jBridgeHandler.install(true, "tech.ydb", true);
-
         if (args.length != 1) {
             System.err.println("Usage: java -jar jdbc-basic-example.jar <connection_url>");
             return;

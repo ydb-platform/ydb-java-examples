@@ -19,13 +19,8 @@
         </dependency>
 
         <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-jul</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>tech.ydb</groupId>
-            <artifactId>ydb-jdbc-driver</artifactId>
+            <groupId>tech.ydb.jdbc</groupId>
+            <artifactId>ydb-jdbc-driver-shaded</artifactId>
         </dependency>
     </dependencies>
 

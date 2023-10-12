@@ -11,7 +11,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.logging.log4j.jul.Log4jBridgeHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -159,8 +158,6 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        Log4jBridgeHandler.install(true, "tech.ydb", false);
-
         if (args.length != 1) {
             System.err.println("Usage: java -jar jdbc-batch-upsert.jar <connection_url>");
             return;
