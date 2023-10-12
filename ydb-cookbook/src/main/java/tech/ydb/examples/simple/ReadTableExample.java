@@ -7,6 +7,7 @@ import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.examples.SimpleExample;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
+import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.settings.ReadTableSettings;
 import tech.ydb.table.transaction.TxControl;
 import tech.ydb.table.values.PrimitiveValue;
@@ -37,7 +38,9 @@ public class ReadTableExample extends SimpleExample {
             .toKeyExclusive(PrimitiveValue.newUint32(25))
             .build();
 
-        session.readTable(tablePath, settings).start(resultSet -> {
+        session.executeReadTable(tablePath, settings).start(part -> {
+            ResultSetReader resultSet = part.getResultSetReader();
+
             // we are going to read a lot of data, so map column names to indexes
             // outside of the loop to avoid overhead on each loop iteration
             int keyIdx = resultSet.getColumnIndex("key");
