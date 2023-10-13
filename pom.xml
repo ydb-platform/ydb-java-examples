@@ -18,7 +18,7 @@
         <log4j.version>2.20.0</log4j.version>
         <jcommander.version>1.82</jcommander.version>
 
-        <ydb.sdk.version>2.1.0</ydb.sdk.version>
+        <ydb.sdk.version>2.1.7</ydb.sdk.version>
     </properties>
 
     <modules>
@@ -27,6 +27,7 @@
         <module>basic_example</module>
         <module>ydb-cookbook</module>
         <module>url-shortener-demo</module>
+        <module>jdbc</module>
     </modules>
 
     <dependencyManagement>
