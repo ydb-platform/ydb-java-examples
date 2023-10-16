@@ -28,6 +28,7 @@
         <module>ydb-cookbook</module>
         <module>url-shortener-demo</module>
         <module>jdbc</module>
+        <module>coordination</module>
     </modules>
 
     <dependencyManagement>
