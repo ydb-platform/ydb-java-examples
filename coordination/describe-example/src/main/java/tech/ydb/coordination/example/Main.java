@@ -48,8 +48,11 @@ public class Main {
 
                 List<CompletableFuture<Status>> workers = new ArrayList<>();
 
+                workers.add(new CompletableFuture<>());
+                transport.getScheduler().schedule(() -> workers.get(0).complete(Status.SUCCESS), 120, TimeUnit.SECONDS);
+
                 // Lock 20 for 10 seconds in 1 second
-                workers.add(scheduleAcquireSemaphore(client, transport.getScheduler(), 1, 10, 20));
+//                workers.add(scheduleAcquireSemaphore(client, transport.getScheduler(), 1, 10, 20));
 //                // Lock 30 for 15 seconds in 2 second
 //                workers.add(scheduleAcquireSemaphore(client, transport.getScheduler(), 2, 10, 30));
 //                // Lock 10 for 5 seconds in 5 second
