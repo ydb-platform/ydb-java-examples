@@ -131,6 +131,7 @@ public class Main {
 
     private static CoordinationSessionNew.CoordinationSemaphore acquire(CoordinationSessionNew session, int count) {
         while (true) {
+            logger.info("try accept semaphore in session {}", session.getId());
             Result<CoordinationSessionNew.CoordinationSemaphore> result = session
                     .acquireSemaphore(SEMAPHORE_NAME, count, ACQUIRE_TIMEOUT).join();
 
@@ -171,7 +172,6 @@ public class Main {
                     return;
                 }
 
-                logger.info("try accept semaphore");
                 final CoordinationSessionNew.CoordinationSemaphore semaphore = acquire(session, count);
                 logger.info("accepted semaphore");
                 scheduler.schedule(() -> {
@@ -182,9 +182,11 @@ public class Main {
                             return;
                         }
 
+                        logger.info("try release semaphore in session {}", session.getId());
                         release(session, semaphore);
                         session.close();
 
+                        logger.info("complete work");
                         workFuture.complete(Status.SUCCESS);
                     });
                 }, duration, TimeUnit.SECONDS);
