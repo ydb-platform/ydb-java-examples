@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -43,16 +44,16 @@ public class Main {
             createPath(client);
             createSemaphore(client);
 
-            try (CoordinationSessionNew session = describeSemaphore(client)) {
+            try (CoordinationSessionNew session = describeSemaphore(client, transport.getScheduler())) {
                 logger.info("session {} is waiting for semaphore changing", session.getId());
 
                 List<CompletableFuture<Status>> workers = new ArrayList<>();
 
-                workers.add(new CompletableFuture<>());
-                transport.getScheduler().schedule(() -> workers.get(0).complete(Status.SUCCESS), 120, TimeUnit.SECONDS);
+//                workers.add(new CompletableFuture<>());
+//                transport.getScheduler().schedule(() -> workers.get(0).complete(Status.SUCCESS), 10, TimeUnit.SECONDS);
 
                 // Lock 20 for 10 seconds in 1 second
-//                workers.add(scheduleAcquireSemaphore(client, transport.getScheduler(), 1, 10, 20));
+                workers.add(scheduleAcquireSemaphore(client, transport.getScheduler(), 1, 10, 20));
 //                // Lock 30 for 15 seconds in 2 second
 //                workers.add(scheduleAcquireSemaphore(client, transport.getScheduler(), 2, 10, 30));
 //                // Lock 10 for 5 seconds in 5 second
@@ -94,7 +95,7 @@ public class Main {
         }
     }
 
-    private static CoordinationSessionNew describeSemaphore(CoordinationClient client) {
+    private static CoordinationSessionNew describeSemaphore(CoordinationClient client, ExecutorService service) {
         final String fullPath = client.getDatabase() + PATH;
         CoordinationSessionNew session = client.createSession(fullPath, CREATE_TIMEOUT).join();
 
@@ -106,7 +107,7 @@ public class Main {
                         logger.info("session {} got describe semaphore changed with data {} and owners {}",
                                 session.getId(), changed.isDataChanged(), changed.isOwnersChanged());
                         //
-                        describeRunnable[0].run();
+                        service.execute(describeRunnable[0]);
                     }
             ).join();
 
@@ -123,6 +124,8 @@ public class Main {
                 }
             }
         };
+
+        service.execute(describeRunnable[0]);
         return session;
     }
 
