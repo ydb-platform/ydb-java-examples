@@ -2,7 +2,7 @@
 <Configuration status="WARN" shutdownHook="disable">
     <Appenders>
         <Console name="Console" target="SYSTEM_OUT">
-            <PatternLayout pattern="[%level] %d{HH:mm:ss.SSS} %logger - %msg%n"/>
+            <PatternLayout pattern="[%level] %d{HH:mm:ss.SSS} [%t] %logger - %msg%n"/>
         </Console>
     </Appenders>
 
