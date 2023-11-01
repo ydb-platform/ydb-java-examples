@@ -8,24 +8,29 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import tech.ydb.coordination.CoordinationClient;
 import tech.ydb.coordination.CoordinationSession;
+import tech.ydb.coordination.SemaphoreLease;
+import tech.ydb.coordination.description.SemaphoreChangedEvent;
+import tech.ydb.coordination.description.SemaphoreDescription;
+import tech.ydb.coordination.description.SemaphoreWatcher;
 import tech.ydb.coordination.settings.CoordinationNodeSettings;
+import tech.ydb.coordination.settings.DescribeSemaphoreMode;
 import tech.ydb.coordination.settings.DropCoordinationNodeSettings;
-import tech.ydb.coordination.settings.SemaphoreDescription;
-import tech.ydb.coordination.settings.SemaphoreSession;
+import tech.ydb.coordination.settings.WatchSemaphoreMode;
 import tech.ydb.core.Result;
 import tech.ydb.core.Status;
+import tech.ydb.core.StatusCode;
 import tech.ydb.core.grpc.GrpcTransport;
 
 public class Main {
     private final static Logger logger = LoggerFactory.getLogger(Main.class);
 
-    private final static Duration CREATE_TIMEOUT = Duration.ofSeconds(5);
     private final static Duration ACQUIRE_TIMEOUT = Duration.ofSeconds(2);
 
     private final static String PATH = "/example/path";
@@ -44,25 +49,23 @@ public class Main {
             createPath(client);
             createSemaphore(client);
 
-            try (CoordinationSession session = describeSemaphore(client, transport.getScheduler())) {
-                logger.info("session {} is waiting for semaphore changing", session.getId());
+            Runnable stopDescribe = scheduleDescribe(client,  transport.getScheduler());
 
-                List<CompletableFuture<Status>> workers = new ArrayList<>();
+            logger.info("create workers are finished");
+            List<CompletableFuture<Status>> workers = new ArrayList<>();
 
-//                workers.add(new CompletableFuture<>());
-//                transport.getScheduler().schedule(() -> workers.get(0).complete(Status.SUCCESS), 10, TimeUnit.SECONDS);
+            // Lock 20 for 10 seconds in 1 second
+            workers.add(scheduleWorker(client, transport.getScheduler(), 1, 10, 20));
+            // Lock 30 for 15 seconds in 2 second
+            workers.add(scheduleWorker(client, transport.getScheduler(), 2, 10, 30));
+            // Lock 10 for 5 seconds in 5 second
+            workers.add(scheduleWorker(client, transport.getScheduler(), 5, 5, 10));
 
-                // Lock 20 for 10 seconds in 1 second
-                workers.add(scheduleAcquireSemaphore(client, transport.getScheduler(), 1, 10, 20));
-//                // Lock 30 for 15 seconds in 2 second
-//                workers.add(scheduleAcquireSemaphore(client, transport.getScheduler(), 2, 10, 30));
-//                // Lock 10 for 5 seconds in 5 second
-//                workers.add(scheduleAcquireSemaphore(client, transport.getScheduler(), 5, 5, 10));
-//
-                workers.forEach(CompletableFuture::join);
+            logger.info("all workers are finished");
+            workers.forEach(CompletableFuture::join);
+            logger.info("all workers are finished");
 
-                logger.info("all workers are finished");
-            }
+            stopDescribe.run();
 
             deleteSemaphore(client);
             dropPath(client);
@@ -83,7 +86,7 @@ public class Main {
 
     private static void createSemaphore(CoordinationClient client) {
         final String fullPath = client.getDatabase() + PATH;
-        try (CoordinationSession session = client.createSession(fullPath, CREATE_TIMEOUT).join()) {
+        try (CoordinationSession session = client.createSession(fullPath).join()) {
             Status createStatus = session.createSemaphore(SEMAPHORE_NAME, SEMAPHORE_LIMIT).join();
             logger.info("semaphore {} in {} created with status {}", SEMAPHORE_NAME, fullPath, createStatus);
         }
@@ -91,75 +94,65 @@ public class Main {
 
     private static void deleteSemaphore(CoordinationClient client) {
         final String fullPath = client.getDatabase() + PATH;
-        try (CoordinationSession session = client.createSession(fullPath, CREATE_TIMEOUT).join()) {
+        try (CoordinationSession session = client.createSession(fullPath).join()) {
             Status createStatus = session.deleteSemaphore(SEMAPHORE_NAME, false).join();
             logger.info("semaphore {} in {} deleted with status {}", SEMAPHORE_NAME, fullPath, createStatus);
         }
     }
 
-    private static CoordinationSession describeSemaphore(CoordinationClient client, ExecutorService service) {
+    private static void describeSemaphore(CoordinationClient client, AtomicBoolean isStopped) {
         final String fullPath = client.getDatabase() + PATH;
-        CoordinationSession session = client.createSession(fullPath, CREATE_TIMEOUT).join();
 
-        final Runnable[] describeRunnable = new Runnable[1];
-        describeRunnable[0] = () -> {
-            Result<SemaphoreDescription> result = session.describeSemaphore(SEMAPHORE_NAME,
-                    CoordinationSession.DescribeMode.WITH_OWNERS_AND_WAITERS,
-                    CoordinationSession.WatchMode.WATCH_DATA_AND_OWNERS, (changed) -> {
-                        logger.info("session {} got describe semaphore changed with data {} and owners {}",
-                                session.getId(), changed.isDataChanged(), changed.isOwnersChanged());
-                        //
-                        service.execute(describeRunnable[0]);
-                    }
-            ).join();
+        try (CoordinationSession session = client.createSession(fullPath).join()) {
+            logger.info("session {} is waiting for semaphore changing", session.getId());
+            while (!isStopped.get()) {
+                Result<SemaphoreWatcher> result = session.describeAndWatchSemaphore(SEMAPHORE_NAME,
+                        DescribeSemaphoreMode.WITH_OWNERS_AND_WAITERS,
+                        WatchSemaphoreMode.WATCH_DATA_AND_OWNERS
+                ).join();
 
-            logger.info("session {} got describe semaphore result with status {}", session.getId(), result.getStatus());
-            if (result.isSuccess()) {
-                SemaphoreDescription description = result.getValue();
+                if (!result.isSuccess()) {
+                    logger.warn("got wrong status {} in describe", result.getStatus());
+                    continue;
+                }
+
+                SemaphoreWatcher watcher = result.getValue();
+
+                SemaphoreDescription description = watcher.getDescription();
                 logger.info("   semaphore name  -> {}", description.getName());
                 logger.info("   semaphore limit -> {}", description.getLimit());
                 logger.info("   semaphore count -> {}", description.getCount());
 
                 logger.info("   semaphore owners:");
-                for (SemaphoreSession owner : description.getOwnersList()) {
+                for (SemaphoreDescription.Session owner : description.getOwnersList()) {
                     logger.info("      session {} with count {}", owner.getId(), owner.getCount());
                 }
-            }
-        };
 
-        service.execute(describeRunnable[0]);
-        return session;
+                SemaphoreChangedEvent changed = watcher.getChangedFuture().join();
+                logger.info("got semaphore shanged event {}", changed);
+            }
+        }
     }
 
-    private static CoordinationSession.CoordinationSemaphore acquire(CoordinationSession session, int count) {
+    private static Runnable scheduleDescribe(CoordinationClient client, ExecutorService executor) {
+        final AtomicBoolean isStopped = new AtomicBoolean(false);
+        executor.execute(() -> describeSemaphore(client, isStopped));
+        return () -> isStopped.set(true);
+    }
+
+    private static SemaphoreLease acquireSemaphore(CoordinationSession session, int count) {
         while (true) {
             logger.info("try accept semaphore in session {}", session.getId());
-            Result<CoordinationSession.CoordinationSemaphore> result = session
-                    .acquireSemaphore(SEMAPHORE_NAME, count, ACQUIRE_TIMEOUT).join();
+            SemaphoreLease lease = session.acquireSemaphore(SEMAPHORE_NAME, count, ACQUIRE_TIMEOUT).join();
+            logger.info("session {} got acquire semaphore with status {}", session.getId(), lease.isValid());
 
-            logger.info("session {} got acquire semaphore with status {}",
-                    session.getId(), result.getStatus());
-
-            if (result.isSuccess()) {
-                return result.getValue();
+            if (lease.isValid()) {
+                return lease;
             }
         }
     }
 
-    private static Boolean release(CoordinationSession session, CoordinationSession.CoordinationSemaphore semaphore) {
-        while (true) {
-            Result<Boolean> result = semaphore.release().join();
-
-            logger.info("session {} got release semaphore with status {}",
-                    session.getId(), result.getStatus());
-
-            if (result.isSuccess()) {
-                return result.getValue();
-            }
-        }
-    }
-
-    private static CompletableFuture<Status> scheduleAcquireSemaphore(
+    private static CompletableFuture<Status> scheduleWorker(
             CoordinationClient client, ScheduledExecutorService scheduler, int delay, int duration, int count) {
 
         final CompletableFuture<Status> workFuture = new CompletableFuture<>();
@@ -167,33 +160,16 @@ public class Main {
 
         scheduler.schedule(() -> {
             logger.info("create new session for work");
-            client.createSession(fullPath, CREATE_TIMEOUT).whenComplete((session, th) -> {
-                if (th != null || session == null) {
-                    logger.error("create session problem", th);
-                    workFuture.completeExceptionally(th);
-                    return;
-                }
+            final CoordinationSession session = client.createSession(fullPath).join();
+            final SemaphoreLease lease = acquireSemaphore(session, count);
 
-                final CoordinationSession.CoordinationSemaphore semaphore = acquire(session, count);
-                scheduler.schedule(() -> {
-                    logger.error("create session problem", th);
-                    semaphore.release().whenComplete((status, th2) -> {
-                        if (th2 != null || status == null) {
-                            workFuture.completeExceptionally(th2);
-                            session.close();
-                            return;
-                        }
+            scheduler.schedule(() -> {
+                Boolean result = lease.release().join();
+                logger.info("session {} got release semaphore with status {}", session.getId(), result);
+                session.close();
 
-                        logger.info("try release semaphore in session {}", session.getId());
-                        release(session, semaphore);
-                        session.close();
-
-                        logger.info("complete work");
-                        workFuture.complete(Status.SUCCESS);
-                    });
-                }, duration, TimeUnit.SECONDS);
-            });
-
+                workFuture.complete(result ? Status.SUCCESS : Status.of(StatusCode.INTERNAL_ERROR));
+            }, duration, TimeUnit.SECONDS);
         }, delay, TimeUnit.SECONDS);
 
         return workFuture;
