@@ -1,13 +1,11 @@
 
 package tech.ydb.example;
 
-import java.util.concurrent.CompletableFuture;
-
-import tech.ydb.core.Result;
 import tech.ydb.core.auth.StaticCredentials;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.table.SessionRetryContext;
 import tech.ydb.table.TableClient;
+import tech.ydb.table.query.DataQueryResult;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.transaction.TxControl;
 
@@ -29,23 +27,20 @@ public final class Main {
         // Use credentials auth provider with username and password
         StaticCredentials authProvider = new StaticCredentials(username, password);
 
-        try ( GrpcTransport transport = GrpcTransport.forConnectionString(connectionString)
-                .withAuthProvider(authProvider) // Or this method could not be called at all
+        try (GrpcTransport transport = GrpcTransport.forConnectionString(connectionString)
+                .withAuthProvider(authProvider)
                 .build()) {
-            try ( TableClient tableClient = TableClient
-                    .newClient(transport)
-                    .build()) {
+            try (TableClient tableClient = TableClient.newClient(transport).build()) {
                 SessionRetryContext retryCtx = SessionRetryContext.create(tableClient).build();
 
-                retryCtx.supplyResult(session -> {
-                    ResultSetReader rsReader = session.executeDataQuery("SELECT 1;", TxControl.serializableRw())
-                            .join().getValue().getResultSet(0);
+                DataQueryResult dataQueryResult = retryCtx.supplyResult(
+                        session -> session.executeDataQuery("SELECT 1;", TxControl.serializableRw())
+                ).join().getValue();
 
-                    rsReader.next();
+                ResultSetReader rsReader = dataQueryResult.getResultSet(0);
+                while (rsReader.next()) {
                     System.out.println(rsReader.getColumn(0).getInt32());
-
-                    return CompletableFuture.completedFuture(Result.success(Boolean.TRUE));
-                }).join();
+                }
             }
         }
     }
