@@ -41,7 +41,7 @@ public final class App implements Runnable, AutoCloseable {
     private final String database;
     private final SessionRetryContext retryCtx;
 
-    private App(String connectionString) {
+    App(String connectionString) {
         this.transport = GrpcTransport.forConnectionString(connectionString)
                 .withAuthProvider(CloudAuthHelper.getAuthProviderFromEnviron())
                 .build();
