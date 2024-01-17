@@ -38,4 +38,16 @@
             </dependency>
          </dependencies>
     </dependencyManagement>
+
+    <profiles>
+        <profile>
+            <id>jdk17-examples</id>
+            <activation>
+                <jdk>[17</jdk>
+            </activation>
+            <modules>
+                <module>spring-data-jpa</module>
+            </modules>
+        </profile>
+    </profiles>
 </project>
