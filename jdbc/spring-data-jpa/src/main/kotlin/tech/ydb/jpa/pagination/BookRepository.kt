@@ -1,6 +1,7 @@
 package tech.ydb.jpa.pagination
 
 import org.springframework.data.domain.*
+import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.ListCrudRepository
 import org.springframework.data.repository.query.Param
 
@@ -15,6 +16,11 @@ interface BookRepository : ListCrudRepository<Book, String> {
      * @param title
      * @param pageable
      */
+    @Query(
+            value = "SELECT * FROM books WHERE title LIKE %:title% ORDER BY books.publication_date",
+            countQuery = "SELECT count(*) FROM books WHERE title LIKE %:title% ",
+            nativeQuery = true
+    )
     fun findByTitleContainsOrderByPublicationDate(@Param("title") title: String, pageable: Pageable): Page<Book>
 
     /**
@@ -24,6 +30,10 @@ interface BookRepository : ListCrudRepository<Book, String> {
      * @param title
      * @param pageable
      */
+    @Query(
+            value = "SELECT * FROM books WHERE title LIKE %:title% ORDER BY books.publication_date",
+            nativeQuery = true
+    )
     fun findBooksByTitleContainsOrderByPublicationDate(title: String, pageable: Pageable): Slice<Book>
 
     /**

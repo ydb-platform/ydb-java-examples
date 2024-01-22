@@ -21,6 +21,7 @@
 
     <modules>
         <module>basic-example</module>
+        <module>spring-data-jpa-v5</module>
     </modules>
 
     <dependencyManagement>
