@@ -10,10 +10,8 @@
     <name>Spring Data JPA Example Hibernate 5</name>
     <description>Basic example for SpringBoot3 and Hibernate 6</description>
     <properties>
-        <maven.compiler.release>8</maven.compiler.release>
         <kotlin.version>1.9.22</kotlin.version>
         <hibernate.ydb.dialect.version>0.9.1</hibernate.ydb.dialect.version>
-        <ydb.jdbc.driver.version>2.0.5</ydb.jdbc.driver.version>
         <spring.boot.version>2.5.7</spring.boot.version>
     </properties>
     <dependencies>
@@ -44,8 +42,7 @@
         </dependency>
         <dependency>
             <groupId>tech.ydb.jdbc</groupId>
-            <artifactId>ydb-jdbc-driver</artifactId>
-            <version>${ydb.jdbc.driver.version}</version>
+            <artifactId>ydb-jdbc-driver-shaded</artifactId>
         </dependency>
         <dependency>
             <groupId>com.github.javafaker</groupId>
