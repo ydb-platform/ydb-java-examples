@@ -1,6 +1,7 @@
 package tech.ydb.examples.simple;
 
 import java.time.Duration;
+
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.examples.SimpleExample;
 import tech.ydb.table.Session;
@@ -8,7 +9,6 @@ import tech.ydb.table.TableClient;
 import tech.ydb.table.description.TableColumn;
 import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.settings.AlterTableSettings;
-import tech.ydb.table.values.OptionalType;
 import tech.ydb.table.values.PrimitiveType;
 
 
@@ -42,8 +42,8 @@ public class AlterTable extends SimpleExample {
 
         session.alterTable(tablePath, new AlterTableSettings()
                 .setTraceId("some-trace-id")
-                .addColumn("name", OptionalType.of(PrimitiveType.Text))
-                .addColumn("age", OptionalType.of(PrimitiveType.Uint32))
+                .addNullableColumn("name", PrimitiveType.Text)
+                .addNullableColumn("age", PrimitiveType.Uint32)
                 .dropColumn("value")
             ).join().expectSuccess("cannot alter table");
 
