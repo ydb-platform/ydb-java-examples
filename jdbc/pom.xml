@@ -15,12 +15,13 @@
     <packaging>pom</packaging>
 
     <properties>
-        <ydb.jdbc.version>2.0.2</ydb.jdbc.version>
-        <slf4j.version>1.7.25</slf4j.version>
+        <ydb.jdbc.version>2.0.6</ydb.jdbc.version>
+        <slf4j.version>1.7.36</slf4j.version>
     </properties>
 
     <modules>
         <module>basic-example</module>
+        <module>spring-data-jpa-v5</module>
     </modules>
 
     <dependencyManagement>
@@ -38,4 +39,16 @@
             </dependency>
          </dependencies>
     </dependencyManagement>
+
+    <profiles>
+        <profile>
+            <id>jdk17-examples</id>
+            <activation>
+                <jdk>[17</jdk>
+            </activation>
+            <modules>
+                <module>spring-data-jpa</module>
+            </modules>
+        </profile>
+    </profiles>
 </project>
