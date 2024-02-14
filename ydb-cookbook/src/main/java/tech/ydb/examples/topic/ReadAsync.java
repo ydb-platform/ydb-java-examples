@@ -12,6 +12,7 @@ import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.examples.SimpleExample;
 import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.read.AsyncReader;
+import tech.ydb.topic.read.DecompressionException;
 import tech.ydb.topic.read.Message;
 import tech.ydb.topic.read.PartitionSession;
 import tech.ydb.topic.read.events.DataReceivedEvent;
@@ -76,7 +77,14 @@ public class ReadAsync extends SimpleExample {
             for (Message message : event.getMessages()) {
                 StringBuilder str = new StringBuilder("Message received");
                 if (logger.isTraceEnabled()) {
-                    str.append(": \"").append(new String(message.getData(), StandardCharsets.UTF_8)).append("\"");
+                    byte[] messageData;
+                    try {
+                        messageData = message.getData();
+                    } catch (DecompressionException e) {
+                        logger.warn("Decompression exception while receiving a message: ", e);
+                        messageData = e.getRawData();
+                    }
+                    str.append(": \"").append(new String(messageData, StandardCharsets.UTF_8)).append("\"");
                 }
                 str.append("\n");
                 if (logger.isDebugEnabled()) {

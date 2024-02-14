@@ -1,5 +1,6 @@
 package tech.ydb.examples.topic;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
@@ -8,7 +9,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.examples.SimpleExample;
+import tech.ydb.table.Session;
 import tech.ydb.topic.TopicClient;
+import tech.ydb.topic.read.DecompressionException;
 import tech.ydb.topic.read.Message;
 import tech.ydb.topic.read.SyncReader;
 import tech.ydb.topic.settings.ReaderSettings;
@@ -45,8 +48,16 @@ public class ReadSync extends SimpleExample {
             try {
                 // Reading 5 messages
                 for (int i = 0; i < 5; i++) {
+                    //Session session
                     Message message = reader.receive();
-                    logger.info("Message received: {}", new String(message.getData(), StandardCharsets.UTF_8));
+                    byte[] messageData;
+                    try {
+                        messageData = message.getData();
+                    } catch (DecompressionException e) {
+                        logger.warn("Decompression exception while receiving a message: ", e);
+                        messageData = e.getRawData();
+                    }
+                    logger.info("Message received: {}", new String(messageData, StandardCharsets.UTF_8));
 
                     message.commit()
                             .whenComplete((result, ex) -> {
