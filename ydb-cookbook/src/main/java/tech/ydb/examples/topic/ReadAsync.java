@@ -38,17 +38,15 @@ public class ReadAsync extends SimpleExample {
 
     @Override
     protected void run(GrpcTransport transport, String pathPrefix) {
-        String topicPath = pathPrefix + "topic-java";
-        String consumerName = "consumer1";
 
         try (TopicClient topicClient = TopicClient.newClient(transport)
                 .setCompressionPoolThreadCount(8)
                 .build()) {
 
             ReaderSettings readerSettings = ReaderSettings.newBuilder()
-                    .setConsumerName(consumerName)
+                    .setConsumerName(CONSUMER_NAME)
                     .addTopic(TopicReadSettings.newBuilder()
-                            .setPath(topicPath)
+                            .setPath(TOPIC_NAME)
                             .setReadFrom(Instant.now().minus(Duration.ofHours(24)))
                             .setMaxLag(Duration.ofMinutes(30))
                             .build())
