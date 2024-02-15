@@ -14,7 +14,6 @@ import tech.ydb.liquibase.repository.findByIdOrNull
 import tech.ydb.test.junit5.YdbHelperExtension
 import java.math.BigDecimal
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.*
 
