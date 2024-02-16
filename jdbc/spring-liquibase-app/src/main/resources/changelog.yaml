@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
-      id: "20230904-1"
-      author: "yourName"
+      id: "employee"
+      author: "kurdyukov-kir"
       changes:
         - createTable:
             tableName: employee
