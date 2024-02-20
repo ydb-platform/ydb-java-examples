@@ -40,7 +40,8 @@ public class Main {
             return;
         }
 
-        try (GrpcTransport transport = GrpcTransport.forConnectionString(args[0]).build()) {
+        try (GrpcTransport transport = GrpcTransport.forConnectionString(args[0])
+                .build()) {
             CoordinationClient client = CoordinationClient.newClient(transport);
 
             createPath(client);
@@ -84,7 +85,7 @@ public class Main {
     private static void createSemaphore(CoordinationClient client) {
         final String fullPath = client.getDatabase() + PATH;
         try (CoordinationSession session = client.createSession(fullPath)) {
-            session.start().join();
+            session.connect().join();
             Status createStatus = session.createSemaphore(SEMAPHORE_NAME, SEMAPHORE_LIMIT).join();
             logger.info("semaphore {} in {} created with status {}", SEMAPHORE_NAME, fullPath, createStatus);
         }
@@ -98,7 +99,7 @@ public class Main {
     private static void deleteSemaphore(CoordinationClient client) {
         final String fullPath = client.getDatabase() + PATH;
         try (CoordinationSession session = client.createSession(fullPath)) {
-            session.start().join();
+            session.connect().join();
             Status deleteStatus = session.deleteSemaphore(SEMAPHORE_NAME, false).join();
             logger.info("semaphore {} in {} deleted with status {}", SEMAPHORE_NAME, fullPath, deleteStatus);
         }
@@ -108,10 +109,10 @@ public class Main {
         final String fullPath = client.getDatabase() + PATH;
 
         try (CoordinationSession session = client.createSession(fullPath)) {
-            Long sessionID = session.start().join();
-            logger.info("session {} is waiting for semaphore changing", sessionID);
+            session.connect().join().expectSuccess("can't connect session");
+            logger.info("session {} is waiting for semaphore changing", session);
             while (!isStopped.get()) {
-                Result<SemaphoreWatcher> result = session.describeAndWatchSemaphore(SEMAPHORE_NAME,
+                Result<SemaphoreWatcher> result = session.watchSemaphore(SEMAPHORE_NAME,
                         DescribeSemaphoreMode.WITH_OWNERS_AND_WAITERS,
                         WatchSemaphoreMode.WATCH_DATA_AND_OWNERS
                 ).join();
@@ -133,8 +134,10 @@ public class Main {
                     logger.info("      session {} with count {}", owner.getId(), owner.getCount());
                 }
 
-                SemaphoreChangedEvent changed = watcher.getChangedFuture().join();
-                logger.info("got semaphore shanged event {}", changed);
+                Result<SemaphoreChangedEvent> changed = watcher.getChangedFuture().join();
+                if (changed.isSuccess()) {
+                    logger.info("got semaphore shanged event {}", changed.getValue());
+                }
             }
         }
     }
@@ -145,11 +148,11 @@ public class Main {
         return () -> isStopped.set(true);
     }
 
-    private static SemaphoreLease acquireSemaphore(CoordinationSession session, Long sessionID, int count) {
+    private static SemaphoreLease acquireSemaphore(CoordinationSession session, int count) {
         while (session.getState().isActive()) {
-            logger.info("try accept semaphore in session {}", sessionID);
+            logger.info("try accept semaphore in session {}", session);
             Result<SemaphoreLease> lease = session.acquireSemaphore(SEMAPHORE_NAME, count, ACQUIRE_TIMEOUT).join();
-            logger.info("session {} got acquire semaphore with status {}", sessionID, lease.getStatus());
+            logger.info("session {} got acquire semaphore with status {}", session, lease.getStatus());
 
             if (lease.isSuccess()) {
                 return lease.getValue();
@@ -168,13 +171,13 @@ public class Main {
         scheduler.schedule(() -> {
             logger.info("create new session for work");
             final CoordinationSession session = client.createSession(fullPath);
-            final Long sessionID = session.start().join();
-            final SemaphoreLease lease = acquireSemaphore(session, sessionID, count);
+            session.connect().join().expectSuccess("cannot connect session");
+            final SemaphoreLease lease = acquireSemaphore(session, count);
 
             if (lease != null) {
                 scheduler.schedule(() -> {
                     lease.release().join();
-                    logger.info("session {} got release semaphore", sessionID);
+                    logger.info("session {} got release semaphore", session);
                     session.close();
 
                     workFuture.complete(Status.SUCCESS);
@@ -185,7 +188,7 @@ public class Main {
         return workFuture;
     }
 
-
+/*
     private static void workerExample(CoordinationSession session, int count) {
         while (session.getState().isActive()) {
             Result<SemaphoreLease> result = session.acquireSemaphore(SEMAPHORE_NAME, count, ACQUIRE_TIMEOUT).join();
@@ -253,5 +256,5 @@ public class Main {
             watcher.getChangedFuture().thenRun(() -> describeSemaphoreAsync(session));
         });
     }
-
+*/
 }
