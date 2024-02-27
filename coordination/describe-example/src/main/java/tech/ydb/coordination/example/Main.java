@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import tech.ydb.auth.iam.CloudAuthHelper;
+import tech.ydb.core.Status;
 import tech.ydb.core.grpc.GrpcTransport;
 
 public class Main {
@@ -25,10 +26,10 @@ public class Main {
             app.run();
             logger.info("app example finished succesful");
 
-//            logger.info("run async app example");
-//            AsyncApp asyncApp = new AsyncApp(transport, transport.getScheduler());
-//            Status status = asyncApp.run().join();
-//            logger.info("async app example finished with status {}", status);
+            logger.info("run async app example");
+            AsyncApp asyncApp = new AsyncApp(transport, transport.getScheduler());
+            Status status = asyncApp.run().join();
+            logger.info("async app example finished with status {}", status);
         }
     }
 }
