@@ -23,6 +23,12 @@ public class Main {
             logger.info("run app example");
             App app = new App(transport, transport.getScheduler());
             app.run();
+            logger.info("app example finished succesful");
+
+//            logger.info("run async app example");
+//            AsyncApp asyncApp = new AsyncApp(transport, transport.getScheduler());
+//            Status status = asyncApp.run().join();
+//            logger.info("async app example finished with status {}", status);
         }
     }
 }

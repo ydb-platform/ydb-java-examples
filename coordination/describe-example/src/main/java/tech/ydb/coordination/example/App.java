@@ -46,29 +46,33 @@ public class App {
 
     public void run() {
         createPath();
-        createSemaphore();
+        try {
+            createSemaphore();
+            try {
+                Runnable stopDescribe = scheduleDescribe();
 
-        Runnable stopDescribe = scheduleDescribe();
+                logger.info("create workers are finished");
+                List<CompletableFuture<Status>> workers = new ArrayList<>();
 
-        logger.info("create workers are finished");
-        List<CompletableFuture<Status>> workers = new ArrayList<>();
+                // Lock 20 for 10 seconds in 1 second
+                workers.add(scheduleWorker(1, 10, 20));
+                // Lock 30 for 15 seconds in 2 second
+                workers.add(scheduleWorker(2, 10, 30));
+                // Lock 10 for 5 seconds in 5 second
+                workers.add(scheduleWorker(5, 5, 10));
 
-        // Lock 20 for 10 seconds in 1 second
-        workers.add(scheduleWorker(1, 10, 20));
-        // Lock 30 for 15 seconds in 2 second
-        workers.add(scheduleWorker(2, 10, 30));
-        // Lock 10 for 5 seconds in 5 second
-        workers.add(scheduleWorker(5, 5, 10));
+                logger.info("all workers are finished");
+                workers.forEach(CompletableFuture::join);
+                logger.info("all workers are finished");
 
-        logger.info("all workers are finished");
-        workers.forEach(CompletableFuture::join);
-        logger.info("all workers are finished");
-
-        // stop describe
-        stopDescribe.run();
-
-        deleteSemaphore();
-        dropPath();
+                // stop describe
+                stopDescribe.run();
+            } finally {
+                deleteSemaphore();
+            }
+        } finally {
+            dropPath();
+        }
     }
 
     private void createPath() {
@@ -87,11 +91,6 @@ public class App {
         Status createStatus = session.createSemaphore(SEMAPHORE_NAME, SEMAPHORE_LIMIT).join();
         logger.info("semaphore {} in {} created with status {}", SEMAPHORE_NAME, PATH, createStatus);
         session.stop().join().expectSuccess("cannot stop coordination session");
-
-//        CoordinationSession session = client.createSession(PATH);
-//        CompletableFuture<Status> future = session.start()
-//                .thenCompose(id -> session.createSemaphore(SEMAPHORE_NAME, SEMAPHORE_LIMIT))
-//                .whenComplete((status, th) -> session.close());
     }
 
     private void deleteSemaphore() {
