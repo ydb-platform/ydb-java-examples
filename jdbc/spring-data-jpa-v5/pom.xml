@@ -11,7 +11,7 @@
     <description>Basic example for SpringBoot3 and Hibernate 6</description>
     <properties>
         <kotlin.version>1.9.22</kotlin.version>
-        <hibernate.ydb.dialect.version>0.9.1</hibernate.ydb.dialect.version>
+        <hibernate.ydb.dialect.version>0.9.2</hibernate.ydb.dialect.version>
         <spring.boot.version>2.5.7</spring.boot.version>
     </properties>
     <dependencies>
