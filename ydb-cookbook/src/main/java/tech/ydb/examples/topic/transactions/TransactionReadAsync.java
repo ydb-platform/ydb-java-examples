@@ -147,7 +147,7 @@ public class TransactionReadAsync extends SimpleExample {
 
                 Status updateStatus =  reader.updateOffsetsInTransaction(transaction,
                                 message.getPartitionOffsets(), new UpdateOffsetsInTransactionSettings.Builder().build())
-                        // can't commit transaction without waiting for updateOffsetsInTransaction result
+                        // Do not commit transaction without waiting for updateOffsetsInTransaction result
                         .join();
                 if (!updateStatus.isSuccess()) {
                     logger.error("Couldn't update offsets in transaction: {}", updateStatus);
