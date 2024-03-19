@@ -16,6 +16,7 @@ import tech.ydb.table.transaction.Transaction;
 import tech.ydb.table.transaction.TxControl;
 import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.description.Codec;
+import tech.ydb.topic.settings.SendSettings;
 import tech.ydb.topic.settings.WriterSettings;
 import tech.ydb.topic.write.Message;
 import tech.ydb.topic.write.SyncWriter;
@@ -76,6 +77,8 @@ public class TransactionWriteSync extends SimpleExample {
                         writer.send(
                                 Message.newBuilder()
                                         .setData(messageString.getBytes())
+                                        .build(),
+                                SendSettings.newBuilder()
                                         .setTransaction(transaction)
                                         .build(),
                                 timeoutSeconds,
