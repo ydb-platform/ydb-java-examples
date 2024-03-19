@@ -43,7 +43,6 @@ public class TransactionReadAsync extends SimpleExample {
     private static final int MESSAGES_COUNT = 5;
 
     private final CompletableFuture<Void> messageReceivedFuture = new CompletableFuture<>();
-    private long lastSeqNo = -1;
     private TableClient tableClient;
     private AsyncReader reader;
 
@@ -77,6 +76,14 @@ public class TransactionReadAsync extends SimpleExample {
 
             reader.shutdown().join();
             tableClient.close();
+        }
+    }
+
+    public static void analyzeCommitStatus(Status status) {
+        if (status.isSuccess()) {
+            logger.info("Transaction committed successfully");
+        } else {
+            logger.error("Failed to commit transaction: {}", status);
         }
     }
 
@@ -122,13 +129,6 @@ public class TransactionReadAsync extends SimpleExample {
                 } else {
                     logger.info("Message received. SeqNo={}, offset={}", message.getSeqNo(), message.getOffset());
                 }
-                if (lastSeqNo > message.getSeqNo()) {
-                    logger.error("Received a message with seqNo {}. Previously got a message with seqNo {}",
-                            message.getSeqNo(), lastSeqNo);
-                    messageReceivedFuture.complete(null);
-                } else {
-                    lastSeqNo = message.getSeqNo();
-                }
 
                 // creating session and transaction
                 Result<Session> sessionResult = tableClient.createSession(Duration.ofSeconds(10)).join();
@@ -154,7 +154,9 @@ public class TransactionReadAsync extends SimpleExample {
                     return; // retry or shutdown
                 }
 
-                transaction.commit().join();
+                Status commitStatus = transaction.commit().join();
+                analyzeCommitStatus(commitStatus);
+
                 if (messageCounter.incrementAndGet() >= MESSAGES_COUNT) {
                     logger.info("{} messages committed in transaction. Finishing reading.", MESSAGES_COUNT);
                     messageReceivedFuture.complete(null);

@@ -8,4 +8,6 @@
 **/.idea/
 **/*.iml
 **/*.iws
-ydb-cookbook/logs/app.log
+
+# Log file
+*.log

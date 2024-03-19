@@ -18,6 +18,7 @@ import tech.ydb.topic.read.DecompressionException;
 import tech.ydb.topic.read.Message;
 import tech.ydb.topic.read.SyncReader;
 import tech.ydb.topic.settings.ReaderSettings;
+import tech.ydb.topic.settings.ReceiveSettings;
 import tech.ydb.topic.settings.TopicReadSettings;
 
 /**
@@ -63,12 +64,10 @@ public class TransactionReadSync extends SimpleExample {
                         session.executeDataQuery("SELECT 1", TxControl.id(transaction)).join();
                         // analyzeQueryResultIfNeeded();
 
-                        // Set transaction for reader.
-                        // Further messages will be committed automatically with this transaction
-                        reader.setTransaction(transaction);
-
                         //Session session
-                        Message message = reader.receive();
+                        Message message = reader.receive(ReceiveSettings.newBuilder()
+                                .setTransaction(transaction)
+                                .build());
                         byte[] messageData;
                         try {
                             messageData = message.getData();
@@ -79,6 +78,7 @@ public class TransactionReadSync extends SimpleExample {
                         logger.info("Message received: {}", new String(messageData, StandardCharsets.UTF_8));
 
                         transaction.commit().join();
+                        // analyze commit status
                     }
                 } catch (InterruptedException exception) {
                     logger.error("Interrupted exception while waiting for message: ", exception);
