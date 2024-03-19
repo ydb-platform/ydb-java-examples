@@ -73,6 +73,8 @@ public class TransactionWriteAsync extends SimpleExample {
                             .join()
                             .getValue();
 
+                    AsyncWriter transactionWriter = writer.getTransactionWriter(transaction);
+
                     // do something else in transaction
                     session.executeDataQuery("SELECT 1", TxControl.id(transaction)).join();
                     // analyzeQueryResultIfNeeded();
@@ -82,7 +84,6 @@ public class TransactionWriteAsync extends SimpleExample {
                         // Blocks until the message is put into sending buffer
                         writer.send(Message.newBuilder()
                                         .setData(messageString.getBytes())
-                                        .setTransaction(transaction)
                                         .build())
                                 .whenComplete((result, ex) -> {
                                     if (ex != null) {

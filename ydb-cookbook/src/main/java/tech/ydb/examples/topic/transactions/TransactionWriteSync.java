@@ -66,6 +66,7 @@ public class TransactionWriteSync extends SimpleExample {
                     Transaction transaction = session.beginTransaction(Transaction.Mode.SERIALIZABLE_READ_WRITE)
                             .join()
                             .getValue();
+                    SyncWriter transactionWriter = writer.getTransactionWriter(transaction);
 
                     // do something else in transaction
                     session.executeDataQuery("SELECT 1", TxControl.id(transaction)).join();
@@ -76,7 +77,6 @@ public class TransactionWriteSync extends SimpleExample {
                         writer.send(
                                 Message.newBuilder()
                                         .setData(messageString.getBytes())
-                                        .setTransaction(transaction)
                                         .build(),
                                 timeoutSeconds,
                                 TimeUnit.SECONDS

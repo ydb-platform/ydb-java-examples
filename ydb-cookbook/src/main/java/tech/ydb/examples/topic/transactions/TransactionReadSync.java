@@ -60,14 +60,16 @@ public class TransactionReadSync extends SimpleExample {
                                 .join()
                                 .getValue();
 
+                        // All messages received from this reader will be linked with provided transaction
+                        // and will be commited on transaction commit
+                        SyncReader transactionReader = reader.getTransactionReader(transaction);
+
                         // do something else in transaction
                         session.executeDataQuery("SELECT 1", TxControl.id(transaction)).join();
                         // analyzeQueryResultIfNeeded();
 
                         //Session session
-                        Message message = reader.receive(ReceiveSettings.newBuilder()
-                                .setTransaction(transaction)
-                                .build());
+                        Message message = transactionReader.receive();
                         byte[] messageData;
                         try {
                             messageData = message.getData();
