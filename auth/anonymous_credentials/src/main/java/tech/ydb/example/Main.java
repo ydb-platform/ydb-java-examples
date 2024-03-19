@@ -1,6 +1,9 @@
 package tech.ydb.example;
 
 
+
+import java.time.Duration;
+
 import tech.ydb.auth.AuthProvider;
 import tech.ydb.auth.NopAuthProvider;
 import tech.ydb.core.grpc.GrpcTransport;
@@ -23,6 +26,7 @@ public final class Main {
 
         try (GrpcTransport transport = GrpcTransport.forConnectionString(connectionString)
                 .withAuthProvider(authProvider)
+                .withGrpcKeepAliveTime(Duration.ofSeconds(10))
                 .build()) {
             try (TableClient tableClient = TableClient.newClient(transport).build()) {
                 SessionRetryContext retryCtx = SessionRetryContext.create(tableClient).build();
@@ -35,7 +39,14 @@ public final class Main {
                 while (rsReader.next()) {
                     System.out.println(rsReader.getColumn(0).getInt32());
                 }
+
+                for (int step = 0; step < 1800; step++) {
+                    System.out.println("" + step);
+                    Thread.sleep(1000);
+                }
             }
+        } catch (InterruptedException ex) {
+            ex.printStackTrace();
         }
     }
 }

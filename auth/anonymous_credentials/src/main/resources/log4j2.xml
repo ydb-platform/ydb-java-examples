@@ -7,22 +7,10 @@
     </Appenders>
 
     <Loggers>
-        <Logger name="io.netty" level="warn" additivity="false">
+        <Logger name="io.grpc" level="info" additivity="false">
             <AppenderRef ref="Console"/>
         </Logger>
-        <Logger name="io.grpc.netty" level="warn" additivity="false">
-            <AppenderRef ref="Console"/>
-        </Logger>
-        <Logger name="tech.ydb.core.grpc" level="info" additivity="false">
-            <AppenderRef ref="Console"/>
-        </Logger>
-        <Logger name="tech.ydb.table" level="info" additivity="false">
-            <AppenderRef ref="Console"/>
-        </Logger>
-        <Logger name="tech.ydb.table.SessionRetryContext" level="info" additivity="false">
-            <AppenderRef ref="Console"/>
-        </Logger>
-        <Logger name="tech.ydb.table.Session" level="info" additivity="false">
+        <Logger name="tech.ydb" level="info" additivity="false">
             <AppenderRef ref="Console"/>
         </Logger>
 
