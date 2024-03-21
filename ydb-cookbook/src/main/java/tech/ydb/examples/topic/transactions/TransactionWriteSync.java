@@ -7,6 +7,7 @@ import java.util.concurrent.TimeoutException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tech.ydb.common.transaction.BaseTransaction;
 import tech.ydb.core.Result;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.examples.SimpleExample;
@@ -69,7 +70,7 @@ public class TransactionWriteSync extends SimpleExample {
                             .getValue();
 
                     // do something else in transaction
-                    session.executeDataQuery("SELECT 1", TxControl.id(transaction)).join();
+                    session.executeDataQuery("SELECT 1", TxControl.tx(transaction)).join();
                     // analyzeQueryResultIfNeeded();
                     try {
                         String messageString = "message" + i;

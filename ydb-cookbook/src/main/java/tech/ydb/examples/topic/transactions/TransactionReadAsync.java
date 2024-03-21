@@ -142,7 +142,7 @@ public class TransactionReadAsync extends SimpleExample {
                         .getValue();
 
                 // do something else in transaction
-                session.executeDataQuery("SELECT 1", TxControl.id(transaction)).join();
+                session.executeDataQuery("SELECT 1", TxControl.tx(transaction)).join();
                 // analyzeQueryResultIfNeeded();
 
                 Status updateStatus =  reader.updateOffsetsInTransaction(transaction,
