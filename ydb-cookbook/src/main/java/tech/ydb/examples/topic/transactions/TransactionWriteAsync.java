@@ -9,11 +9,13 @@ import java.util.concurrent.TimeoutException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Result;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.examples.SimpleExample;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
+import tech.ydb.table.transaction.TableTransaction;
 import tech.ydb.table.transaction.Transaction;
 import tech.ydb.table.transaction.TxControl;
 import tech.ydb.topic.TopicClient;
@@ -70,12 +72,10 @@ public class TransactionWriteAsync extends SimpleExample {
                         return; // retry or shutdown
                     }
                     Session session = sessionResult.getValue();
-                    Transaction transaction = session.beginTransaction(Transaction.Mode.SERIALIZABLE_READ_WRITE)
-                            .join()
-                            .getValue();
+                    TableTransaction transaction = session.createNewTransaction(TxMode.SERIALIZABLE_RW);
 
                     // do something else in transaction
-                    session.executeDataQuery("SELECT 1", TxControl.tx(transaction)).join();
+                    transaction.executeDataQuery("SELECT 1").join();
                     // analyzeQueryResultIfNeeded();
 
                     try {

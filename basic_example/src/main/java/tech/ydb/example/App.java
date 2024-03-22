@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import tech.ydb.auth.iam.CloudAuthHelper;
+import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Status;
 import tech.ydb.core.grpc.GrpcReadStream;
 import tech.ydb.core.grpc.GrpcTransport;
@@ -24,6 +25,7 @@ import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.settings.BulkUpsertSettings;
 import tech.ydb.table.settings.ExecuteScanQuerySettings;
+import tech.ydb.table.transaction.TableTransaction;
 import tech.ydb.table.transaction.Transaction;
 import tech.ydb.table.transaction.TxControl;
 import tech.ydb.table.values.ListType;
@@ -362,8 +364,9 @@ public final class App implements Runnable, AutoCloseable {
 
     private void tclTransaction() {
         retryCtx.supplyStatus(session -> {
-            Transaction transaction = session.beginTransaction(Transaction.Mode.SERIALIZABLE_READ_WRITE)
-                .join().getValue();
+            // Create new transaction.
+            // It is not active and has no id until any query is executed on it
+            TableTransaction transaction = session.createNewTransaction(TxMode.SERIALIZABLE_RW);
 
             String query
                     = "DECLARE $airDate AS Date; "
@@ -371,10 +374,10 @@ public final class App implements Runnable, AutoCloseable {
 
             Params params = Params.of("$airDate", PrimitiveValue.newDate(Instant.now()));
 
-            // Execute data query.
-            // Transaction control settings continues active transaction (tx)
-            TxControl<?> txControl = TxControl.id(transaction).setCommitTx(false);
-            DataQueryResult result = session.executeDataQuery(query, txControl, params)
+            // Execute data query on new transaction.
+            // Transaction will be created on server and become active
+            // Query will be executed on it, but transaction will not be committed
+            DataQueryResult result = transaction.executeDataQuery(query, params)
                 .join().getValue();
 
             logger.info("get transaction {}", result.getTxId());
