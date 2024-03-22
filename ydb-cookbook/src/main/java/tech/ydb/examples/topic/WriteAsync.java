@@ -26,7 +26,6 @@ public class WriteAsync extends SimpleExample {
 
     @Override
     protected void run(GrpcTransport transport, String pathPrefix) {
-        String topicPath = pathPrefix + "topic-java";
         String producerId = "messageGroup1";
         String messageGroupId = "messageGroup1";
 
@@ -36,7 +35,7 @@ public class WriteAsync extends SimpleExample {
                 .build()) {
 
             WriterSettings settings = WriterSettings.newBuilder()
-                    .setTopicPath(topicPath)
+                    .setTopicPath(TOPIC_NAME)
                     .setProducerId(producerId)
                     .setMessageGroupId(messageGroupId)
                     .setCodec(Codec.GZIP)

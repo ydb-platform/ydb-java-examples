@@ -22,14 +22,13 @@ public class WriteSync extends SimpleExample {
 
     @Override
     protected void run(GrpcTransport transport, String pathPrefix) {
-        String topicPath = pathPrefix + "topic-java";
         String producerId = "messageGroup1";
         String messageGroupId = "messageGroup1";
 
         try (TopicClient topicClient = TopicClient.newClient(transport).build()) {
 
             WriterSettings settings = WriterSettings.newBuilder()
-                    .setTopicPath(topicPath)
+                    .setTopicPath(TOPIC_NAME)
                     .setProducerId(producerId)
                     .setMessageGroupId(messageGroupId)
                     .setCodec(Codec.ZSTD)

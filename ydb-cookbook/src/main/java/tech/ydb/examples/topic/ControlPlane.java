@@ -34,7 +34,6 @@ public class ControlPlane extends SimpleExample {
     @Override
     protected void run(GrpcTransport transport, String pathPrefix) {
         logger.info("ControlPlane run");
-        String topicPath = "test_topic";
         try (TopicClient topicClient = TopicClient.newClient(transport).build()) {
 
             {
@@ -46,7 +45,7 @@ public class ControlPlane extends SimpleExample {
                 List<Consumer> consumers = new ArrayList<>();
                 consumers.add(Consumer.newBuilder().setName("testConsumer1").build());
 
-                topicClient.createTopic(topicPath, CreateTopicSettings.newBuilder()
+                topicClient.createTopic(TOPIC_NAME, CreateTopicSettings.newBuilder()
                                 .setSupportedCodecs(SupportedCodecs.newBuilder()
                                         .addCodec(Codec.LZOP)
                                         .addCodec(Codec.GZIP)
@@ -69,12 +68,12 @@ public class ControlPlane extends SimpleExample {
                                 .withRequestTimeout(Duration.ofSeconds(4))
                                 .build())
                         .join()
-                        .expectSuccess("cannot create topic: " + topicPath);
+                        .expectSuccess("cannot create topic: " + TOPIC_NAME);
             }
 
             {
                 // Describe topic after creation
-                TopicDescription description = describeTopic(topicPath, topicClient);
+                TopicDescription description = describeTopic(TOPIC_NAME, topicClient);
 
                 assert description.getPartitioningSettings().getMinActivePartitions() == 4;
                 // getPartitionCountLimit is temporally ignored by server
@@ -89,7 +88,7 @@ public class ControlPlane extends SimpleExample {
 
             {
                 // Alter topic 1
-                topicClient.alterTopic(topicPath, AlterTopicSettings.newBuilder()
+                topicClient.alterTopic(TOPIC_NAME, AlterTopicSettings.newBuilder()
                                 .setSupportedCodecs(SupportedCodecs.newBuilder()
                                         .addCodec(Codec.LZOP)
                                         .build())
@@ -99,12 +98,12 @@ public class ControlPlane extends SimpleExample {
                                 .setPartitionWriteSpeedBytesPerSecond(4 * 1024 * 1024)
                                 .build())
                         .join()
-                        .expectSuccess("cannot alter topic: " + topicPath);
+                        .expectSuccess("cannot alter topic: " + TOPIC_NAME);
             }
 
             {
                 // Describe topic after first alter
-                TopicDescription description = describeTopic(topicPath, topicClient);
+                TopicDescription description = describeTopic(TOPIC_NAME, topicClient);
 
                 assert description.getPartitioningSettings().getMinActivePartitions() == 6;
                 // getPartitionCountLimit is temporally ignored by server
@@ -122,7 +121,7 @@ public class ControlPlane extends SimpleExample {
                 attrs.put("attrName4", "attrValue4");
                 attrs.put("attrName5", "attrValue5");
 
-                topicClient.alterTopic(topicPath, AlterTopicSettings.newBuilder()
+                topicClient.alterTopic(TOPIC_NAME, AlterTopicSettings.newBuilder()
                                 .setAlterPartitioningSettings(AlterPartitioningSettings.newBuilder()
                                         .setPartitionCountLimit(8)
                                         .build())
@@ -152,12 +151,12 @@ public class ControlPlane extends SimpleExample {
                                         .build())
                                 .build())
                         .join()
-                        .expectSuccess("cannot alter topic: " + topicPath);
+                        .expectSuccess("cannot alter topic: " + TOPIC_NAME);
             }
 
             {
                 // Describe topic after second alter
-                TopicDescription description = describeTopic(topicPath, topicClient);
+                TopicDescription description = describeTopic(TOPIC_NAME, topicClient);
 
                 assert description.getPartitioningSettings().getMinActivePartitions() == 6;
                 // getPartitionCountLimit is temporally ignored by server
@@ -191,12 +190,12 @@ public class ControlPlane extends SimpleExample {
 
             {
                 // Drop topic
-                topicClient.dropTopic(topicPath, DropTopicSettings.newBuilder()
+                topicClient.dropTopic(TOPIC_NAME, DropTopicSettings.newBuilder()
                                 .withOperationTimeout(Duration.ofSeconds(3))
                                 .withRequestTimeout(Duration.ofSeconds(4))
                                 .build())
                         .join()
-                        .expectSuccess("cannot drop topic: " + topicPath);
+                        .expectSuccess("cannot drop topic: " + TOPIC_NAME);
             }
         }
 
