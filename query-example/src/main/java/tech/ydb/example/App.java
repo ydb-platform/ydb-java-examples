@@ -10,12 +10,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import tech.ydb.auth.iam.CloudAuthHelper;
+import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Status;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.query.QueryClient;
 import tech.ydb.query.QueryStream;
 import tech.ydb.query.QueryTransaction;
-import tech.ydb.query.QueryTx;
 import tech.ydb.query.tools.QueryReader;
 import tech.ydb.query.tools.SessionRetryContext;
 import tech.ydb.table.query.Params;
@@ -73,7 +73,7 @@ public final class App implements Runnable, AutoCloseable {
                 + "  series_info Text,"
                 + "  release_date Date,"
                 + "  PRIMARY KEY(series_id)"
-                + ")", QueryTx.NONE).execute()
+                + ")", TxMode.NONE).execute()
         ).join().getStatus().expectSuccess("Can't create table series");
 
         retryCtx.supplyResult(session -> session.createQuery(""
@@ -84,7 +84,7 @@ public final class App implements Runnable, AutoCloseable {
                 + "  first_aired Date,"
                 + "  last_aired Date,"
                 + "  PRIMARY KEY(series_id, season_id)"
-                + ")", QueryTx.NONE).execute()
+                + ")", TxMode.NONE).execute()
         ).join().getStatus().expectSuccess("Can't create table seasons");
 
         retryCtx.supplyResult(session -> session.createQuery(""
@@ -95,7 +95,7 @@ public final class App implements Runnable, AutoCloseable {
                 + "  title Text,"
                 + "  air_date Date,"
                 + "  PRIMARY KEY(series_id, season_id, episode_id)"
-                + ")", QueryTx.NONE).execute()
+                + ")", TxMode.NONE).execute()
         ).join().getStatus().expectSuccess("Can't create table episodes");
     }
 
@@ -120,7 +120,7 @@ public final class App implements Runnable, AutoCloseable {
         // Upsert list of series to table
         retryCtx.supplyResult(session -> session.createQuery(
                 "UPSERT INTO series SELECT * FROM AS_TABLE($values)",
-                QueryTx.SERIALIZABLE_RW,
+                TxMode.SERIALIZABLE_RW,
                 Params.of("$values", seriesData)
         ).execute()).join().getStatus().expectSuccess("upsert problem");
 
@@ -147,7 +147,7 @@ public final class App implements Runnable, AutoCloseable {
         // Upsert list of seasons to table
         retryCtx.supplyResult(session -> session.createQuery(
                 "UPSERT INTO seasons SELECT * FROM AS_TABLE($values)",
-                QueryTx.SERIALIZABLE_RW,
+                TxMode.SERIALIZABLE_RW,
                 Params.of("$values", seasonsData)
         ).execute()).join().getStatus().expectSuccess("upsert problem");
 
@@ -174,7 +174,7 @@ public final class App implements Runnable, AutoCloseable {
         // Upsert list of series to episodes
         retryCtx.supplyResult(session -> session.createQuery(
                 "UPSERT INTO episodes SELECT * FROM AS_TABLE($values)",
-                QueryTx.SERIALIZABLE_RW,
+                TxMode.SERIALIZABLE_RW,
                 Params.of("$values", episodesData)
         ).execute()).join().getStatus().expectSuccess("upsert problem");
     }
@@ -185,7 +185,7 @@ public final class App implements Runnable, AutoCloseable {
                 + "VALUES (2, 6, 1, \"TBD\");";
 
         // Executes data query with specified transaction control settings.
-        retryCtx.supplyResult(session -> session.createQuery(query, QueryTx.SERIALIZABLE_RW).execute())
+        retryCtx.supplyResult(session -> session.createQuery(query, TxMode.SERIALIZABLE_RW).execute())
             .join().getValue();
     }
 
@@ -196,7 +196,7 @@ public final class App implements Runnable, AutoCloseable {
 
         // Executes data query with specified transaction control settings.
         QueryReader result = retryCtx.supplyResult(
-                session -> QueryReader.readFrom(session.createQuery(query, QueryTx.SERIALIZABLE_RW))
+                session -> QueryReader.readFrom(session.createQuery(query, TxMode.SERIALIZABLE_RW))
         ).join().getValue();
 
         logger.info("--[ SelectSimple ]--");
@@ -226,7 +226,7 @@ public final class App implements Runnable, AutoCloseable {
         );
 
         QueryReader result = retryCtx.supplyResult(
-                session -> QueryReader.readFrom(session.createQuery(query, QueryTx.SNAPSHOT_RO, params))
+                session -> QueryReader.readFrom(session.createQuery(query, TxMode.SNAPSHOT_RO, params))
         ).join().getValue();
 
         logger.info("--[ SelectWithParams ] -- ");
@@ -258,7 +258,7 @@ public final class App implements Runnable, AutoCloseable {
 
         logger.info("--[ ExecuteAsyncQueryWithParams ]--");
         retryCtx.supplyResult(session -> {
-            QueryStream asyncQuery = session.createQuery(query, QueryTx.SNAPSHOT_RO, params);
+            QueryStream asyncQuery = session.createQuery(query, TxMode.SNAPSHOT_RO, params);
             return asyncQuery.execute(part -> {
                 ResultSetReader rs = part.getResultSetReader();
                 logger.info("read {} rows of result set {}", rs.getRowCount(), part.getResultSetIndex());
@@ -275,7 +275,7 @@ public final class App implements Runnable, AutoCloseable {
 
     private void multiStepTransaction(long seriesID, long seasonID) {
         retryCtx.supplyStatus(session -> {
-            QueryTransaction transaction = session.createNewTransaction(QueryTx.SNAPSHOT_RO);
+            QueryTransaction transaction = session.createNewTransaction(TxMode.SNAPSHOT_RO);
             String query1
                     = "DECLARE $seriesId AS Uint64; "
                     + "DECLARE $seasonId AS Uint64; "
@@ -329,7 +329,7 @@ public final class App implements Runnable, AutoCloseable {
 
     private void tclTransaction() {
         retryCtx.supplyResult(session -> {
-            QueryTransaction transaction = session.beginTransaction(QueryTx.SERIALIZABLE_RW)
+            QueryTransaction transaction = session.beginTransaction(TxMode.SERIALIZABLE_RW)
                 .join().getValue();
 
             String query
@@ -351,11 +351,11 @@ public final class App implements Runnable, AutoCloseable {
     }
 
     private void dropTables() {
-        retryCtx.supplyResult(session -> session.createQuery("DROP TABLE episodes;", QueryTx.NONE).execute())
+        retryCtx.supplyResult(session -> session.createQuery("DROP TABLE episodes;", TxMode.NONE).execute())
                 .join().getStatus().expectSuccess("drop table episodes problem");
-        retryCtx.supplyResult(session -> session.createQuery("DROP TABLE seasons;", QueryTx.NONE).execute())
+        retryCtx.supplyResult(session -> session.createQuery("DROP TABLE seasons;", TxMode.NONE).execute())
                 .join().getStatus().expectSuccess("drop table seasons problem");
-        retryCtx.supplyResult(session -> session.createQuery("DROP TABLE series;", QueryTx.NONE).execute())
+        retryCtx.supplyResult(session -> session.createQuery("DROP TABLE series;", TxMode.NONE).execute())
                 .join().getStatus().expectSuccess("drop table series problem");
     }
 

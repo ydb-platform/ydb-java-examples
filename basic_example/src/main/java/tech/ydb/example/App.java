@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import tech.ydb.auth.iam.CloudAuthHelper;
+import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Status;
 import tech.ydb.core.grpc.GrpcReadStream;
 import tech.ydb.core.grpc.GrpcTransport;
@@ -24,7 +25,7 @@ import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.settings.BulkUpsertSettings;
 import tech.ydb.table.settings.ExecuteScanQuerySettings;
-import tech.ydb.table.transaction.Transaction;
+import tech.ydb.table.transaction.TableTransaction;
 import tech.ydb.table.transaction.TxControl;
 import tech.ydb.table.values.ListType;
 import tech.ydb.table.values.ListValue;
@@ -303,6 +304,7 @@ public final class App implements Runnable, AutoCloseable {
 
     private void multiStepTransaction(long seriesID, long seasonID) {
         retryCtx.supplyStatus(session -> {
+            TableTransaction transaction = session.createNewTransaction(TxMode.SERIALIZABLE_RW);
             String query1
                     = "DECLARE $seriesId AS Uint64; "
                     + "DECLARE $seasonId AS Uint64; "
@@ -312,8 +314,7 @@ public final class App implements Runnable, AutoCloseable {
             // Execute first query to get the required values to the client.
             // Transaction control settings don't set CommitTx flag to keep transaction active
             // after query execution.
-            TxControl<?> tx1 = TxControl.serializableRw().setCommitTx(false);
-            DataQueryResult res1 = session.executeDataQuery(query1, tx1, Params.of(
+            DataQueryResult res1 = transaction.executeDataQuery(query1, Params.of(
                     "$seriesId", PrimitiveValue.newUint64(seriesID),
                     "$seasonId", PrimitiveValue.newUint64(seasonID)
             )).join().getValue();
@@ -327,7 +328,7 @@ public final class App implements Runnable, AutoCloseable {
             LocalDate toDate = fromDate.plusDays(15);
 
             // Get active transaction id
-            String txId = res1.getTxId();
+            logger.info("got transaction id {}", transaction.getId());
 
             // Construct next query based on the results of client logic
             String query2
@@ -340,8 +341,7 @@ public final class App implements Runnable, AutoCloseable {
             // Execute second query.
             // Transaction control settings continues active transaction (tx) and
             // commits it at the end of second query execution.
-            TxControl<?> tx2 = TxControl.id(txId).setCommitTx(true);
-            DataQueryResult res2 = session.executeDataQuery(query2, tx2, Params.of(
+            DataQueryResult res2 = transaction.executeDataQueryAndCommit(query2, Params.of(
                 "$seriesId", PrimitiveValue.newUint64(seriesID),
                 "$fromDate", PrimitiveValue.newDate(fromDate),
                 "$toDate", PrimitiveValue.newDate(toDate)
@@ -362,7 +362,7 @@ public final class App implements Runnable, AutoCloseable {
 
     private void tclTransaction() {
         retryCtx.supplyStatus(session -> {
-            Transaction transaction = session.beginTransaction(Transaction.Mode.SERIALIZABLE_READ_WRITE)
+            TableTransaction transaction = session.beginTransaction(TxMode.SERIALIZABLE_RW)
                 .join().getValue();
 
             String query
@@ -373,8 +373,7 @@ public final class App implements Runnable, AutoCloseable {
 
             // Execute data query.
             // Transaction control settings continues active transaction (tx)
-            TxControl<?> txControl = TxControl.id(transaction).setCommitTx(false);
-            DataQueryResult result = session.executeDataQuery(query, txControl, params)
+            DataQueryResult result = transaction.executeDataQuery(query, params)
                 .join().getValue();
 
             logger.info("get transaction {}", result.getTxId());
