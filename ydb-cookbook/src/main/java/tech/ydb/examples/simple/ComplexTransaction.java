@@ -44,19 +44,19 @@ public class ComplexTransaction extends SimpleExample {
             TableTransaction transaction = session.beginTransaction(TxMode.SERIALIZABLE_RW)
                 .join().getValue();
 
-            String query1 = "UPSERT INTO [" + tablePath + "] (key, value) VALUES (1, 'one');";
+            String query1 = "UPSERT INTO `" + tablePath + "` (key, value) VALUES (1, 'one');";
             DataQueryResult result1 = transaction.executeDataQuery(query1).join().getValue();
             System.out.println("--[insert1]-------------------");
             DataQueryResults.print(result1);
             System.out.println("------------------------------");
 
-            String query2 = "UPSERT INTO [" + tablePath + "] (key, value) VALUES (2, 'two');";
+            String query2 = "UPSERT INTO `" + tablePath + "` (key, value) VALUES (2, 'two');";
             DataQueryResult result2 = transaction.executeDataQuery(query2).join().getValue();
             System.out.println("--[insert2]-------------------");
             DataQueryResults.print(result2);
             System.out.println("------------------------------");
 
-            String query3 = "SELECT * FROM [" + tablePath + "];";
+            String query3 = "SELECT * FROM `" + tablePath + "`;";
             DataQueryResult result3 = session.executeDataQuery(query3, TxControl.onlineRo().setCommitTx(true))
                 .join()
                 .getValue();
@@ -68,7 +68,7 @@ public class ComplexTransaction extends SimpleExample {
                 .join()
                 .expectSuccess("cannot commit transaction");
 
-            String query = "SELECT * FROM [" + tablePath + "];";
+            String query = "SELECT * FROM `" + tablePath + "`;";
             DataQueryResult result = session.executeDataQuery(query, TxControl.onlineRo().setCommitTx(true))
                 .join()
                 .getValue();
@@ -80,5 +80,10 @@ public class ComplexTransaction extends SimpleExample {
 
     public static void main(String[] args) {
         new ComplexTransaction().doMain(args);
+    }
+
+    public static int test(String[] args) {
+        new ComplexTransaction().doMain(args);
+        return 0;
     }
 }
