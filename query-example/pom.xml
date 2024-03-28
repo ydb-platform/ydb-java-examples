@@ -1,6 +1,5 @@
-<?xml version="1.0"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -9,9 +8,9 @@
         <version>1.1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>ydb-cookbook</artifactId>
-    <name>YDB Cookbook</name>
-    <description>Receipts of usage Java SDK for YDB</description>
+    <artifactId>ydb-query-example</artifactId>
+    <name>YDB QueryClient basic example</name>
+    <description>Simple example of usage QueryClient of Java SDK for YDB</description>
 
     <properties>
         <junit5.version>5.10.1</junit5.version>
@@ -20,24 +19,11 @@
     <dependencies>
         <dependency>
             <groupId>tech.ydb</groupId>
-            <artifactId>ydb-sdk-table</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>tech.ydb</groupId>
-            <artifactId>ydb-sdk-scheme</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>tech.ydb</groupId>
-            <artifactId>ydb-sdk-topic</artifactId>
+            <artifactId>ydb-sdk-query</artifactId>
         </dependency>
         <dependency>
             <groupId>tech.ydb.auth</groupId>
             <artifactId>yc-auth-provider</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.beust</groupId>
-            <artifactId>jcommander</artifactId>
         </dependency>
 
         <dependency>
@@ -60,12 +46,34 @@
     </dependencies>
 
     <build>
+        <finalName>ydb-basic-example</finalName>
         <plugins>
+            <!-- copy dependencies to libs folder -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+            </plugin>
+            <!-- add libs folder to classpath -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <classpathPrefix>libs/</classpathPrefix>
+                            <mainClass>tech.ydb.example.App</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <environmentVariables>
+                        <YDB_DOCKER_IMAGE>cr.yandex/yc/yandex-docker-local-ydb:trunk</YDB_DOCKER_IMAGE>
                         <TESTCONTAINERS_REUSE_ENABLE>true</TESTCONTAINERS_REUSE_ENABLE>
                         <YDB_ANONYMOUS_CREDENTIALS>1</YDB_ANONYMOUS_CREDENTIALS>
                     </environmentVariables>

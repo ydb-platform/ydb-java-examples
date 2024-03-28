@@ -6,7 +6,7 @@ on:
       - master
       - develop
   pull_request:
-      type: [opened, reopened, edited]
+      type: [opened, reopened, edited, synchronize]
 
 jobs:
   build:
@@ -44,7 +44,7 @@ jobs:
 
       - name: Checkout YDB Java SDK
         if: ${{ env.NEED_SDK }}
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ydb-platform/ydb-java-sdk
           ref: develop
@@ -61,7 +61,7 @@ jobs:
 
       - name: Checkout YDB YC Auth Provider
         if: ${{ env.NEED_SDK }}
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ydb-platform/ydb-java-yc
           ref: develop

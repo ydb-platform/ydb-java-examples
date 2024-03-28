@@ -3,8 +3,6 @@ package tech.ydb.example;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -14,19 +12,14 @@ import org.slf4j.LoggerFactory;
 import tech.ydb.auth.iam.CloudAuthHelper;
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Status;
-import tech.ydb.core.grpc.GrpcReadStream;
 import tech.ydb.core.grpc.GrpcTransport;
-import tech.ydb.table.SessionRetryContext;
-import tech.ydb.table.TableClient;
-import tech.ydb.table.description.TableColumn;
-import tech.ydb.table.description.TableDescription;
-import tech.ydb.table.query.DataQueryResult;
+import tech.ydb.query.QueryClient;
+import tech.ydb.query.QueryStream;
+import tech.ydb.query.QueryTransaction;
+import tech.ydb.query.tools.QueryReader;
+import tech.ydb.query.tools.SessionRetryContext;
 import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
-import tech.ydb.table.settings.BulkUpsertSettings;
-import tech.ydb.table.settings.ExecuteScanQuerySettings;
-import tech.ydb.table.transaction.TableTransaction;
-import tech.ydb.table.transaction.TxControl;
 import tech.ydb.table.values.ListType;
 import tech.ydb.table.values.ListValue;
 import tech.ydb.table.values.PrimitiveType;
@@ -38,31 +31,27 @@ public final class App implements Runnable, AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(App.class);
 
     private final GrpcTransport transport;
-    private final TableClient tableClient;
-    private final String database;
+    private final QueryClient queryClient;
     private final SessionRetryContext retryCtx;
 
     App(String connectionString) {
         this.transport = GrpcTransport.forConnectionString(connectionString)
                 .withAuthProvider(CloudAuthHelper.getAuthProviderFromEnviron())
                 .build();
-        this.tableClient = TableClient.newClient(transport).build();
-
-        this.database = transport.getDatabase();
-        this.retryCtx = SessionRetryContext.create(tableClient).build();
+        this.queryClient = QueryClient.newClient(transport).build();
+        this.retryCtx = SessionRetryContext.create(queryClient).build();
     }
 
     @Override
     public void run() {
         createTables();
-        describeTables();
         upsertTablesData();
 
         upsertSimple();
 
         selectSimple();
         selectWithParams(1, 2);
-        scanQueryWithParams(2, 1);
+        asyncSelectRead(2, 1);
 
         multiStepTransaction(2, 5);
         tclTransaction();
@@ -72,62 +61,42 @@ public final class App implements Runnable, AutoCloseable {
 
     @Override
     public void close() {
-        tableClient.close();
+        queryClient.close();
         transport.close();
     }
 
     private void createTables() {
-        TableDescription seriesTable = TableDescription.newBuilder()
-            .addNonnullColumn("series_id", PrimitiveType.Uint64)
-            .addNullableColumn("title", PrimitiveType.Text)
-            .addNullableColumn("series_info", PrimitiveType.Text)
-            .addNullableColumn("release_date", PrimitiveType.Date)
-            .setPrimaryKey("series_id")
-            .build();
+        retryCtx.supplyResult(session -> session.createQuery(""
+                + "CREATE TABLE series ("
+                + "  series_id UInt64,"
+                + "  title Text,"
+                + "  series_info Text,"
+                + "  release_date Date,"
+                + "  PRIMARY KEY(series_id)"
+                + ")", TxMode.NONE).execute()
+        ).join().getStatus().expectSuccess("Can't create table series");
 
-        retryCtx.supplyStatus(session -> session.createTable(database + "/series", seriesTable))
-                .join().expectSuccess("Can't create table /series");
+        retryCtx.supplyResult(session -> session.createQuery(""
+                + "CREATE TABLE seasons ("
+                + "  series_id UInt64,"
+                + "  season_id UInt64,"
+                + "  title Text,"
+                + "  first_aired Date,"
+                + "  last_aired Date,"
+                + "  PRIMARY KEY(series_id, season_id)"
+                + ")", TxMode.NONE).execute()
+        ).join().getStatus().expectSuccess("Can't create table seasons");
 
-        TableDescription seasonsTable = TableDescription.newBuilder()
-            .addNonnullColumn("series_id", PrimitiveType.Uint64)
-            .addNonnullColumn("season_id", PrimitiveType.Uint64)
-            .addNullableColumn("title", PrimitiveType.Text)
-            .addNullableColumn("first_aired", PrimitiveType.Date)
-            .addNullableColumn("last_aired", PrimitiveType.Date)
-            .setPrimaryKeys("series_id", "season_id")
-            .build();
-
-        retryCtx.supplyStatus(session -> session.createTable(database + "/seasons", seasonsTable))
-                .join().expectSuccess("Can't create table /seasons");
-
-        TableDescription episodesTable = TableDescription.newBuilder()
-            .addNonnullColumn("series_id", PrimitiveType.Uint64)
-            .addNonnullColumn("season_id", PrimitiveType.Uint64)
-            .addNonnullColumn("episode_id", PrimitiveType.Uint64)
-            .addNullableColumn("title", PrimitiveType.Text)
-            .addNullableColumn("air_date", PrimitiveType.Date)
-            .setPrimaryKeys("series_id", "season_id", "episode_id")
-            .build();
-
-        retryCtx.supplyStatus(session -> session.createTable(database + "/episodes", episodesTable))
-                .join().expectSuccess("Can't create table /episodes");
-    }
-
-    private void describeTables() {
-        logger.info("--[ DescribeTables ]--");
-
-        Arrays.asList("series", "seasons", "episodes").forEach(tableName -> {
-            String tablePath = database + '/' + tableName;
-            TableDescription tableDesc = retryCtx.supplyResult(session -> session.describeTable(tablePath))
-                    .join().getValue();
-
-            List<String> primaryKeys = tableDesc.getPrimaryKeys();
-            logger.info("  table {}", tableName);
-            for (TableColumn column : tableDesc.getColumns()) {
-                boolean isPrimary = primaryKeys.contains(column.getName());
-                logger.info("     {}: {} {}", column.getName(), column.getType(), isPrimary ? " (PK)" : "");
-            }
-        });
+        retryCtx.supplyResult(session -> session.createQuery(""
+                + "CREATE TABLE episodes ("
+                + "  series_id UInt64,"
+                + "  season_id UInt64,"
+                + "  episode_id UInt64,"
+                + "  title Text,"
+                + "  air_date Date,"
+                + "  PRIMARY KEY(series_id, season_id, episode_id)"
+                + ")", TxMode.NONE).execute()
+        ).join().getStatus().expectSuccess("Can't create table episodes");
     }
 
     private void upsertTablesData() {
@@ -147,10 +116,13 @@ public final class App implements Runnable, AutoCloseable {
                         "series_info", PrimitiveValue.newText(series.seriesInfo())
                 )).collect(Collectors.toList())
         );
+
         // Upsert list of series to table
-        retryCtx.supplyStatus(session -> session.executeBulkUpsert(
-                database + "/series", seriesData, new BulkUpsertSettings()
-        )).join().expectSuccess("bulk upsert problem");
+        retryCtx.supplyResult(session -> session.createQuery(
+                "UPSERT INTO series SELECT * FROM AS_TABLE($values)",
+                TxMode.SERIALIZABLE_RW,
+                Params.of("$values", seriesData)
+        ).execute()).join().getStatus().expectSuccess("upsert problem");
 
 
         // Create type for struct of season
@@ -171,10 +143,13 @@ public final class App implements Runnable, AutoCloseable {
                         "last_aired", PrimitiveValue.newDate(season.lastAired())
                 )).collect(Collectors.toList())
         );
-        // Upsert list of series to seasons
-        retryCtx.supplyStatus(session -> session.executeBulkUpsert(
-                database + "/seasons", seasonsData, new BulkUpsertSettings()
-        )).join().expectSuccess("bulk upsert problem");
+
+        // Upsert list of seasons to table
+        retryCtx.supplyResult(session -> session.createQuery(
+                "UPSERT INTO seasons SELECT * FROM AS_TABLE($values)",
+                TxMode.SERIALIZABLE_RW,
+                Params.of("$values", seasonsData)
+        ).execute()).join().getStatus().expectSuccess("upsert problem");
 
 
         // Create type for struct of episode
@@ -197,9 +172,11 @@ public final class App implements Runnable, AutoCloseable {
         );
 
         // Upsert list of series to episodes
-        retryCtx.supplyStatus(session -> session.executeBulkUpsert(
-                database + "/episodes", episodesData, new BulkUpsertSettings()
-        )).join().expectSuccess("bulk upsert problem");
+        retryCtx.supplyResult(session -> session.createQuery(
+                "UPSERT INTO episodes SELECT * FROM AS_TABLE($values)",
+                TxMode.SERIALIZABLE_RW,
+                Params.of("$values", episodesData)
+        ).execute()).join().getStatus().expectSuccess("upsert problem");
     }
 
     private void upsertSimple() {
@@ -207,11 +184,8 @@ public final class App implements Runnable, AutoCloseable {
                 = "UPSERT INTO episodes (series_id, season_id, episode_id, title) "
                 + "VALUES (2, 6, 1, \"TBD\");";
 
-        // Begin new transaction with SerializableRW mode
-        TxControl<?> txControl = TxControl.serializableRw().setCommitTx(true);
-
         // Executes data query with specified transaction control settings.
-        retryCtx.supplyResult(session -> session.executeDataQuery(query, txControl))
+        retryCtx.supplyResult(session -> session.createQuery(query, TxMode.SERIALIZABLE_RW).execute())
             .join().getValue();
     }
 
@@ -220,12 +194,10 @@ public final class App implements Runnable, AutoCloseable {
                 = "SELECT series_id, title, release_date "
                 + "FROM series WHERE series_id = 1;";
 
-        // Begin new transaction with SerializableRW mode
-        TxControl<?> txControl = TxControl.serializableRw().setCommitTx(true);
-
         // Executes data query with specified transaction control settings.
-        DataQueryResult result = retryCtx.supplyResult(session -> session.executeDataQuery(query, txControl))
-                .join().getValue();
+        QueryReader result = retryCtx.supplyResult(
+                session -> QueryReader.readFrom(session.createQuery(query, TxMode.SERIALIZABLE_RW))
+        ).join().getValue();
 
         logger.info("--[ SelectSimple ]--");
 
@@ -247,17 +219,15 @@ public final class App implements Runnable, AutoCloseable {
                 + "FROM seasons AS sa INNER JOIN series AS sr ON sa.series_id = sr.series_id "
                 + "WHERE sa.series_id = $seriesId AND sa.season_id = $seasonId";
 
-        // Begin new transaction with SerializableRW mode
-        TxControl<?> txControl = TxControl.serializableRw().setCommitTx(true);
-
         // Type of parameter values should be exactly the same as in DECLARE statements.
         Params params = Params.of(
                 "$seriesId", PrimitiveValue.newUint64(seriesID),
                 "$seasonId", PrimitiveValue.newUint64(seasonID)
         );
 
-        DataQueryResult result = retryCtx.supplyResult(session -> session.executeDataQuery(query, txControl, params))
-                .join().getValue();
+        QueryReader result = retryCtx.supplyResult(
+                session -> QueryReader.readFrom(session.createQuery(query, TxMode.SNAPSHOT_RO, params))
+        ).join().getValue();
 
         logger.info("--[ SelectWithParams ] -- ");
 
@@ -270,7 +240,7 @@ public final class App implements Runnable, AutoCloseable {
         }
     }
 
-    private void scanQueryWithParams(long seriesID, long seasonID) {
+    private void asyncSelectRead(long seriesID, long seasonID) {
         String query
                 = "DECLARE $seriesId AS Uint64; "
                 + "DECLARE $seasonId AS Uint64; "
@@ -286,11 +256,12 @@ public final class App implements Runnable, AutoCloseable {
                 "$seasonId", PrimitiveValue.newUint64(seasonID)
         );
 
-        logger.info("--[ ExecuteScanQueryWithParams ]--");
-        retryCtx.supplyStatus(session -> {
-            ExecuteScanQuerySettings settings = ExecuteScanQuerySettings.newBuilder().build();
-            GrpcReadStream<ResultSetReader> scan = session.executeScanQuery(query, params, settings);
-            return scan.start(rs -> {
+        logger.info("--[ ExecuteAsyncQueryWithParams ]--");
+        retryCtx.supplyResult(session -> {
+            QueryStream asyncQuery = session.createQuery(query, TxMode.SNAPSHOT_RO, params);
+            return asyncQuery.execute(part -> {
+                ResultSetReader rs = part.getResultSetReader();
+                logger.info("read {} rows of result set {}", rs.getRowCount(), part.getResultSetIndex());
                 while (rs.next()) {
                     logger.info("read episode {} of {} for {}",
                             rs.getColumn("episode_title").getText(),
@@ -299,25 +270,23 @@ public final class App implements Runnable, AutoCloseable {
                     );
                 }
             });
-        }).join().expectSuccess("scan query problem");
+        }).join().getStatus().expectSuccess("execute query problem");
     }
 
     private void multiStepTransaction(long seriesID, long seasonID) {
         retryCtx.supplyStatus(session -> {
-            TableTransaction transaction = session.createNewTransaction(TxMode.SERIALIZABLE_RW);
+            QueryTransaction transaction = session.createNewTransaction(TxMode.SNAPSHOT_RO);
             String query1
                     = "DECLARE $seriesId AS Uint64; "
                     + "DECLARE $seasonId AS Uint64; "
                     + "SELECT MIN(first_aired) AS from_date FROM seasons "
                     + "WHERE series_id = $seriesId AND season_id = $seasonId;";
 
-            // Execute first query to get the required values to the client.
-            // Transaction control settings don't set CommitTx flag to keep transaction active
-            // after query execution.
-            DataQueryResult res1 = transaction.executeDataQuery(query1, Params.of(
+            // Execute first query to start a new transaction
+            QueryReader res1 = QueryReader.readFrom(transaction.createQuery(query1, Params.of(
                     "$seriesId", PrimitiveValue.newUint64(seriesID),
                     "$seasonId", PrimitiveValue.newUint64(seasonID)
-            )).join().getValue();
+            ))).join().getValue();
 
             // Perform some client logic on returned values
             ResultSetReader resultSet = res1.getResultSet(0);
@@ -328,7 +297,7 @@ public final class App implements Runnable, AutoCloseable {
             LocalDate toDate = fromDate.plusDays(15);
 
             // Get active transaction id
-            logger.info("got transaction id {}", transaction.getId());
+            logger.info("started new transaction {}", transaction.getId());
 
             // Construct next query based on the results of client logic
             String query2
@@ -338,14 +307,12 @@ public final class App implements Runnable, AutoCloseable {
                     + "SELECT season_id, episode_id, title, air_date FROM episodes "
                     + "WHERE series_id = $seriesId AND air_date >= $fromDate AND air_date <= $toDate;";
 
-            // Execute second query.
-            // Transaction control settings continues active transaction (tx) and
-            // commits it at the end of second query execution.
-            DataQueryResult res2 = transaction.executeDataQueryAndCommit(query2, Params.of(
+            // Execute second query with commit at end.
+            QueryReader res2 = QueryReader.readFrom(transaction.createQueryWithCommit(query2, Params.of(
                 "$seriesId", PrimitiveValue.newUint64(seriesID),
                 "$fromDate", PrimitiveValue.newDate(fromDate),
                 "$toDate", PrimitiveValue.newDate(toDate)
-            )).join().getValue();
+            ))).join().getValue();
 
             logger.info("--[ MultiStep ]--");
             ResultSetReader rs = res2.getResultSet(0);
@@ -361,8 +328,8 @@ public final class App implements Runnable, AutoCloseable {
     }
 
     private void tclTransaction() {
-        retryCtx.supplyStatus(session -> {
-            TableTransaction transaction = session.beginTransaction(TxMode.SERIALIZABLE_RW)
+        retryCtx.supplyResult(session -> {
+            QueryTransaction transaction = session.beginTransaction(TxMode.SERIALIZABLE_RW)
                 .join().getValue();
 
             String query
@@ -373,23 +340,23 @@ public final class App implements Runnable, AutoCloseable {
 
             // Execute data query.
             // Transaction control settings continues active transaction (tx)
-            DataQueryResult result = transaction.executeDataQuery(query, params)
+            QueryReader reader = QueryReader.readFrom(transaction.createQuery(query, params))
                 .join().getValue();
 
-            logger.info("get transaction {}", result.getTxId());
+            logger.info("get transaction {}", transaction.getId());
 
             // Commit active transaction (tx)
             return transaction.commit();
-        }).join().expectSuccess("tcl transaction problem");
+        }).join().getStatus().expectSuccess("tcl transaction problem");
     }
 
     private void dropTables() {
-        retryCtx.supplyStatus(session -> session.dropTable(database + "/episodes"))
-                .join().expectSuccess("drop table /episodes problem");
-        retryCtx.supplyStatus(session -> session.dropTable(database + "/seasons"))
-                .join().expectSuccess("drop table /seasons problem");
-        retryCtx.supplyStatus(session -> session.dropTable(database + "/series"))
-                .join().expectSuccess("drop table /series problem");
+        retryCtx.supplyResult(session -> session.createQuery("DROP TABLE episodes;", TxMode.NONE).execute())
+                .join().getStatus().expectSuccess("drop table episodes problem");
+        retryCtx.supplyResult(session -> session.createQuery("DROP TABLE seasons;", TxMode.NONE).execute())
+                .join().getStatus().expectSuccess("drop table seasons problem");
+        retryCtx.supplyResult(session -> session.createQuery("DROP TABLE series;", TxMode.NONE).execute())
+                .join().getStatus().expectSuccess("drop table series problem");
     }
 
     public static void main(String[] args) throws IOException {

@@ -18,13 +18,14 @@
         <log4j.version>2.22.1</log4j.version>
         <jcommander.version>1.82</jcommander.version>
 
-        <ydb.sdk.version>2.1.11</ydb.sdk.version>
+        <ydb.sdk.version>2.2.0</ydb.sdk.version>
     </properties>
 
     <modules>
         <module>auth</module>
         <module>secondary_index</module>
         <module>basic_example</module>
+        <module>query-example</module>
         <module>ydb-cookbook</module>
         <module>url-shortener-demo</module>
         <module>jdbc</module>
