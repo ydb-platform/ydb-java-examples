@@ -58,7 +58,6 @@ public class ReadWriteWorkload extends SimpleExample {
 
     @Override
     protected void run(GrpcTransport transport, String pathPrefix) {
-        String topicPath = pathPrefix + "topic-java";
 
         ExecutorService compressionExecutor = Executors.newFixedThreadPool(10);
         AtomicBoolean timeToStopWriting = new AtomicBoolean(false);
@@ -71,7 +70,7 @@ public class ReadWriteWorkload extends SimpleExample {
                 String producerId = "messageGroup1";
                 String messageGroupId = "messageGroup1";
                 WriterSettings settings = WriterSettings.newBuilder()
-                        .setTopicPath(topicPath)
+                        .setTopicPath(TOPIC_NAME)
                         .setProducerId(producerId)
                         .setMessageGroupId(messageGroupId)
                         .setCodec(Codec.GZIP)
@@ -155,7 +154,7 @@ public class ReadWriteWorkload extends SimpleExample {
                 ReaderSettings readerSettings = ReaderSettings.newBuilder()
                         .setConsumerName(consumerName)
                         .addTopic(TopicReadSettings.newBuilder()
-                                .setPath(topicPath)
+                                .setPath(TOPIC_NAME)
                                 .setReadFrom(Instant.now().minus(Duration.ofHours(24)))
                                 .setMaxLag(Duration.ofMinutes(30))
                                 .build())

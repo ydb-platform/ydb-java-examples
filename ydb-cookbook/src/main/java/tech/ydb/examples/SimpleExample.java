@@ -9,6 +9,8 @@ import tech.ydb.core.grpc.GrpcTransport;
  * @author Nikolay Perfilov
  */
 public abstract class SimpleExample {
+    protected static final String TOPIC_NAME = "test-topic";
+    protected static final String CONSUMER_NAME = "test-consumer";
 
     protected void doMain(String[] args) {
         if (args.length > 1) {
