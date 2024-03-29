@@ -25,6 +25,7 @@
         <module>auth</module>
         <module>secondary_index</module>
         <module>basic_example</module>
+        <module>query-example</module>
         <module>ydb-cookbook</module>
         <module>url-shortener-demo</module>
         <module>jdbc</module>

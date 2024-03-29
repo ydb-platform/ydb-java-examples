@@ -1,0 +1,45 @@
+databaseChangeLog:
+  - changeSet:
+      id: "employee"
+      author: "kurdyukov-kir"
+      changes:
+        - createTable:
+            tableName: employee
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: full_name
+                  type: varchar
+              - column:
+                  name: email
+                  type: varchar
+              - column:
+                  name: hire_date
+                  type: date
+              - column:
+                  name: salary
+                  type: decimal(22,9)
+              - column:
+                  name: is_active
+                  type: boolean
+              - column:
+                  name: department
+                  type: varchar
+              - column:
+                  name: age
+                  type: int
+              - column:
+                  name: limit_date_password
+                  type: datetime
+        - createIndex:
+            indexName: idx_employee_email
+            tableName: employee
+            unique: false
+            columns:
+              - column:
+                  name: email

@@ -7,6 +7,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import tech.ydb.examples.batch_upload.BatchUpload;
 import tech.ydb.examples.bulk_upsert.BulkUpsert;
 import tech.ydb.examples.pagination.PaginationApp;
+import tech.ydb.examples.simple.ComplexTransaction;
 import tech.ydb.examples.simple.ReadTableExample;
 import tech.ydb.test.junit5.YdbHelperExtension;
 
@@ -51,5 +52,10 @@ public class ExamplesTest {
     @Test
     public void testPagination() {
         Assertions.assertEquals(0, PaginationApp.test(args(), "Pagination test"));
+    }
+
+    @Test
+    public void testComplexTransaction() {
+        Assertions.assertEquals(0, ComplexTransaction.test(connectionString()));
     }
 }
