@@ -7,7 +7,6 @@ import java.util.concurrent.TimeoutException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tech.ydb.common.transaction.BaseTransaction;
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Result;
 import tech.ydb.core.grpc.GrpcTransport;
@@ -15,8 +14,6 @@ import tech.ydb.examples.SimpleExample;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.transaction.TableTransaction;
-import tech.ydb.table.transaction.Transaction;
-import tech.ydb.table.transaction.TxControl;
 import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.description.Codec;
 import tech.ydb.topic.settings.SendSettings;
@@ -92,11 +89,11 @@ public class TransactionWriteSync extends SimpleExample {
                     } catch (InterruptedException | ExecutionException exception) {
                         logger.error("Couldn't put message {} into sending queue due to exception: ", i, exception);
                     }
+                    // flush to wait until all messages reach server before commit
+                    writer.flush();
                     transaction.commit().join();
                 }
 
-                writer.flush();
-                logger.info("Flush finished");
                 long shutdownTimeoutSeconds = 10;
                 try {
                     writer.shutdown(shutdownTimeoutSeconds, TimeUnit.SECONDS);

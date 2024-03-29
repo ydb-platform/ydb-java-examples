@@ -96,8 +96,8 @@ public class TransactionWriteAsync extends SimpleExample {
                                         switch (result.getState()) {
                                             case WRITTEN:
                                                 WriteAck.Details details = result.getDetails();
-                                                logger.info("Message was written successfully."
-                                                        + ", offset: " + details.getOffset());
+                                                logger.info("Message was written successfully, offset: " +
+                                                        details.getOffset());
                                                 break;
                                             case ALREADY_WRITTEN:
                                                 logger.warn("Message was already written");
@@ -106,7 +106,9 @@ public class TransactionWriteAsync extends SimpleExample {
                                                 break;
                                         }
                                     }
-                                });
+                                })
+                                // Waiting for message to reach server before transaction commit
+                                .join();
                     } catch (QueueOverflowException exception) {
                         logger.error("Queue overflow exception while sending message{}: ", index, exception);
                         // Send queue is full. Need retry with backoff or skip
