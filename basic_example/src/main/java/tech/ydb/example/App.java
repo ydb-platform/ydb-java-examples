@@ -362,8 +362,9 @@ public final class App implements Runnable, AutoCloseable {
 
     private void tclTransaction() {
         retryCtx.supplyStatus(session -> {
-            TableTransaction transaction = session.beginTransaction(TxMode.SERIALIZABLE_RW)
-                .join().getValue();
+            // Create new transaction.
+            // It is not active and has no id until any query is executed on it
+            TableTransaction transaction = session.createNewTransaction(TxMode.SERIALIZABLE_RW);
 
             String query
                     = "DECLARE $airDate AS Date; "
@@ -371,8 +372,9 @@ public final class App implements Runnable, AutoCloseable {
 
             Params params = Params.of("$airDate", PrimitiveValue.newDate(Instant.now()));
 
-            // Execute data query.
-            // Transaction control settings continues active transaction (tx)
+            // Execute data query on new transaction.
+            // Transaction will be created on server and become active on client
+            // Query will be executed on it, but transaction will not be committed
             DataQueryResult result = transaction.executeDataQuery(query, params)
                 .join().getValue();
 

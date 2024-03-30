@@ -8,3 +8,6 @@
 **/.idea/
 **/*.iml
 **/*.iws
+
+# Log file
+*.log

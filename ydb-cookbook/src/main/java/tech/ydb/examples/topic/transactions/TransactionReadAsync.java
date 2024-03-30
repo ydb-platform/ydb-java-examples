@@ -1,4 +1,4 @@
-package tech.ydb.examples.topic;
+package tech.ydb.examples.topic.transactions;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -8,8 +8,18 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tech.ydb.common.transaction.TxMode;
+import tech.ydb.core.Result;
+import tech.ydb.core.Status;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.examples.SimpleExample;
+import tech.ydb.table.Session;
+import tech.ydb.table.TableClient;
+import tech.ydb.table.impl.PooledTableClient;
+import tech.ydb.table.rpc.grpc.GrpcTableRpc;
+import tech.ydb.table.transaction.TableTransaction;
+import tech.ydb.table.transaction.Transaction;
+import tech.ydb.table.transaction.TxControl;
 import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.read.AsyncReader;
 import tech.ydb.topic.read.DecompressionException;
@@ -24,25 +34,28 @@ import tech.ydb.topic.read.events.StopPartitionSessionEvent;
 import tech.ydb.topic.settings.ReadEventHandlersSettings;
 import tech.ydb.topic.settings.ReaderSettings;
 import tech.ydb.topic.settings.TopicReadSettings;
+import tech.ydb.topic.settings.UpdateOffsetsInTransactionSettings;
 
 /**
  * @author Nikolay Perfilov
  */
-public class ReadAsync extends SimpleExample {
-    private static final Logger logger = LoggerFactory.getLogger(ReadAsync.class);
+public class TransactionReadAsync extends SimpleExample {
+    private static final Logger logger = LoggerFactory.getLogger(TransactionReadAsync.class);
     private static final long MAX_MEMORY_USAGE_BYTES = 500 * 1024 * 1024; // 500 Mb
     private static final int MESSAGES_COUNT = 5;
 
     private final CompletableFuture<Void> messageReceivedFuture = new CompletableFuture<>();
-    private long lastSeqNo = -1;
+    private TableClient tableClient;
+    private AsyncReader reader;
 
     @Override
     protected void run(GrpcTransport transport, String pathPrefix) {
+        tableClient = PooledTableClient.newClient(GrpcTableRpc.useTransport(transport)).build();
+
 
         try (TopicClient topicClient = TopicClient.newClient(transport)
                 .setCompressionPoolThreadCount(8)
                 .build()) {
-
             ReaderSettings readerSettings = ReaderSettings.newBuilder()
                     .setConsumerName(CONSUMER_NAME)
                     .addTopic(TopicReadSettings.newBuilder()
@@ -57,13 +70,22 @@ public class ReadAsync extends SimpleExample {
                     .setEventHandler(new Handler())
                     .build();
 
-            AsyncReader reader = topicClient.createAsyncReader(readerSettings, handlerSettings);
+            reader = topicClient.createAsyncReader(readerSettings, handlerSettings);
 
             reader.init();
 
             messageReceivedFuture.join();
 
             reader.shutdown().join();
+            tableClient.close();
+        }
+    }
+
+    public static void analyzeCommitStatus(Status status) {
+        if (status.isSuccess()) {
+            logger.info("Transaction committed successfully");
+        } else {
+            logger.error("Failed to commit transaction: {}", status);
         }
     }
 
@@ -74,6 +96,7 @@ public class ReadAsync extends SimpleExample {
         public void onMessages(DataReceivedEvent event) {
             for (Message message : event.getMessages()) {
                 StringBuilder str = new StringBuilder("Message received");
+
                 if (logger.isTraceEnabled()) {
                     byte[] messageData;
                     try {
@@ -108,20 +131,36 @@ public class ReadAsync extends SimpleExample {
                 } else {
                     logger.info("Message received. SeqNo={}, offset={}", message.getSeqNo(), message.getOffset());
                 }
-                if (lastSeqNo > message.getSeqNo()) {
-                    logger.error("Received a message with seqNo {}. Previously got a message with seqNo {}",
-                            message.getSeqNo(), lastSeqNo);
-                    messageReceivedFuture.complete(null);
-                } else {
-                    lastSeqNo = message.getSeqNo();
+
+                // creating session and transaction
+                Result<Session> sessionResult = tableClient.createSession(Duration.ofSeconds(10)).join();
+                if (!sessionResult.isSuccess()) {
+                    logger.error("Couldn't get session from pool: {}", sessionResult);
+                    return; // retry or shutdown
                 }
-                message.commit().thenRun(() -> {
-                    logger.info("Message committed");
-                    if (messageCounter.incrementAndGet() >= MESSAGES_COUNT) {
-                        logger.info("{} messages committed. Finishing reading.", MESSAGES_COUNT);
-                        messageReceivedFuture.complete(null);
-                    }
-                });
+                Session session = sessionResult.getValue();
+                TableTransaction transaction = session.createNewTransaction(TxMode.SERIALIZABLE_RW);
+
+                // do something else in transaction
+                transaction.executeDataQuery("SELECT 1").join();
+                // analyzeQueryResultIfNeeded();
+
+                Status updateStatus =  reader.updateOffsetsInTransaction(transaction,
+                                message.getPartitionOffsets(), new UpdateOffsetsInTransactionSettings.Builder().build())
+                        // Do not commit transaction without waiting for updateOffsetsInTransaction result
+                        .join();
+                if (!updateStatus.isSuccess()) {
+                    logger.error("Couldn't update offsets in transaction: {}", updateStatus);
+                    return; // retry or shutdown
+                }
+
+                Status commitStatus = transaction.commit().join();
+                analyzeCommitStatus(commitStatus);
+
+                if (messageCounter.incrementAndGet() >= MESSAGES_COUNT) {
+                    logger.info("{} messages committed in transaction. Finishing reading.", MESSAGES_COUNT);
+                    messageReceivedFuture.complete(null);
+                }
             }
         }
 
@@ -164,6 +203,6 @@ public class ReadAsync extends SimpleExample {
     }
 
     public static void main(String[] args) {
-        new ReadAsync().doMain(args);
+        new TransactionReadAsync().doMain(args);
     }
 }
