@@ -94,6 +94,11 @@ public class TransactionWriteSync extends SimpleExample {
                     transaction.commit().join();
                 }
 
+                // flush to wait until the message reach server before commit
+                writer.flush();
+
+                transaction.commit().join();
+
                 long shutdownTimeoutSeconds = 10;
                 try {
                     writer.shutdown(shutdownTimeoutSeconds, TimeUnit.SECONDS);
