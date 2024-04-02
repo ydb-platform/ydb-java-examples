@@ -1,5 +1,6 @@
 package tech.ydb.examples.topic;
 
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -23,6 +24,7 @@ import tech.ydb.topic.write.WriteAck;
  */
 public class WriteAsync extends SimpleExample {
     private static final Logger logger = LoggerFactory.getLogger(WriteAsync.class);
+    private static final int MESSAGES_COUNT = 5;
 
     @Override
     protected void run(GrpcTransport transport, String pathPrefix) {
@@ -52,14 +54,16 @@ public class WriteAsync extends SimpleExample {
                         return null;
                     });
 
-            for (int i = 1; i <= 5; i++) {
+            // A latch to wait for all writes to receive a WriteAck before shutting down writer
+            CountDownLatch writesInProgress = new CountDownLatch(MESSAGES_COUNT);
+
+            for (int i = 1; i <= MESSAGES_COUNT; i++) {
                 final int index = i;
                 try {
                     String messageString = "message" + i;
                     // Blocks until the message is put into sending buffer
                     writer.send(Message.of(messageString.getBytes())).whenComplete((result, ex) -> {
                         if (ex != null) {
-                            logger.error("Exception while sending message {}: ", index, ex);
                         } else {
                             logger.info("Message {} ack received", index);
 
@@ -76,16 +80,26 @@ public class WriteAsync extends SimpleExample {
                                     break;
                             }
                         }
+                        writesInProgress.countDown();
                     });
                 } catch (QueueOverflowException exception) {
-                    logger.error("Queue overflow exception while sending message{}: ", index, exception);
-                    // Send queue is full. Need retry with backoff or skip
+                    logger.error("Queue overflow exception while sending a message{}: ", index, exception);
+                    // Send queue is full. Need to retry with backoff or skip
+                    writesInProgress.countDown();
                 }
 
                 logger.info("Message {} is sent", index);
             }
 
             long timeoutSeconds = 10;
+            try {
+                if (!writesInProgress.await(timeoutSeconds, TimeUnit.SECONDS)) {
+                    logger.error("Writes are not finished in {} seconds", timeoutSeconds);
+                }
+            } catch (InterruptedException exception) {
+                logger.error("Waiting for writes to finish was interrupted: ", exception);
+            }
+
             try {
                 writer.shutdown().get(timeoutSeconds, TimeUnit.SECONDS);
             } catch (TimeoutException exception) {

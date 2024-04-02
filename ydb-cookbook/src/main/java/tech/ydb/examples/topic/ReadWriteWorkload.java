@@ -109,6 +109,9 @@ public class ReadWriteWorkload extends SimpleExample {
                 }
                 logger.info("Received a signal to stop writing");
 
+                // Wait for all writes to receive a WriteAck before shutting down writer
+                writer.flush();
+
                 try {
                     writer.shutdown(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
                 } catch (TimeoutException exception) {
