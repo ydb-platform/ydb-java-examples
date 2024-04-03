@@ -68,7 +68,7 @@ public class TransactionWriteAsync extends SimpleExample {
                     // creating session and transaction
                     Result<Session> sessionResult = tableClient.createSession(Duration.ofSeconds(10)).join();
                     if (!sessionResult.isSuccess()) {
-                        logger.error("Couldn't get session from pool: {}", sessionResult);
+                        logger.error("Couldn't get a session from the pool: {}", sessionResult);
                         return; // retry or shutdown
                     }
                     Session session = sessionResult.getValue();
@@ -89,7 +89,7 @@ public class TransactionWriteAsync extends SimpleExample {
                                                 .build())
                                 .whenComplete((result, ex) -> {
                                     if (ex != null) {
-                                        logger.error("Exception while sending message {}: ", index, ex);
+                                        logger.error("Exception while sending a message {}: ", index, ex);
                                     } else {
                                         logger.info("Message {} ack received", index);
 
@@ -107,11 +107,12 @@ public class TransactionWriteAsync extends SimpleExample {
                                         }
                                     }
                                 })
-                                // Waiting for message to reach server before transaction commit
+                                // Waiting for the message to reach the server before committing the transaction
                                 .join();
                     } catch (QueueOverflowException exception) {
-                        logger.error("Queue overflow exception while sending message{}: ", index, exception);
-                        // Send queue is full. Need retry with backoff or skip
+                        logger.error("Queue overflow exception while sending a message{}: ", index, exception);
+                        // Send queue is full. Need to retry with backoff or skip
+                        continue;
                     }
                     transaction.commit().whenComplete((status, throwable) -> {
                         if (throwable != null) {
