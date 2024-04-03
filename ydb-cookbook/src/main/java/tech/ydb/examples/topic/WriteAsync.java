@@ -64,6 +64,7 @@ public class WriteAsync extends SimpleExample {
                     // Blocks until the message is put into sending buffer
                     writer.send(Message.of(messageString.getBytes())).whenComplete((result, ex) -> {
                         if (ex != null) {
+                            logger.error("Exception while sending a message {}: ", index, ex);
                         } else {
                             logger.info("Message {} ack received", index);
 

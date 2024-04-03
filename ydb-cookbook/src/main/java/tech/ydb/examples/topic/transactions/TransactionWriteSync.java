@@ -1,6 +1,8 @@
 package tech.ydb.examples.topic.transactions;
 
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -13,9 +15,11 @@ import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.examples.SimpleExample;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
+import tech.ydb.table.query.DataQueryResult;
 import tech.ydb.table.transaction.TableTransaction;
 import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.description.Codec;
+import tech.ydb.topic.description.MetadataItem;
 import tech.ydb.topic.settings.SendSettings;
 import tech.ydb.topic.settings.WriterSettings;
 import tech.ydb.topic.write.Message;
@@ -55,43 +59,40 @@ public class TransactionWriteSync extends SimpleExample {
                 }
 
                 long timeoutSeconds = 5; // How long should we wait for a message to be put into sending buffer
+                // creating session and transaction
+                Result<Session> sessionResult = tableClient.createSession(Duration.ofSeconds(10)).join();
+                if (!sessionResult.isSuccess()) {
+                    logger.error("Couldn't get a session from the pool: {}", sessionResult);
+                    return; // retry or shutdown
+                }
+                Session session = sessionResult.getValue();
+                TableTransaction transaction = session.createNewTransaction(TxMode.SERIALIZABLE_RW);
 
-                for (int i = 1; i <= 5; i++) {
-                    // creating session and transaction
-                    Result<Session> sessionResult = tableClient.createSession(Duration.ofSeconds(10)).join();
-                    if (!sessionResult.isSuccess()) {
-                        logger.error("Couldn't get session from pool: {}", sessionResult);
-                        return; // retry or shutdown
-                    }
-                    Session session = sessionResult.getValue();
-                    TableTransaction transaction = session.createNewTransaction(TxMode.SERIALIZABLE_RW);
-
-                    // do something else in transaction
-                    transaction.executeDataQuery("SELECT 1").join();
-                    // analyzeQueryResultIfNeeded();
-                    try {
-                        String messageString = "message" + i;
-                        // Non-blocking call
-                        writer.send(
-                                Message.newBuilder()
-                                        .setData(messageString.getBytes())
-                                        .build(),
-                                SendSettings.newBuilder()
-                                        .setTransaction(transaction)
-                                        .build(),
-                                timeoutSeconds,
-                                TimeUnit.SECONDS
-                        );
-                        logger.info("Message '{}' is sent.", messageString);
-                    } catch (TimeoutException exception) {
-                        logger.error("Send queue is full. Couldn't put message {} into sending queue within {} seconds",
-                                i, timeoutSeconds);
-                    } catch (InterruptedException | ExecutionException exception) {
-                        logger.error("Couldn't put message {} into sending queue due to exception: ", i, exception);
-                    }
-                    // flush to wait until all messages reach server before commit
-                    writer.flush();
-                    transaction.commit().join();
+                // do something else in transaction
+                Result<DataQueryResult> dataQueryResult = transaction.executeDataQuery("SELECT \"Hello, world!\";")
+                        .join();
+                if (!dataQueryResult.isSuccess()) {
+                    logger.error("Couldn't execute DataQuery: {}", dataQueryResult);
+                    return; // retry or shutdown
+                }
+                String messageString = dataQueryResult.getValue().getResultSet(0).getColumn(0).getText();
+                try {
+                    // Non-blocking call
+                    writer.send(
+                            Message.of(messageString.getBytes()),
+                            SendSettings.newBuilder()
+                                    .setTransaction(transaction)
+                                    .build(),
+                            timeoutSeconds,
+                            TimeUnit.SECONDS
+                    );
+                    logger.info("Message '{}' is sent.", messageString);
+                } catch (TimeoutException exception) {
+                    logger.error("Send queue is full. Couldn't put message \"{}\" into sending queue within {} seconds",
+                            messageString, timeoutSeconds);
+                } catch (InterruptedException | ExecutionException exception) {
+                    logger.error("Couldn't put message \"{}\" into sending queue due to exception: ", messageString,
+                            exception);
                 }
 
                 // flush to wait until the message reach server before commit

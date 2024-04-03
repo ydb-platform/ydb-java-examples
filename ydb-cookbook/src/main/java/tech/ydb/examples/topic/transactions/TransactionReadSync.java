@@ -54,7 +54,7 @@ public class TransactionReadSync extends SimpleExample {
                         // creating session and transaction
                         Result<Session> sessionResult = tableClient.createSession(Duration.ofSeconds(10)).join();
                         if (!sessionResult.isSuccess()) {
-                            logger.error("Couldn't get session from pool: {}", sessionResult);
+                            logger.error("Couldn't a get session from the pool: {}", sessionResult);
                             return; // retry or shutdown
                         }
                         Session session = sessionResult.getValue();
