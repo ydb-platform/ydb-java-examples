@@ -12,7 +12,7 @@
     <properties>
         <maven.compiler.release>17</maven.compiler.release>
         <kotlin.version>1.9.22</kotlin.version>
-        <hibernate.ydb.dialect.version>0.9.1</hibernate.ydb.dialect.version>
+        <hibernate.ydb.dialect.version>0.9.2</hibernate.ydb.dialect.version>
         <spring.boot.version>3.2.1</spring.boot.version>
         <liquibase.ydb.dialect.version>0.9.1</liquibase.ydb.dialect.version>
         <liquibase.core.version>4.24.0</liquibase.core.version>
@@ -68,12 +68,6 @@
             <groupId>tech.ydb.test</groupId>
             <artifactId>ydb-junit5-support</artifactId>
             <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.junit.jupiter</groupId>
-                    <artifactId>junit-jupiter-api</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
     </dependencies>
     <build>

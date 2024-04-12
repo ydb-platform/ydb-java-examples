@@ -1,0 +1,1 @@
+ALTER TABLE employee ADD INDEX email_employee_index GLOBAL ON (email)
