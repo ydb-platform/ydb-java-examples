@@ -48,6 +48,7 @@
             </activation>
             <modules>
                 <module>spring-data-jpa</module>
+                <module>spring-flyway-app</module>
                 <module>spring-liquibase-app</module>
             </modules>
         </profile>

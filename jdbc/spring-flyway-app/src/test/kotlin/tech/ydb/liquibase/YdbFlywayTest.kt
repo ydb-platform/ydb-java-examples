@@ -23,7 +23,7 @@ import java.util.*
  * @author Kirill Kurdyukov
  */
 @SpringBootTest
-class YdbLiquibaseTest {
+class YdbFlywayTest {
 
     companion object {
         @JvmField
@@ -44,7 +44,7 @@ class YdbLiquibaseTest {
     lateinit var employeeRepository: EmployeeRepository
 
     @Test
-    fun `migration liquibase and CRUD actions`() {
+    fun `migration flyway and CRUD actions`() {
         TimeZone.setDefault(TimeZone.getTimeZone(ZoneId.of("UTC")))
 
         val employee = Employee(
