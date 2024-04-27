@@ -8,9 +8,14 @@
         <version>1.1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>ydb-jdbc-basic-example</artifactId>
-    <name>Basic JDBC Example</name>
+    <artifactId>ydb-jdbc-failsafe-example</artifactId>
+    <name>Failsafe JDBC Example</name>
     <packaging>jar</packaging>
+
+    <properties>
+        <failsafe.version>3.3.2</failsafe.version>
+        <junit5.version>5.10.1</junit5.version>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -27,10 +32,29 @@
             <groupId>tech.ydb.jdbc</groupId>
             <artifactId>ydb-jdbc-driver</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>dev.failsafe</groupId>
+            <artifactId>failsafe</artifactId>
+            <version>${failsafe.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>tech.ydb.test</groupId>
+            <artifactId>ydb-junit5-support</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>${junit5.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
-        <finalName>jdbc-basic-example</finalName>
+        <finalName>jdbc-failsafe-jdbc-example</finalName>
         <plugins>
             <!-- copy dependencies to libs folder -->
             <plugin>
@@ -46,7 +70,7 @@
                         <manifest>
                             <addClasspath>true</addClasspath>
                             <classpathPrefix>libs/</classpathPrefix>
-                            <mainClass>tech.ydb.jdbc.example.Main</mainClass>
+                            <mainClass>tech.ydb.jdbc.failsafe.Main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

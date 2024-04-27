@@ -15,12 +15,13 @@
     <packaging>pom</packaging>
 
     <properties>
-        <ydb.jdbc.version>2.0.6</ydb.jdbc.version>
+        <ydb.jdbc.version>2.0.7</ydb.jdbc.version>
         <slf4j.version>1.7.36</slf4j.version>
     </properties>
 
     <modules>
         <module>basic-example</module>
+        <module>failsafe-example</module>
         <module>spring-data-jpa-v5</module>
     </modules>
 
@@ -28,11 +29,11 @@
          <dependencies>
              <dependency>
                  <groupId>tech.ydb.jdbc</groupId>
-                 <artifactId>ydb-jdbc-driver-shaded</artifactId>
+                 <artifactId>ydb-jdbc-driver</artifactId>
                  <version>${ydb.jdbc.version}</version>
              </dependency>
 
-            <dependency>
+             <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>jul-to-slf4j</artifactId>
                 <version>${slf4j.version}</version>
