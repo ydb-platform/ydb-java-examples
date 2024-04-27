@@ -25,7 +25,7 @@
 
         <dependency>
             <groupId>tech.ydb.jdbc</groupId>
-            <artifactId>ydb-jdbc-driver-shaded</artifactId>
+            <artifactId>ydb-jdbc-driver</artifactId>
         </dependency>
     </dependencies>
 

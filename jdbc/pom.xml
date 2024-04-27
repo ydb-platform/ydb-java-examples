@@ -29,11 +29,11 @@
          <dependencies>
              <dependency>
                  <groupId>tech.ydb.jdbc</groupId>
-                 <artifactId>ydb-jdbc-driver-shaded</artifactId>
+                 <artifactId>ydb-jdbc-driver</artifactId>
                  <version>${ydb.jdbc.version}</version>
              </dependency>
 
-            <dependency>
+             <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>jul-to-slf4j</artifactId>
                 <version>${slf4j.version}</version>
