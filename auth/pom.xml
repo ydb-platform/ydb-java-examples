@@ -23,7 +23,7 @@
         <module>metadata_credentials</module>
         <module>service_account_credentials</module>
         <module>static_credentials</module>
-        <module>oauth2_token</module>
-        <module>oauth2_private_key</module>
+        <module>oauth2_token_exchange/jwt_token</module>
+        <module>oauth2_token_exchange/private_key</module>
     </modules>
 </project>
