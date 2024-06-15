@@ -3,8 +3,8 @@ package tech.ydb.example;
 
 import java.io.File;
 
-import tech.ydb.auth.OAuth2Token;
 import tech.ydb.auth.OAuth2TokenExchangeProvider;
+import tech.ydb.auth.OAuth2TokenSource;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.table.SessionRetryContext;
 import tech.ydb.table.TableClient;
@@ -24,11 +24,11 @@ public final class Main {
         String oauth2Endpoint = args[1];
         String keyPemPath = args[2];
 
-        OAuth2Token token = OAuth2Token.fromPrivateKeyPemFile(new File(keyPemPath))
+        OAuth2TokenSource tokenSource = OAuth2TokenSource.withPrivateKeyPemFile(new File(keyPemPath))
                 .withIssuer("test-issuer") // customize of JWT token
                 .build();
 
-        OAuth2TokenExchangeProvider authProvider = OAuth2TokenExchangeProvider.newBuilder(oauth2Endpoint, token)
+        OAuth2TokenExchangeProvider authProvider = OAuth2TokenExchangeProvider.newBuilder(oauth2Endpoint, tokenSource)
                 .withScope("demo-scope") // customize of OAuth2 request
                 .build();
 

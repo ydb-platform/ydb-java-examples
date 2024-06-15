@@ -1,8 +1,8 @@
 package tech.ydb.example;
 
 
-import tech.ydb.auth.OAuth2Token;
 import tech.ydb.auth.OAuth2TokenExchangeProvider;
+import tech.ydb.auth.OAuth2TokenSource;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.table.SessionRetryContext;
 import tech.ydb.table.TableClient;
@@ -22,8 +22,8 @@ public final class Main {
         String oauth2Endpoint = args[1];
         String refreshToken = args[2];
 
-        OAuth2Token token = OAuth2Token.fromValue(refreshToken);
-        OAuth2TokenExchangeProvider authProvider = OAuth2TokenExchangeProvider.newBuilder(oauth2Endpoint, token)
+        OAuth2TokenSource tokenSource = OAuth2TokenSource.fromValue(refreshToken);
+        OAuth2TokenExchangeProvider authProvider = OAuth2TokenExchangeProvider.newBuilder(oauth2Endpoint, tokenSource)
                 .withScope("demo-scope") // customize of OAuth2 request
                 .build();
 
