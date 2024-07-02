@@ -15,7 +15,7 @@
     <artifactId>ydb-sdk-auth-examples</artifactId>
     <name>YDB Auth examples</name>
     <description>Examples of various auth providers for YDB</description>
-    
+
     <modules>
         <module>access_token_credentials</module>
         <module>anonymous_credentials</module>
@@ -23,5 +23,7 @@
         <module>metadata_credentials</module>
         <module>service_account_credentials</module>
         <module>static_credentials</module>
+        <module>oauth2_token_exchange/jwt_token</module>
+        <module>oauth2_token_exchange/private_key</module>
     </modules>
 </project>
