@@ -8,6 +8,7 @@ import tech.ydb.examples.batch_upload.BatchUpload;
 import tech.ydb.examples.bulk_upsert.BulkUpsert;
 import tech.ydb.examples.pagination.PaginationApp;
 import tech.ydb.examples.simple.ComplexTransaction;
+import tech.ydb.examples.simple.ReadRowsApp;
 import tech.ydb.examples.simple.ReadTableExample;
 import tech.ydb.test.junit5.YdbHelperExtension;
 
@@ -51,7 +52,12 @@ public class ExamplesTest {
 
     @Test
     public void testPagination() {
-        Assertions.assertEquals(0, PaginationApp.test(args(), "Pagination test"));
+        Assertions.assertEquals(0, PaginationApp.test(args()), "Pagination test");
+    }
+
+    @Test
+    public void testReadRows() {
+        Assertions.assertEquals(0, ReadRowsApp.test(args()), "Read rows test");
     }
 
     @Test

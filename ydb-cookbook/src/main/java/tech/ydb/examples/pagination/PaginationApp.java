@@ -42,7 +42,7 @@ public class PaginationApp implements App {
         AppRunner.run("PaginationApp", PaginationApp::new, args);
     }
 
-    public static int test(String[] args, String paginationTest) {
+    public static int test(String[] args) {
         return AppRunner.safeRun("PaginationApp", PaginationApp::new, args);
     }
 
