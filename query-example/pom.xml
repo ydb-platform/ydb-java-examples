@@ -46,7 +46,7 @@
     </dependencies>
 
     <build>
-        <finalName>ydb-basic-example</finalName>
+        <finalName>ydb-query-example</finalName>
         <plugins>
             <!-- copy dependencies to libs folder -->
             <plugin>
