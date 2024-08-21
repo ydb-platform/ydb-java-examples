@@ -57,6 +57,7 @@
                 <module>spring-data-jpa</module>
                 <module>spring-flyway-app</module>
                 <module>spring-liquibase-app</module>
+                <module>shedlock</module>
             </modules>
         </profile>
     </profiles>
