@@ -32,7 +32,6 @@
                  <artifactId>ydb-jdbc-driver</artifactId>
                  <version>${ydb.jdbc.version}</version>
              </dependency>
-
              <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>jul-to-slf4j</artifactId>
@@ -51,6 +50,7 @@
                 <module>spring-data-jpa</module>
                 <module>spring-flyway-app</module>
                 <module>spring-liquibase-app</module>
+                <module>shedlock</module>
             </modules>
         </profile>
     </profiles>
