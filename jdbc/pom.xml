@@ -51,6 +51,7 @@
                 <module>spring-flyway-app</module>
                 <module>spring-liquibase-app</module>
                 <module>shedlock</module>
+                <module>hibernate-slo</module>
             </modules>
         </profile>
     </profiles>
