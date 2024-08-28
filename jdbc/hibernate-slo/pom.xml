@@ -27,7 +27,7 @@
         <maven.compiler.release>17</maven.compiler.release>
         <maven.compiler.target>17</maven.compiler.target>
         <maven.compiler.source>17</maven.compiler.source>
-        <kotlin.version>1.9.25</kotlin.version>
+        <kotlin.version>2.0.22</kotlin.version>
         <hibernate.ydb.dialect.version>0.9.5</hibernate.ydb.dialect.version>
     </properties>
     <dependencies>
