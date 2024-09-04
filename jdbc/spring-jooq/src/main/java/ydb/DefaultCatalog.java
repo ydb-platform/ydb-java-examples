@@ -11,8 +11,6 @@ import org.jooq.Constants;
 import org.jooq.Schema;
 import org.jooq.impl.CatalogImpl;
 
-import ydb.__.sys._Sys;
-import ydb.__.sys_health._SysHealth;
 import ydb.default_schema.DefaultSchema;
 
 
@@ -30,16 +28,6 @@ public class DefaultCatalog extends CatalogImpl {
     public static final DefaultCatalog DEFAULT_CATALOG = new DefaultCatalog();
 
     /**
-     * The schema <code>.sys</code>.
-     */
-    public final _Sys _SYS = _Sys._SYS;
-
-    /**
-     * The schema <code>.sys_health</code>.
-     */
-    public final _SysHealth _SYS_HEALTH = _SysHealth._SYS_HEALTH;
-
-    /**
      * The schema <code>DEFAULT_SCHEMA</code>.
      */
     public final DefaultSchema DEFAULT_SCHEMA = DefaultSchema.DEFAULT_SCHEMA;
@@ -54,8 +42,6 @@ public class DefaultCatalog extends CatalogImpl {
     @Override
     public final List<Schema> getSchemas() {
         return Arrays.asList(
-            _Sys._SYS,
-            _SysHealth._SYS_HEALTH,
             DefaultSchema.DEFAULT_SCHEMA
         );
     }
