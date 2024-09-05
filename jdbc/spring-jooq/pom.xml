@@ -32,7 +32,7 @@
     <properties>
         <maven.compiler.release>17</maven.compiler.release>
         <kotlin.version>1.9.22</kotlin.version>
-        <jooq.ydb.version>1.0.0-RC1</jooq.ydb.version>
+        <jooq.ydb.version>1.0.0</jooq.ydb.version>
         <flyway.version>10.7.1</flyway.version>
     </properties>
     <dependencies>
@@ -106,6 +106,7 @@
                 <configuration>
                     <environmentVariables>
                         <TESTCONTAINERS_REUSE_ENABLE>true</TESTCONTAINERS_REUSE_ENABLE>
+                        <YDB_DOCKER_IMAGE>cr.yandex/yc/yandex-docker-local-ydb:trunk</YDB_DOCKER_IMAGE>
                     </environmentVariables>
                 </configuration>
             </plugin>
@@ -151,8 +152,7 @@
 
 <!--                        <database>-->
 <!--                            <name>tech.ydb.jooq.codegen.YdbDatabase</name>-->
-<!--                            <includes>.*</includes>-->
-<!--                            <excludes/>-->
+<!--                            <excludes>.sys.*</excludes>-->
 <!--                        </database>-->
 
 <!--                        <target>-->
