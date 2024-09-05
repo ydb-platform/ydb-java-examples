@@ -9,6 +9,7 @@ import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import tech.ydb.jooq.repository.EpisodesRepository
 import tech.ydb.jooq.repository.SeasonsRepository
+import tech.ydb.jooq.repository.SeriesRepository
 import tech.ydb.test.junit5.YdbHelperExtension
 import ydb.default_schema.tables.records.EpisodesRecord
 import java.time.LocalDate
@@ -42,6 +43,9 @@ class JooqTest {
 
     @Autowired
     lateinit var ydbDSLContext: YdbDSLContext
+
+    @Autowired
+    lateinit var seriesRepository: SeriesRepository
 
     @Test
     fun findAllTest() {
@@ -135,5 +139,11 @@ class JooqTest {
             assertEquals("Season $i", titles[i - 1].first)
             assertEquals("IT Crowd", titles[i - 1].second)
         }
+    }
+    
+    @Test
+    fun findByTitleViewIndex() {
+        val record = seriesRepository.findByTitle("IT Crowd")!!
+        assertEquals(LocalDate.parse("2006-02-03"), record.releaseDate)
     }
 }

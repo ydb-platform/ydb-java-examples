@@ -5,10 +5,13 @@ package ydb.default_schema.tables;
 
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.Index;
 import org.jooq.Name;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
@@ -27,6 +30,7 @@ import org.jooq.impl.TableImpl;
 import tech.ydb.jooq.binding.DateBinding;
 
 import ydb.default_schema.DefaultSchema;
+import ydb.default_schema.Indexes;
 import ydb.default_schema.Keys;
 import ydb.default_schema.tables.records.SeriesRecord;
 
@@ -104,6 +108,11 @@ public class Series extends TableImpl<SeriesRecord> {
     @Override
     public Schema getSchema() {
         return aliased() ? null : DefaultSchema.DEFAULT_SCHEMA;
+    }
+
+    @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.TITLE_NAME);
     }
 
     @Override
