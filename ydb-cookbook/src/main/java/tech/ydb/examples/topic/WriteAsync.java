@@ -25,6 +25,7 @@ import tech.ydb.topic.write.WriteAck;
 public class WriteAsync extends SimpleExample {
     private static final Logger logger = LoggerFactory.getLogger(WriteAsync.class);
     private static final int MESSAGES_COUNT = 5;
+    private static final int WAIT_TIMEOUT_SECONDS = 60;
 
     @Override
     protected void run(GrpcTransport transport, String pathPrefix) {
@@ -92,19 +93,27 @@ public class WriteAsync extends SimpleExample {
                 logger.info("Message {} is sent", index);
             }
 
-            long timeoutSeconds = 10;
             try {
-                if (!writesInProgress.await(timeoutSeconds, TimeUnit.SECONDS)) {
-                    logger.error("Writes are not finished in {} seconds", timeoutSeconds);
+                while (!writesInProgress.await(WAIT_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                    logger.error("Writes are not finished in {} seconds", WAIT_TIMEOUT_SECONDS);
                 }
             } catch (InterruptedException exception) {
                 logger.error("Waiting for writes to finish was interrupted: ", exception);
             }
 
             try {
-                writer.shutdown().get(timeoutSeconds, TimeUnit.SECONDS);
+                if (!writesInProgress.await(WAIT_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                    logger.error("Writes are not finished in {} seconds", WAIT_TIMEOUT_SECONDS);
+                }
+            } catch (InterruptedException exception) {
+                logger.error("Waiting for writes to finish was interrupted: ", exception);
+            }
+
+            try {
+                writer.shutdown().get(WAIT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             } catch (TimeoutException exception) {
-                logger.error("Timeout exception during writer termination ({} seconds): ", timeoutSeconds, exception);
+                logger.error("Timeout exception during writer termination ({} seconds): ", WAIT_TIMEOUT_SECONDS,
+                        exception);
             } catch (ExecutionException exception) {
                 logger.error("Execution exception during writer termination: ", exception);
             } catch (InterruptedException exception) {
