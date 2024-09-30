@@ -67,8 +67,10 @@ public class WriteSync extends SimpleExample {
                 }
             }
 
+            // Wait for all writes to receive a WriteAck before shutting down writer
             writer.flush();
             logger.info("Flush finished");
+
             long shutdownTimeoutSeconds = 10;
             try {
                 writer.shutdown(shutdownTimeoutSeconds, TimeUnit.SECONDS);

@@ -1,5 +1,6 @@
 package tech.ydb.examples.topic;
 
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.time.Duration;
 import java.time.Instant;
@@ -108,6 +109,9 @@ public class ReadWriteWorkload extends SimpleExample {
                     i++;
                 }
                 logger.info("Received a signal to stop writing");
+
+                // Wait for all writes to receive a WriteAck before shutting down writer
+                writer.flush();
 
                 try {
                     writer.shutdown(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
@@ -240,7 +244,7 @@ public class ReadWriteWorkload extends SimpleExample {
         public void onMessages(DataReceivedEvent event) {
             for (tech.ydb.topic.read.Message message : event.getMessages()) {
                 messagesReceived.incrementAndGet();
-                if (logger.isTraceEnabled()) {
+                if (logger.isDebugEnabled()) {
                     StringBuilder str = new StringBuilder("Message received");
                     str.append("\n");
                     str.append("  offset: ").append(message.getOffset()).append("\n")
@@ -251,13 +255,22 @@ public class ReadWriteWorkload extends SimpleExample {
                             .append("  writtenAt: ").append(message.getWrittenAt()).append("\n")
                             .append("  partitionSession: ").append(message.getPartitionSession().getId()).append("\n")
                             .append("  partitionId: ").append(message.getPartitionSession().getPartitionId())
+                            .append("\n")
+                            .append("  metadataItems: ")
                             .append("\n");
+                    message.getMetadataItems().forEach(item -> str
+                            .append("    key: \"")
+                            .append(item.getKey())
+                            .append("\", value: \"")
+                            .append(new String(item.getValue(), StandardCharsets.UTF_8))
+                            .append("\"")
+                            .append("\n"));
                     if (!message.getWriteSessionMeta().isEmpty()) {
                         str.append("  writeSessionMeta:\n");
                         message.getWriteSessionMeta().forEach((key, value) ->
                                 str.append("    ").append(key).append(": ").append(value).append("\n"));
                     }
-                    logger.trace(str.toString());
+                    logger.debug(str.toString());
                 } else {
                     logger.debug("Message received. SeqNo={}, offset={}", message.getSeqNo(), message.getOffset());
                 }
