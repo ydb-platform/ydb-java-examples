@@ -160,6 +160,10 @@ public class ReadAsync extends SimpleExample {
         @Override
         public void onReaderClosed(ReaderClosedEvent event) {
             logger.info("Reader is closed.");
+            if (!messageReceivedFuture.isDone()) {
+                messageReceivedFuture.completeExceptionally(
+                        new RuntimeException("Reader closed before all messages are read"));
+            }
         }
     }
 
