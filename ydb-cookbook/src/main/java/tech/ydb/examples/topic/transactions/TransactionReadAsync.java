@@ -199,6 +199,7 @@ public class TransactionReadAsync extends SimpleExample {
         @Override
         public void onReaderClosed(ReaderClosedEvent event) {
             logger.info("Reader is closed.");
+            messageReceivedFuture.complete(null);
         }
     }
 
