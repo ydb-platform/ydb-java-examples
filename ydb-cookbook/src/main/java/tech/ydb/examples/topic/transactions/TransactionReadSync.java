@@ -13,8 +13,6 @@ import tech.ydb.examples.SimpleExample;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.transaction.TableTransaction;
-import tech.ydb.table.transaction.Transaction;
-import tech.ydb.table.transaction.TxControl;
 import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.read.DecompressionException;
 import tech.ydb.topic.read.Message;
