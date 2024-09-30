@@ -49,37 +49,34 @@ public class TransactionReadSync extends SimpleExample {
                 reader.init();
 
                 try {
-                    // Reading 5 messages
-                    for (int i = 0; i < 5; i++) {
-                        // creating session and transaction
-                        Result<Session> sessionResult = tableClient.createSession(Duration.ofSeconds(10)).join();
-                        if (!sessionResult.isSuccess()) {
-                            logger.error("Couldn't a get session from the pool: {}", sessionResult);
-                            return; // retry or shutdown
-                        }
-                        Session session = sessionResult.getValue();
-                        TableTransaction transaction = session.createNewTransaction(TxMode.SERIALIZABLE_RW);
-
-                        // do something else in transaction
-                        transaction.executeDataQuery("SELECT 1").join();
-                        // analyzeQueryResultIfNeeded();
-
-                        //Session session
-                        Message message = reader.receive(ReceiveSettings.newBuilder()
-                                .setTransaction(transaction)
-                                .build());
-                        byte[] messageData;
-                        try {
-                            messageData = message.getData();
-                        } catch (DecompressionException e) {
-                            logger.warn("Decompression exception while receiving a message: ", e);
-                            messageData = e.getRawData();
-                        }
-                        logger.info("Message received: {}", new String(messageData, StandardCharsets.UTF_8));
-
-                        transaction.commit().join();
-                        // analyze commit status
+                    // creating session and transaction
+                    Result<Session> sessionResult = tableClient.createSession(Duration.ofSeconds(10)).join();
+                    if (!sessionResult.isSuccess()) {
+                        logger.error("Couldn't a get session from the pool: {}", sessionResult);
+                        return; // retry or shutdown
                     }
+                    Session session = sessionResult.getValue();
+                    TableTransaction transaction = session.createNewTransaction(TxMode.SERIALIZABLE_RW);
+
+                    // do something else in transaction
+                    transaction.executeDataQuery("SELECT 1").join();
+                    // analyzeQueryResultIfNeeded();
+
+                    //Session session
+                    Message message = reader.receive(ReceiveSettings.newBuilder()
+                            .setTransaction(transaction)
+                            .build());
+                    byte[] messageData;
+                    try {
+                        messageData = message.getData();
+                    } catch (DecompressionException e) {
+                        logger.warn("Decompression exception while receiving a message: ", e);
+                        messageData = e.getRawData();
+                    }
+                    logger.info("Message received: {}", new String(messageData, StandardCharsets.UTF_8));
+
+                    transaction.commit().join();
+                    // analyze commit status
                 } catch (InterruptedException exception) {
                     logger.error("Interrupted exception while waiting for message: ", exception);
                 }
