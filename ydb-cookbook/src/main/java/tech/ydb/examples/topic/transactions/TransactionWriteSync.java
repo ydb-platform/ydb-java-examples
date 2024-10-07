@@ -7,6 +7,7 @@ import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tech.ydb.common.transaction.TxMode;
+import tech.ydb.core.Result;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.examples.SimpleExample;
 import tech.ydb.query.QueryClient;
@@ -107,20 +108,19 @@ public class TransactionWriteSync extends SimpleExample {
             // flush to wait until the message will reach the server before committing transaction
             writer.flush();
 
-            return transaction.commit()
-                    .thenApply(commitResult -> {
-                        try {
-                            writer.shutdown(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-                        } catch (TimeoutException exception) {
-                            throw new RuntimeException("Shutdown not finished within " + SHUTDOWN_TIMEOUT_SECONDS +
-                                    " seconds");
-                        } catch (InterruptedException | ExecutionException exception) {
-                            throw new RuntimeException("Shutdown not finished due to exception: " + exception);
-                        }
-                        // Return commit status to SessionRetryContext function
-                        return commitResult.getStatus();
-                    });
-        }).join().expectSuccess("Can't create table series");
+            // Shutdown writer
+            try {
+                writer.shutdown(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            } catch (TimeoutException exception) {
+                throw new RuntimeException("Shutdown not finished within " + SHUTDOWN_TIMEOUT_SECONDS +
+                        " seconds");
+            } catch (InterruptedException | ExecutionException exception) {
+                throw new RuntimeException("Shutdown not finished due to exception: " + exception);
+            }
+
+            // Return commit status to SessionRetryContext function
+            return transaction.commit().thenApply(Result::getStatus);
+        }).join().expectSuccess("Couldn't read from table and write to topic in transaction");
     }
 
     public static void main(String[] args) {
