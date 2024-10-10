@@ -1,9 +1,7 @@
 package tech.ydb.examples.topic.transactions;
 
-import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -11,13 +9,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Result;
+import tech.ydb.core.Status;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.examples.SimpleExample;
-import tech.ydb.table.Session;
-import tech.ydb.table.TableClient;
-import tech.ydb.table.query.DataQueryResult;
+import tech.ydb.query.QueryClient;
+import tech.ydb.query.QueryStream;
+import tech.ydb.query.QueryTransaction;
+import tech.ydb.query.tools.QueryReader;
+import tech.ydb.query.tools.SessionRetryContext;
+import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
-import tech.ydb.table.transaction.TableTransaction;
+import tech.ydb.table.values.PrimitiveValue;
 import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.description.Codec;
 import tech.ydb.topic.settings.SendSettings;
@@ -32,66 +34,60 @@ import tech.ydb.topic.write.WriteAck;
  */
 public class TransactionWriteAsync extends SimpleExample {
     private static final Logger logger = LoggerFactory.getLogger(TransactionWriteAsync.class);
+    private static final String PRODUCER_ID = "messageGroup1";
+    private static final String MESSAGE_GROUP_ID = "messageGroup1";
+    private static final long SHUTDOWN_TIMEOUT_SECONDS = 10;
 
     @Override
     protected void run(GrpcTransport transport, String pathPrefix) {
-        String producerId = "messageGroup1";
-        String messageGroupId = "messageGroup1";
 
-        ExecutorService compressionExecutor = Executors.newFixedThreadPool(10);
-        try (TopicClient topicClient = TopicClient.newClient(transport)
-                .setCompressionExecutor(compressionExecutor)
-                .build()) {
-            try (TableClient tableClient = TableClient.newClient(transport).build()) {
-
-                WriterSettings settings = WriterSettings.newBuilder()
+        try (TopicClient topicClient = TopicClient.newClient(transport).build()) {
+            try (QueryClient queryClient = QueryClient.newClient(transport).build()) {
+                WriterSettings writerSettings = WriterSettings.newBuilder()
                         .setTopicPath(TOPIC_NAME)
-                        .setProducerId(producerId)
-                        .setMessageGroupId(messageGroupId)
-                        .setCodec(Codec.GZIP)
-                        .setMaxSendBufferMemorySize(50 * 1024 * 1024)
+                        .setProducerId(PRODUCER_ID)
+                        .setMessageGroupId(MESSAGE_GROUP_ID)
+                        .setCodec(Codec.ZSTD)
                         .build();
 
-                AsyncWriter writer = topicClient.createAsyncWriter(settings);
+                writeFromTableToTopic(topicClient, queryClient, writerSettings, 1);
+                writeFromTableToTopic(topicClient, queryClient, writerSettings, 2);
+            }
+        }
+    }
 
-                // Init in background
-                writer.init()
-                        .thenRun(() -> logger.info("Init finished successfully"))
-                        .exceptionally(ex -> {
-                            logger.error("Init failed with ex: ", ex);
-                            return null;
-                        });
+    private void writeFromTableToTopic(TopicClient topicClient, QueryClient queryClient,
+                                                WriterSettings writerSettings, long id) {
+        SessionRetryContext retryCtx = SessionRetryContext.create(queryClient).build();
+        retryCtx.supplyStatus(querySession -> {
+            // Create new transaction object. It is not yet started on server
+            QueryTransaction transaction = querySession.createNewTransaction(TxMode.SERIALIZABLE_RW);
 
-                // creating session and transaction
-                Result<Session> sessionResult = tableClient.createSession(Duration.ofSeconds(10)).join();
-                if (!sessionResult.isSuccess()) {
-                    logger.error("Couldn't get a session from the pool: {}", sessionResult);
-                    return; // retry or shutdown
-                }
-                Session session = sessionResult.getValue();
-                TableTransaction transaction = session.createNewTransaction(TxMode.SERIALIZABLE_RW);
+            // Execute a query to start a new transaction
+            QueryStream queryStream = transaction.createQuery(
+                    "DECLARE $id AS Uint64; " +
+                            "SELECT value FROM table WHERE id=$id",
+                    Params.of("$id", PrimitiveValue.newUint64(id)));
 
-                // get message text within the transaction
-                Result<DataQueryResult> dataQueryResult = transaction.executeDataQuery("SELECT \"Hello, world!\";")
-                        .join();
-                if (!dataQueryResult.isSuccess()) {
-                    logger.error("Couldn't execute DataQuery: {}", dataQueryResult);
-                    return; // retry or shutdown
-                }
-                ResultSetReader rsReader = dataQueryResult.getValue().getResultSet(0);
-                byte[] message;
-                if (rsReader.next()) {
-                    message = rsReader.getColumn(0).getBytes();
-                } else {
-                    logger.error("Empty DataQuery result");
-                    return; // retry or shutdown
-                }
+            // Get query result
+            QueryReader queryReader = QueryReader.readFrom(queryStream).join().getValue();
+            ResultSetReader resultSet = queryReader.getResultSet(0);
+            if (!resultSet.next()) {
+                throw new RuntimeException("Value for id=" + id + " not found");
+            }
+            String value = resultSet.getColumn("value").getText();
 
+            // Create a writer
+            AsyncWriter writer = topicClient.createAsyncWriter(writerSettings);
+
+            // Init in background
+            writer.init();
+
+            // Write a message
+            while (true) {
                 try {
                     // Blocks until the message is put into sending buffer
-                    writer.send(Message.newBuilder()
-                                            .setData(message)
-                                            .build(),
+                    writer.send(Message.of(value.getBytes()),
                                     SendSettings.newBuilder()
                                             .setTransaction(transaction)
                                             .build())
@@ -111,44 +107,37 @@ public class TransactionWriteAsync extends SimpleExample {
                                             logger.warn("Message was already written");
                                             break;
                                         default:
-                                            break;
+                                            throw new RuntimeException("Unknown WriteAck state: " + result.getState());
                                     }
                                 }
                             })
                             // Waiting for the message to reach the server before committing the transaction
                             .join();
-
                     logger.info("Message is sent");
-
-                    transaction.commit().whenComplete((status, throwable) -> {
-                        if (throwable != null) {
-                            logger.error("Exception while committing transaction with message: ", throwable);
-                        } else {
-                            if (status.isSuccess()) {
-                                logger.info("Transaction with message committed successfully");
-                            } else {
-                                logger.error("Failed to commit transaction with message: {}", status);
-                            }
-                        }
-                    });
+                    break;
                 } catch (QueueOverflowException exception) {
-                    logger.error("Queue overflow exception while sending a message: ", exception);
+                    logger.error("Queue overflow exception while sending a message");
                     // Send queue is full. Need to retry with backoff or skip
                 }
-
-                long timeoutSeconds = 10;
-                try {
-                    writer.shutdown().get(timeoutSeconds, TimeUnit.SECONDS);
-                } catch (TimeoutException exception) {
-                    logger.error("Timeout exception during writer termination ({} seconds): ", timeoutSeconds, exception);
-                } catch (ExecutionException exception) {
-                    logger.error("Execution exception during writer termination: ", exception);
-                } catch (InterruptedException exception) {
-                    logger.error("Writer termination was interrupted: ", exception);
-                }
             }
-        }
-        compressionExecutor.shutdown();
+
+            // Commit transaction
+            CompletableFuture<Status> commitStatus = transaction.commit().thenApply(Result::getStatus);
+
+            // Shutdown writer
+            try {
+                writer.shutdown().get(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            } catch (TimeoutException exception) {
+                logger.error("Timeout exception during writer termination ({} seconds): ", SHUTDOWN_TIMEOUT_SECONDS, exception);
+            } catch (ExecutionException exception) {
+                logger.error("Execution exception during writer termination: ", exception);
+            } catch (InterruptedException exception) {
+                logger.error("Writer termination was interrupted: ", exception);
+            }
+
+            // Return commit status to SessionRetryContext function
+            return commitStatus;
+        }).join().expectSuccess("Couldn't read from table and write to topic in transaction");
     }
 
     public static void main(String[] args) {
