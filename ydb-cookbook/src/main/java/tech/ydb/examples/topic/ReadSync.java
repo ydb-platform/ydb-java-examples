@@ -7,7 +7,6 @@ import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tech.ydb.core.grpc.GrpcTransport;
-import tech.ydb.examples.SimpleExample;
 import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.read.DecompressionException;
 import tech.ydb.topic.read.Message;
@@ -18,11 +17,11 @@ import tech.ydb.topic.settings.TopicReadSettings;
 /**
  * @author Nikolay Perfilov
  */
-public class ReadSync extends SimpleExample {
+public class ReadSync extends SimpleTopicExample {
     private static final Logger logger = LoggerFactory.getLogger(ReadSync.class);
 
     @Override
-    protected void run(GrpcTransport transport, String pathPrefix) {
+    protected void run(GrpcTransport transport) {
 
         try (TopicClient topicClient = TopicClient.newClient(transport).build()) {
 

@@ -12,7 +12,7 @@ import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Result;
 import tech.ydb.core.Status;
 import tech.ydb.core.grpc.GrpcTransport;
-import tech.ydb.examples.SimpleExample;
+import tech.ydb.examples.topic.SimpleTopicExample;
 import tech.ydb.query.QueryClient;
 import tech.ydb.query.QueryTransaction;
 import tech.ydb.query.tools.SessionRetryContext;
@@ -36,7 +36,7 @@ import tech.ydb.topic.settings.UpdateOffsetsInTransactionSettings;
 /**
  * @author Nikolay Perfilov
  */
-public class TransactionReadAsync extends SimpleExample {
+public class TransactionReadAsync extends SimpleTopicExample {
     private static final Logger logger = LoggerFactory.getLogger(TransactionReadAsync.class);
     private static final long MAX_MEMORY_USAGE_BYTES = 500 * 1024 * 1024; // 500 Mb
     private static final int MESSAGES_COUNT = 1;
@@ -46,7 +46,7 @@ public class TransactionReadAsync extends SimpleExample {
     private AsyncReader reader;
 
     @Override
-    protected void run(GrpcTransport transport, String pathPrefix) {
+    protected void run(GrpcTransport transport) {
         try (TopicClient topicClient = TopicClient.newClient(transport).build()) {
             try (QueryClient queryClient = QueryClient.newClient(transport).build()) {
                 this.queryClient = queryClient;

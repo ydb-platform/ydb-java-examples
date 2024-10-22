@@ -9,7 +9,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tech.ydb.core.grpc.GrpcTransport;
-import tech.ydb.examples.SimpleExample;
 import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.read.AsyncReader;
 import tech.ydb.topic.read.DecompressionException;
@@ -28,16 +27,15 @@ import tech.ydb.topic.settings.TopicReadSettings;
 /**
  * @author Nikolay Perfilov
  */
-public class ReadAsync extends SimpleExample {
+public class ReadAsync extends SimpleTopicExample {
     private static final Logger logger = LoggerFactory.getLogger(ReadAsync.class);
     private static final long MAX_MEMORY_USAGE_BYTES = 500 * 1024 * 1024; // 500 Mb
     private static final int MESSAGES_COUNT = 5;
 
     private final CompletableFuture<Void> messageReceivedFuture = new CompletableFuture<>();
-    private long lastSeqNo = -1;
 
     @Override
-    protected void run(GrpcTransport transport, String pathPrefix) {
+    protected void run(GrpcTransport transport) {
 
         try (TopicClient topicClient = TopicClient.newClient(transport)
                 .setCompressionPoolThreadCount(8)
@@ -107,13 +105,6 @@ public class ReadAsync extends SimpleExample {
                     }
                 } else {
                     logger.info("Message received. SeqNo={}, offset={}", message.getSeqNo(), message.getOffset());
-                }
-                if (lastSeqNo > message.getSeqNo()) {
-                    logger.error("Received a message with seqNo {}. Previously got a message with seqNo {}",
-                            message.getSeqNo(), lastSeqNo);
-                    messageReceivedFuture.complete(null);
-                } else {
-                    lastSeqNo = message.getSeqNo();
                 }
                 message.commit().thenRun(() -> {
                     logger.info("Message committed");

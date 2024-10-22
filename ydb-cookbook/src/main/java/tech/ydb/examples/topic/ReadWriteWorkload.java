@@ -19,7 +19,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tech.ydb.core.grpc.GrpcTransport;
-import tech.ydb.examples.SimpleExample;
 import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.description.Codec;
 import tech.ydb.topic.read.AsyncReader;
@@ -40,7 +39,7 @@ import tech.ydb.topic.write.SyncWriter;
 /**
  * @author Nikolay Perfilov
  */
-public class ReadWriteWorkload extends SimpleExample {
+public class ReadWriteWorkload extends SimpleTopicExample {
     private static final Logger logger = LoggerFactory.getLogger(ReadWriteWorkload.class);
     private static final int WRITE_TIMEOUT_SECONDS = 60;
     private static final int MESSAGE_LENGTH_BYTES = 10_000_000; // 10 Mb
@@ -53,12 +52,11 @@ public class ReadWriteWorkload extends SimpleExample {
     private final AtomicInteger messagesReceived = new AtomicInteger(0);
     private final AtomicInteger messagesCommitted = new AtomicInteger(0);
     private final AtomicLong bytesWritten = new AtomicLong(0);
-    private long lastSeqNo = -1;
     CountDownLatch writeFinishedLatch = new CountDownLatch(1);
     CountDownLatch readFinishedLatch = new CountDownLatch(1);
 
     @Override
-    protected void run(GrpcTransport transport, String pathPrefix) {
+    protected void run(GrpcTransport transport) {
 
         ExecutorService compressionExecutor = Executors.newFixedThreadPool(10);
         AtomicBoolean timeToStopWriting = new AtomicBoolean(false);
@@ -154,9 +152,8 @@ public class ReadWriteWorkload extends SimpleExample {
             };
 
             Runnable readingThread = () -> {
-                String consumerName = "consumer1";
                 ReaderSettings readerSettings = ReaderSettings.newBuilder()
-                        .setConsumerName(consumerName)
+                        .setConsumerName(CONSUMER_NAME)
                         .addTopic(TopicReadSettings.newBuilder()
                                 .setPath(TOPIC_NAME)
                                 .setReadFrom(Instant.now().minus(Duration.ofHours(24)))
@@ -273,12 +270,6 @@ public class ReadWriteWorkload extends SimpleExample {
                     logger.debug(str.toString());
                 } else {
                     logger.debug("Message received. SeqNo={}, offset={}", message.getSeqNo(), message.getOffset());
-                }
-                if (lastSeqNo > message.getSeqNo()) {
-                    logger.error("Received a message with seqNo {}. Previously got a message with seqNo {}",
-                            message.getSeqNo(), lastSeqNo);
-                } else {
-                    lastSeqNo = message.getSeqNo();
                 }
                 message.commit().thenRun(() -> {
                     logger.trace("Message committed");

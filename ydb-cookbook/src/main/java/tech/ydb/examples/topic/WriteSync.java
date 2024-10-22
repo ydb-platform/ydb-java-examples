@@ -7,7 +7,6 @@ import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tech.ydb.core.grpc.GrpcTransport;
-import tech.ydb.examples.SimpleExample;
 import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.description.Codec;
 import tech.ydb.topic.settings.WriterSettings;
@@ -17,16 +16,15 @@ import tech.ydb.topic.write.SyncWriter;
 /**
  * @author Nikolay Perfilov
  */
-public class WriteSync extends SimpleExample {
+public class WriteSync extends SimpleTopicExample {
     private static final Logger logger = LoggerFactory.getLogger(WriteSync.class);
 
     @Override
-    protected void run(GrpcTransport transport, String pathPrefix) {
+    protected void run(GrpcTransport transport) {
         String producerId = "messageGroup1";
         String messageGroupId = "messageGroup1";
 
         try (TopicClient topicClient = TopicClient.newClient(transport).build()) {
-
             WriterSettings settings = WriterSettings.newBuilder()
                     .setTopicPath(TOPIC_NAME)
                     .setProducerId(producerId)

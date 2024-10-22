@@ -11,7 +11,7 @@ import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Result;
 import tech.ydb.core.Status;
 import tech.ydb.core.grpc.GrpcTransport;
-import tech.ydb.examples.SimpleExample;
+import tech.ydb.examples.topic.SimpleTopicExample;
 import tech.ydb.query.QueryClient;
 import tech.ydb.query.QueryStream;
 import tech.ydb.query.QueryTransaction;
@@ -32,14 +32,14 @@ import tech.ydb.topic.write.WriteAck;
 /**
  * @author Nikolay Perfilov
  */
-public class TransactionWriteAsync extends SimpleExample {
+public class TransactionWriteAsync extends SimpleTopicExample {
     private static final Logger logger = LoggerFactory.getLogger(TransactionWriteAsync.class);
     private static final String PRODUCER_ID = "messageGroup1";
     private static final String MESSAGE_GROUP_ID = "messageGroup1";
     private static final long SHUTDOWN_TIMEOUT_SECONDS = 10;
 
     @Override
-    protected void run(GrpcTransport transport, String pathPrefix) {
+    protected void run(GrpcTransport transport) {
 
         try (TopicClient topicClient = TopicClient.newClient(transport).build()) {
             try (QueryClient queryClient = QueryClient.newClient(transport).build()) {
