@@ -15,9 +15,9 @@ import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.examples.SimpleExample;
 import tech.ydb.table.Session;
 import tech.ydb.table.TableClient;
+import tech.ydb.table.query.DataQueryResult;
+import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.transaction.TableTransaction;
-import tech.ydb.table.transaction.Transaction;
-import tech.ydb.table.transaction.TxControl;
 import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.description.Codec;
 import tech.ydb.topic.settings.SendSettings;
@@ -35,7 +35,6 @@ public class TransactionWriteAsync extends SimpleExample {
 
     @Override
     protected void run(GrpcTransport transport, String pathPrefix) {
-        String topicPath = pathPrefix + "topic-java";
         String producerId = "messageGroup1";
         String messageGroupId = "messageGroup1";
 
@@ -46,7 +45,7 @@ public class TransactionWriteAsync extends SimpleExample {
             try (TableClient tableClient = TableClient.newClient(transport).build()) {
 
                 WriterSettings settings = WriterSettings.newBuilder()
-                        .setTopicPath(topicPath)
+                        .setTopicPath(TOPIC_NAME)
                         .setProducerId(producerId)
                         .setMessageGroupId(messageGroupId)
                         .setCodec(Codec.GZIP)
@@ -63,69 +62,78 @@ public class TransactionWriteAsync extends SimpleExample {
                             return null;
                         });
 
-                for (int i = 1; i <= 5; i++) {
-                    final int index = i;
-                    // creating session and transaction
-                    Result<Session> sessionResult = tableClient.createSession(Duration.ofSeconds(10)).join();
-                    if (!sessionResult.isSuccess()) {
-                        logger.error("Couldn't get session from pool: {}", sessionResult);
-                        return; // retry or shutdown
-                    }
-                    Session session = sessionResult.getValue();
-                    TableTransaction transaction = session.createNewTransaction(TxMode.SERIALIZABLE_RW);
+                // creating session and transaction
+                Result<Session> sessionResult = tableClient.createSession(Duration.ofSeconds(10)).join();
+                if (!sessionResult.isSuccess()) {
+                    logger.error("Couldn't get a session from the pool: {}", sessionResult);
+                    return; // retry or shutdown
+                }
+                Session session = sessionResult.getValue();
+                TableTransaction transaction = session.createNewTransaction(TxMode.SERIALIZABLE_RW);
 
-                    // do something else in transaction
-                    transaction.executeDataQuery("SELECT 1").join();
-                    // analyzeQueryResultIfNeeded();
+                // get message text within the transaction
+                Result<DataQueryResult> dataQueryResult = transaction.executeDataQuery("SELECT \"Hello, world!\";")
+                        .join();
+                if (!dataQueryResult.isSuccess()) {
+                    logger.error("Couldn't execute DataQuery: {}", dataQueryResult);
+                    return; // retry or shutdown
+                }
+                ResultSetReader rsReader = dataQueryResult.getValue().getResultSet(0);
+                byte[] message;
+                if (rsReader.next()) {
+                    message = rsReader.getColumn(0).getBytes();
+                } else {
+                    logger.error("Empty DataQuery result");
+                    return; // retry or shutdown
+                }
 
-                    try {
-                        String messageString = "message" + i;
-                        // Blocks until the message is put into sending buffer
-                        writer.send(Message.newBuilder()
-                                                .setData(messageString.getBytes())
-                                                .build(),
-                                        SendSettings.newBuilder()
-                                                .setTransaction(transaction)
-                                                .build())
-                                .whenComplete((result, ex) -> {
-                                    if (ex != null) {
-                                        logger.error("Exception while sending message {}: ", index, ex);
-                                    } else {
-                                        logger.info("Message {} ack received", index);
+                try {
+                    // Blocks until the message is put into sending buffer
+                    writer.send(Message.newBuilder()
+                                            .setData(message)
+                                            .build(),
+                                    SendSettings.newBuilder()
+                                            .setTransaction(transaction)
+                                            .build())
+                            .whenComplete((result, ex) -> {
+                                if (ex != null) {
+                                    logger.error("Exception while sending a message: ", ex);
+                                } else {
+                                    logger.info("Message ack received");
 
-                                        switch (result.getState()) {
-                                            case WRITTEN:
-                                                WriteAck.Details details = result.getDetails();
-                                                logger.info("Message was written successfully, offset: " +
-                                                        details.getOffset());
-                                                break;
-                                            case ALREADY_WRITTEN:
-                                                logger.warn("Message was already written");
-                                                break;
-                                            default:
-                                                break;
-                                        }
+                                    switch (result.getState()) {
+                                        case WRITTEN:
+                                            WriteAck.Details details = result.getDetails();
+                                            logger.info("Message was written successfully, offset: " +
+                                                    details.getOffset());
+                                            break;
+                                        case ALREADY_WRITTEN:
+                                            logger.warn("Message was already written");
+                                            break;
+                                        default:
+                                            break;
                                     }
-                                })
-                                // Waiting for message to reach server before transaction commit
-                                .join();
-                    } catch (QueueOverflowException exception) {
-                        logger.error("Queue overflow exception while sending message{}: ", index, exception);
-                        // Send queue is full. Need retry with backoff or skip
-                    }
+                                }
+                            })
+                            // Waiting for the message to reach the server before committing the transaction
+                            .join();
+
+                    logger.info("Message is sent");
+
                     transaction.commit().whenComplete((status, throwable) -> {
                         if (throwable != null) {
-                            logger.error("Exception while committing transaction with message{}: ", index, throwable);
+                            logger.error("Exception while committing transaction with message: ", throwable);
                         } else {
                             if (status.isSuccess()) {
-                                logger.info("Transaction with message{} committed successfully", index);
+                                logger.info("Transaction with message committed successfully");
                             } else {
-                                logger.error("Failed to commit transaction with message{}: {}", index, status);
+                                logger.error("Failed to commit transaction with message: {}", status);
                             }
                         }
                     });
-
-                    logger.info("Message {} is sent", index);
+                } catch (QueueOverflowException exception) {
+                    logger.error("Queue overflow exception while sending a message: ", exception);
+                    // Send queue is full. Need to retry with backoff or skip
                 }
 
                 long timeoutSeconds = 10;

@@ -3,14 +3,12 @@ package tech.ydb.examples.topic;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.examples.SimpleExample;
 import tech.ydb.topic.TopicClient;
-import tech.ydb.topic.description.MetadataItem;
 import tech.ydb.topic.read.DecompressionException;
 import tech.ydb.topic.read.Message;
 import tech.ydb.topic.read.SyncReader;

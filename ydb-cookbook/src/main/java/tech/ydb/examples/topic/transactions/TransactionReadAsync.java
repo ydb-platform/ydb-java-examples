@@ -18,8 +18,6 @@ import tech.ydb.table.TableClient;
 import tech.ydb.table.impl.PooledTableClient;
 import tech.ydb.table.rpc.grpc.GrpcTableRpc;
 import tech.ydb.table.transaction.TableTransaction;
-import tech.ydb.table.transaction.Transaction;
-import tech.ydb.table.transaction.TxControl;
 import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.read.AsyncReader;
 import tech.ydb.topic.read.DecompressionException;
@@ -42,7 +40,7 @@ import tech.ydb.topic.settings.UpdateOffsetsInTransactionSettings;
 public class TransactionReadAsync extends SimpleExample {
     private static final Logger logger = LoggerFactory.getLogger(TransactionReadAsync.class);
     private static final long MAX_MEMORY_USAGE_BYTES = 500 * 1024 * 1024; // 500 Mb
-    private static final int MESSAGES_COUNT = 5;
+    private static final int MESSAGES_COUNT = 1;
 
     private final CompletableFuture<Void> messageReceivedFuture = new CompletableFuture<>();
     private TableClient tableClient;
@@ -135,11 +133,13 @@ public class TransactionReadAsync extends SimpleExample {
                 // creating session and transaction
                 Result<Session> sessionResult = tableClient.createSession(Duration.ofSeconds(10)).join();
                 if (!sessionResult.isSuccess()) {
-                    logger.error("Couldn't get session from pool: {}", sessionResult);
+                    logger.error("Couldn't get a session from the pool: {}", sessionResult);
                     return; // retry or shutdown
                 }
                 Session session = sessionResult.getValue();
-                TableTransaction transaction = session.createNewTransaction(TxMode.SERIALIZABLE_RW);
+                TableTransaction transaction = session.beginTransaction(TxMode.SERIALIZABLE_RW)
+                        .join()
+                        .getValue();
 
                 // do something else in transaction
                 transaction.executeDataQuery("SELECT 1").join();
@@ -199,6 +199,7 @@ public class TransactionReadAsync extends SimpleExample {
         @Override
         public void onReaderClosed(ReaderClosedEvent event) {
             logger.info("Reader is closed.");
+            messageReceivedFuture.complete(null);
         }
     }
 

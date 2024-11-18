@@ -1,7 +1,18 @@
 package tech.ydb.examples;
 
+import java.time.Duration;
+
 import tech.ydb.auth.iam.CloudAuthHelper;
+import tech.ydb.core.Result;
+import tech.ydb.core.Status;
 import tech.ydb.core.grpc.GrpcTransport;
+import tech.ydb.scheme.SchemeClient;
+import tech.ydb.scheme.description.DescribePathResult;
+import tech.ydb.topic.TopicClient;
+import tech.ydb.topic.description.Codec;
+import tech.ydb.topic.description.Consumer;
+import tech.ydb.topic.description.SupportedCodecs;
+import tech.ydb.topic.settings.CreateTopicSettings;
 
 
 /**
@@ -9,8 +20,8 @@ import tech.ydb.core.grpc.GrpcTransport;
  * @author Nikolay Perfilov
  */
 public abstract class SimpleExample {
-    protected static final String TOPIC_NAME = "test-topic";
-    protected static final String CONSUMER_NAME = "test-consumer";
+    protected static final String TOPIC_NAME = System.getenv("YDB_TOPIC_NAME");
+    protected static final String CONSUMER_NAME = System.getenv("YDB_CONSUMER_NAME");
 
     protected void doMain(String[] args) {
         if (args.length > 1) {
