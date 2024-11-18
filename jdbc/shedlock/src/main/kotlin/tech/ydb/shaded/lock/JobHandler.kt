@@ -3,7 +3,6 @@ package tech.ydb.shaded.lock
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
-import tech.ydb.lock.provider.YdbJDBCLockProvider
 
 /**
  * @author Kirill Kurdyukov
@@ -12,7 +11,7 @@ import tech.ydb.lock.provider.YdbJDBCLockProvider
 class JobHandler {
 
     @Scheduled(cron = "* * * * * *")
-    @SchedulerLock(name = "YDB Some Job", lockAtMostFor = "20S")
+    @SchedulerLock(name = "YDB Some Job", lockAtMostFor = "10S")
     fun awesomeJob() {
         println("PID LEADER: " + ProcessHandle.current().pid())
 
