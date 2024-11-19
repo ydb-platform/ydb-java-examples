@@ -22,7 +22,7 @@
     <properties>
         <maven.compiler.release>17</maven.compiler.release>
         <kotlin.version>1.9.22</kotlin.version>
-        <spring.data.jdbc.ydb.version>0.9.1</spring.data.jdbc.ydb.version>
+        <spring.data.jdbc.ydb.version>1.0.0</spring.data.jdbc.ydb.version>
         <spring.boot.version>3.2.1</spring.boot.version>
         <flyway.version>10.7.1</flyway.version>
     </properties>
