@@ -23,23 +23,16 @@
             <groupId>tech.ydb</groupId>
             <artifactId>ydb-sdk-query</artifactId>
         </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>3.8.1</version>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
     <build>
         <plugins>
-            <!-- Другие плагины -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
-                <version>3.5.0</version> <!-- Вы можете указать актуальную версию -->
+                <version>3.5.0</version>
                 <configuration>
-                    <mainClass>tech.ydb.app.App</mainClass> <!-- Укажите ваш класс с методом main -->
+                    <mainClass>tech.ydb.app.App</mainClass>
                 </configuration>
             </plugin>
         </plugins>
