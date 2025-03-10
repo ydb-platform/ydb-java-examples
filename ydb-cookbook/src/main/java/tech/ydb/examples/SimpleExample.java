@@ -18,11 +18,12 @@ public abstract class SimpleExample {
         if (args.length == 1) {
             connString = args[0];
         } else {
-            connString = "some.host.name.com:2135?database=/Root";
-            System.err.println("Pass <connection-string> as argument to override connection settings\n");
+            System.err.println("Pass <connection-string> as an argument. " +
+                    "Example: some.host.name.com:2135?database=/Root\n");
+            return;
         }
 
-        System.err.println("connection-string: " + connString + "\n");
+        System.out.println("connection-string: " + connString + "\n");
 
         try (GrpcTransport transport = GrpcTransport.forConnectionString(connString)
                 .withAuthProvider(CloudAuthHelper.getAuthProviderFromEnviron())
