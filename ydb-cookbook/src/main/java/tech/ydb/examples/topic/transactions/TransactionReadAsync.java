@@ -1,8 +1,6 @@
 package tech.ydb.examples.topic.transactions;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -38,7 +36,6 @@ import tech.ydb.topic.settings.UpdateOffsetsInTransactionSettings;
  */
 public class TransactionReadAsync extends SimpleTopicExample {
     private static final Logger logger = LoggerFactory.getLogger(TransactionReadAsync.class);
-    private static final long MAX_MEMORY_USAGE_BYTES = 500 * 1024 * 1024; // 500 Mb
     private static final int MESSAGES_COUNT = 1;
 
     private final CompletableFuture<Void> messageReceivedFuture = new CompletableFuture<>();
@@ -47,6 +44,7 @@ public class TransactionReadAsync extends SimpleTopicExample {
 
     @Override
     protected void run(GrpcTransport transport) {
+        // WARNING: Working with transactions in Java Topic SDK is currently experimental. Interfaces may change
         try (TopicClient topicClient = TopicClient.newClient(transport).build()) {
             try (QueryClient queryClient = QueryClient.newClient(transport).build()) {
                 this.queryClient = queryClient;
@@ -54,10 +52,7 @@ public class TransactionReadAsync extends SimpleTopicExample {
                         .setConsumerName(CONSUMER_NAME)
                         .addTopic(TopicReadSettings.newBuilder()
                                 .setPath(TOPIC_NAME)
-                                .setReadFrom(Instant.now().minus(Duration.ofHours(24)))
-                                .setMaxLag(Duration.ofMinutes(30))
                                 .build())
-                        .setMaxMemoryUsageBytes(MAX_MEMORY_USAGE_BYTES)
                         .build();
 
                 ReadEventHandlersSettings handlerSettings = ReadEventHandlersSettings.newBuilder()
@@ -65,21 +60,10 @@ public class TransactionReadAsync extends SimpleTopicExample {
                         .build();
 
                 reader = topicClient.createAsyncReader(readerSettings, handlerSettings);
-
                 reader.init();
-
                 messageReceivedFuture.join();
-
                 reader.shutdown().join();
             }
-        }
-    }
-
-    public static void analyzeCommitStatus(Status status) {
-        if (status.isSuccess()) {
-            logger.info("Transaction committed successfully");
-        } else {
-            logger.error("Failed to commit transaction: {}", status);
         }
     }
 
@@ -92,7 +76,6 @@ public class TransactionReadAsync extends SimpleTopicExample {
                 SessionRetryContext retryCtx = SessionRetryContext.create(queryClient).build();
 
                 retryCtx.supplyStatus(querySession -> {
-                    // Begin new transaction on server
                     QueryTransaction transaction = querySession.beginTransaction(TxMode.SERIALIZABLE_RW)
                             .join().getValue();
 
@@ -108,11 +91,12 @@ public class TransactionReadAsync extends SimpleTopicExample {
 
                     // Execute a query in transaction
                     Status queryStatus = transaction.createQuery(
-                                    "$last = SELECT MAX(val) FROM table WHERE id=$id;\n" +
-                                            "UPSERT INTO t (id, val) VALUES($id, COALESCE($last, 0) + $value)",
-                                    Params.of("$id", PrimitiveValue.newText(message.getMessageGroupId()),
-                                            "$value", PrimitiveValue.newInt64(Long.parseLong(
-                                                    new String(message.getData(), StandardCharsets.UTF_8)))))
+                                    "DECLARE $id AS Uint64; \n" +
+                                            "DECLARE $value AS Text;\n" +
+                                            "UPSERT INTO table (id, value) VALUES ($id, $value)",
+                                    Params.of("$id", PrimitiveValue.newUint64(message.getOffset()),
+                                            "$value", PrimitiveValue.newText(new String(message.getData(),
+                                                    StandardCharsets.UTF_8))))
                             .execute().join().getStatus();
 
                     if (!queryStatus.isSuccess()) {
