@@ -12,7 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tech.ydb.core.Result;
 import tech.ydb.core.grpc.GrpcTransport;
-import tech.ydb.examples.SimpleExample;
 import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.description.Codec;
 import tech.ydb.topic.description.Consumer;
@@ -28,11 +27,11 @@ import tech.ydb.topic.settings.PartitioningSettings;
 /**
  * @author Nikolay Perfilov
  */
-public class ControlPlane extends SimpleExample {
+public class ControlPlane extends SimpleTopicExample {
     private static final Logger logger = LoggerFactory.getLogger(ControlPlane.class);
 
     @Override
-    protected void run(GrpcTransport transport, String pathPrefix) {
+    protected void run(GrpcTransport transport) {
         logger.info("ControlPlane run");
         try (TopicClient topicClient = TopicClient.newClient(transport).build()) {
 

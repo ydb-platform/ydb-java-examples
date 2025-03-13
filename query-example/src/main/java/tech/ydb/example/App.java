@@ -119,6 +119,7 @@ public final class App implements Runnable, AutoCloseable {
 
         // Upsert list of series to table
         retryCtx.supplyResult(session -> session.createQuery(
+                "DECLARE $values AS " + ListType.of(seriesType) + ";" +
                 "UPSERT INTO series SELECT * FROM AS_TABLE($values)",
                 TxMode.SERIALIZABLE_RW,
                 Params.of("$values", seriesData)
@@ -146,6 +147,7 @@ public final class App implements Runnable, AutoCloseable {
 
         // Upsert list of seasons to table
         retryCtx.supplyResult(session -> session.createQuery(
+                "DECLARE $values AS " + ListType.of(seasonType) + ";" +
                 "UPSERT INTO seasons SELECT * FROM AS_TABLE($values)",
                 TxMode.SERIALIZABLE_RW,
                 Params.of("$values", seasonsData)
@@ -173,6 +175,7 @@ public final class App implements Runnable, AutoCloseable {
 
         // Upsert list of series to episodes
         retryCtx.supplyResult(session -> session.createQuery(
+                "DECLARE $values AS " + ListType.of(episodeType) + ";" +
                 "UPSERT INTO episodes SELECT * FROM AS_TABLE($values)",
                 TxMode.SERIALIZABLE_RW,
                 Params.of("$values", episodesData)

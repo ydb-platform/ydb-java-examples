@@ -10,7 +10,6 @@ import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tech.ydb.core.grpc.GrpcTransport;
-import tech.ydb.examples.SimpleExample;
 import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.description.Codec;
 import tech.ydb.topic.settings.WriterSettings;
@@ -22,13 +21,13 @@ import tech.ydb.topic.write.WriteAck;
 /**
  * @author Nikolay Perfilov
  */
-public class WriteAsync extends SimpleExample {
+public class WriteAsync extends SimpleTopicExample {
     private static final Logger logger = LoggerFactory.getLogger(WriteAsync.class);
     private static final int MESSAGES_COUNT = 5;
     private static final int WAIT_TIMEOUT_SECONDS = 60;
 
     @Override
-    protected void run(GrpcTransport transport, String pathPrefix) {
+    protected void run(GrpcTransport transport) {
         String producerId = "messageGroup1";
         String messageGroupId = "messageGroup1";
 
