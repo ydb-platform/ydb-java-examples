@@ -30,6 +30,7 @@
         <module>url-shortener-demo</module>
         <module>jdbc</module>
         <module>project-course</module>
+        <module>coordination</module>
     </modules>
 
     <dependencyManagement>
