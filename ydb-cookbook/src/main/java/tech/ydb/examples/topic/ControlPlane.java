@@ -10,6 +10,7 @@ import java.util.Objects;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import tech.ydb.core.Result;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.topic.TopicClient;
@@ -224,11 +225,11 @@ public class ControlPlane extends SimpleTopicExample {
                 .append("Retention storage mb: ").append(description.getRetentionStorageMb()).append("\n");
 
         message.append("Supported codecs:\n");
-        List<Codec> supportedCodecs = description.getSupportedCodecs().getCodecs();
+        List<?> supportedCodecs = description.getSupportedCodecs().getCodecs();
         if (supportedCodecs.isEmpty()) {
             message.append("  none\n");
         }
-        for (Codec codec : supportedCodecs) {
+        for (Object codec : supportedCodecs) {
             message.append("  ").append(codec).append("\n");
         }
 
@@ -238,11 +239,11 @@ public class ControlPlane extends SimpleTopicExample {
                     .append("    Important: ").append(consumer.isImportant()).append("\n")
                     .append("    Read from: ").append(consumer.getReadFrom()).append("\n")
                     .append("    Supported codecs: \n");
-            List<Codec> codecs = consumer.getSupportedCodecs().getCodecs();
+            List<?> codecs = consumer.getSupportedCodecsList();
             if (codecs.isEmpty()) {
                 message.append("      none\n");
             }
-            for (Codec codec : codecs) {
+            for (Object codec : codecs) {
                 message.append("      ").append(codec).append("\n");
             }
 
