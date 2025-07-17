@@ -151,7 +151,7 @@ public class Application implements CommandLineRunner {
             futures.add(CompletableFuture.runAsync(() -> {
                 try (Ticker.Measure measure = ticker.getLoad().newCall()) {
                     tokenService.insertBatch(first, last);
-                    logger.info("inserted tokens [{}, {})", first, last);
+                    logger.debug("inserted tokens [{}, {})", first, last);
                     measure.inc();
                 }
             }, executor));
