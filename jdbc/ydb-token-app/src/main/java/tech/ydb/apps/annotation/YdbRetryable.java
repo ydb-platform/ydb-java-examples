@@ -5,6 +5,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.sql.SQLRecoverableException;
+import java.sql.SQLTransientException;
 
 import org.springframework.core.annotation.AliasFor;
 import org.springframework.retry.annotation.Backoff;
@@ -17,7 +18,7 @@ import org.springframework.retry.annotation.Retryable;
 @Target({ ElementType.METHOD, ElementType.TYPE })
 @Retention(RetentionPolicy.RUNTIME)
 @Retryable(
-        retryFor = SQLRecoverableException.class,
+        retryFor = { SQLRecoverableException.class, SQLTransientException.class },
         maxAttempts = 5,
         backoff = @Backoff(delay = 100, multiplier = 2.0, maxDelay = 5000, random = true)
 )

@@ -42,7 +42,7 @@ public class Application implements CommandLineRunner {
     private static final int RECORDS_COUNT = 1_000_000;
     private static final int LOAD_BATCH_SIZE = 1000;
 
-    private static final int WORKLOAD_DURATION_SECS = 60; // 60 seconds
+    private static final int WORKLOAD_DURATION_SECS = 120; // 600 seconds
 
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args).close();
