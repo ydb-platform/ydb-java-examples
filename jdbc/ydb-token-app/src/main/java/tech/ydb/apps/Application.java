@@ -203,7 +203,7 @@ public class Application implements CommandLineRunner {
                         measure.inc();
                     }
                 } else {
-                        int id = rnd.nextInt(RECORDS_COUNT);
+                    int id = rnd.nextInt(RECORDS_COUNT);
                     try (Ticker.Measure measure = ticker.getUpdate().newCall()) {
                         tokenService.updateToken(id);
                         measure.inc();
