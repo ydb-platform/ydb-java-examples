@@ -182,20 +182,22 @@ public class Application implements CommandLineRunner {
     }
 
     private void runWorkloads() {
+        RateLimiter rt = config.getRpsLimiter();
         long finishAt = System.currentTimeMillis() + config.getWorkloadDurationSec() * 1000;
         List<CompletableFuture<?>> futures = new ArrayList<>();
         for (int i = 0; i < config.getThreadCount(); i++) {
-            futures.add(CompletableFuture.runAsync(() -> this.workload(finishAt), executor));
+            futures.add(CompletableFuture.runAsync(() -> this.workload(rt, finishAt), executor));
         }
 
         futures.forEach(CompletableFuture::join);
     }
 
-    private void workload(long finishAt) {
+    private void workload(RateLimiter rt, long finishAt) {
         final Random rnd = new Random();
         final int recordCount = config.getRecordsCount();
 
         while (System.currentTimeMillis() < finishAt) {
+            rt.acquire();
             int mode = rnd.nextInt(10);
 
             try {
