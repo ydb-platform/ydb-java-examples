@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.retry.RetryCallback;
 import org.springframework.retry.RetryContext;
@@ -34,22 +35,22 @@ import tech.ydb.jdbc.YdbTracer;
  * @author Aleksandr Gorshenin
  */
 @EnableRetry
+@EnableConfigurationProperties(Config.class)
 @SpringBootApplication
 public class Application implements CommandLineRunner {
     private static final Logger logger = LoggerFactory.getLogger(Application.class);
 
-    private static final int THREADS_COUNT = 32;
-    private static final int RECORDS_COUNT = 1_000_000;
-    private static final int LOAD_BATCH_SIZE = 1000;
-
-    private static final int WORKLOAD_DURATION_SECS = 120; // 600 seconds
-
     public static void main(String[] args) {
-        SpringApplication.run(Application.class, args).close();
+        try {
+            SpringApplication.run(Application.class, args).close();
+        } catch (Exception ex) {
+            logger.error("App finished with error", ex);
+        }
     }
 
     private final Ticker ticker = new Ticker(logger);
 
+    private final Config config;
     private final SchemeService schemeService;
     private final TokenService tokenService;
 
@@ -58,11 +59,12 @@ public class Application implements CommandLineRunner {
     private final AtomicInteger executionsCount = new AtomicInteger(0);
     private final AtomicInteger retriesCount = new AtomicInteger(0);
 
-    public Application(SchemeService schemeService, TokenService tokenService) {
+    public Application(Config config, SchemeService schemeService, TokenService tokenService) {
+        this.config = config;
         this.schemeService = schemeService;
         this.tokenService = tokenService;
 
-        this.executor = Executors.newFixedThreadPool(THREADS_COUNT, this::threadFactory);
+        this.executor = Executors.newFixedThreadPool(config.getThreadCount(), this::threadFactory);
     }
 
     @PreDestroy
@@ -109,9 +111,13 @@ public class Application implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        logger.info("CLI app has started");
+        logger.info("CLI app has started with database {}", config.getConnection());
 
         for (String arg : args) {
+            if (arg.startsWith("--")) { // skip Spring parameters
+                continue;
+            }
+
             logger.info("execute {} step", arg);
 
             if ("clean".equalsIgnoreCase(arg)) {
@@ -141,12 +147,15 @@ public class Application implements CommandLineRunner {
     }
 
     private void loadData() {
+        int recordsCount = config.getRecordsCount();
+        int batchSize = config.getLoadBatchSize();
+
         List<CompletableFuture<?>> futures = new ArrayList<>();
         int id = 0;
-        while (id < RECORDS_COUNT) {
+        while (id < recordsCount) {
             final int first = id;
-            id += LOAD_BATCH_SIZE;
-            final int last = id < RECORDS_COUNT ? id : RECORDS_COUNT;
+            id += batchSize;
+            final int last = id < recordsCount ? id : recordsCount;
 
             futures.add(CompletableFuture.runAsync(() -> {
                 try (Ticker.Measure measure = ticker.getLoad().newCall()) {
@@ -163,18 +172,19 @@ public class Application implements CommandLineRunner {
     private void test() {
         YdbTracer.current().markToPrint("test");
 
+        int recordsCount = config.getRecordsCount();
         final Random rnd = new Random();
         List<Integer> randomIds = IntStream.range(0, 100)
-                .mapToObj(idx -> rnd.nextInt(RECORDS_COUNT))
+                .mapToObj(idx -> rnd.nextInt(recordsCount))
                 .collect(Collectors.toList());
 
         tokenService.updateBatch(randomIds);
     }
 
     private void runWorkloads() {
-        long finishAt = System.currentTimeMillis() + WORKLOAD_DURATION_SECS * 1000;
+        long finishAt = System.currentTimeMillis() + config.getWorkloadDurationSec() * 1000;
         List<CompletableFuture<?>> futures = new ArrayList<>();
-        for (int i = 0; i < THREADS_COUNT; i++) {
+        for (int i = 0; i < config.getThreadCount(); i++) {
             futures.add(CompletableFuture.runAsync(() -> this.workload(finishAt), executor));
         }
 
@@ -183,35 +193,48 @@ public class Application implements CommandLineRunner {
 
     private void workload(long finishAt) {
         final Random rnd = new Random();
+        final int recordCount = config.getRecordsCount();
+
         while (System.currentTimeMillis() < finishAt) {
             int mode = rnd.nextInt(10);
 
             try {
-                if (mode < 2) {
-                    try (Ticker.Measure measure = ticker.getBatchUpdate().newCall()) {
-                        List<Integer> randomIds = IntStream.range(0, 100)
-                                .mapToObj(idx -> rnd.nextInt(RECORDS_COUNT))
-                                .collect(Collectors.toList());
-                        tokenService.updateBatch(randomIds);
-                        measure.inc();
-                    }
-
-                } else if (mode < 6) {
-                    int id = rnd.nextInt(RECORDS_COUNT);
-                    try (Ticker.Measure measure = ticker.getFetch().newCall()) {
-                        tokenService.fetchToken(id);
-                        measure.inc();
-                    }
+                if (mode < 5) {
+                    executeFetch(rnd, recordCount);  // 50 percents
+                } else if (mode < 9) {
+                    executeUpdate(rnd, recordCount); // 40 percents
                 } else {
-                    int id = rnd.nextInt(RECORDS_COUNT);
-                    try (Ticker.Measure measure = ticker.getUpdate().newCall()) {
-                        tokenService.updateToken(id);
-                        measure.inc();
-                    }
+                    executeBatchUpdate(rnd, recordCount); // 10 percents
                 }
             } catch (RuntimeException ex) {
                 logger.debug("got exception {}", ex.getMessage());
             }
+        }
+    }
+
+    private void executeFetch(Random rnd, int recordCount) {
+        int id = rnd.nextInt(recordCount);
+        try (Ticker.Measure measure = ticker.getFetch().newCall()) {
+            tokenService.fetchToken(id);
+            measure.inc();
+        }
+    }
+
+    private void executeUpdate(Random rnd, int recordCount) {
+        int id = rnd.nextInt(recordCount);
+        try (Ticker.Measure measure = ticker.getUpdate().newCall()) {
+            tokenService.updateToken(id);
+            measure.inc();
+        }
+    }
+
+    private void executeBatchUpdate(Random rnd, int recordCount) {
+        try (Ticker.Measure measure = ticker.getBatchUpdate().newCall()) {
+            List<Integer> randomIds = IntStream.range(0, 100)
+                    .mapToObj(idx -> rnd.nextInt(recordCount))
+                    .collect(Collectors.toList());
+            tokenService.updateBatch(randomIds);
+            measure.inc();
         }
     }
 }
