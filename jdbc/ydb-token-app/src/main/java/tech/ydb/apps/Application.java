@@ -14,6 +14,8 @@ import java.util.stream.IntStream;
 
 import javax.annotation.PreDestroy;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
@@ -53,23 +55,37 @@ public class Application implements CommandLineRunner {
     private final Config config;
     private final SchemeService schemeService;
     private final TokenService tokenService;
+    private final MeterRegistry meterRegistry;
 
     private final ExecutorService executor;
+
     private final AtomicInteger threadCounter = new AtomicInteger(0);
     private final AtomicInteger executionsCount = new AtomicInteger(0);
     private final AtomicInteger retriesCount = new AtomicInteger(0);
 
-    public Application(Config config, SchemeService schemeService, TokenService tokenService) {
+    private final Counter executionsCounter;
+    private final Counter errorsCounter;
+//    private final Counter successCounter;
+
+    public Application(Config config, SchemeService schemeService, TokenService tokenService, MeterRegistry registry) {
         this.config = config;
         this.schemeService = schemeService;
         this.tokenService = tokenService;
+        this.meterRegistry = registry;
 
         this.executor = Executors.newFixedThreadPool(config.getThreadCount(), this::threadFactory);
+
+        this.executionsCounter = Counter.builder("sdk.operations").register(meterRegistry);
+        this.errorsCounter = Counter.builder("sdk.operations.errors").register(meterRegistry);
+//        this.successCounter = Counter.builder("OK").register(meterRegistry);
     }
 
     @PreDestroy
     public void close() throws Exception {
         logger.info("CLI app is waiting for finishing");
+
+        errorsCounter.close();
+        executionsCounter.close();
 
         executor.shutdown();
         executor.awaitTermination(5, TimeUnit.MINUTES);
@@ -79,6 +95,7 @@ public class Application implements CommandLineRunner {
 
         logger.info("Executed {} transactions with {} retries", executionsCount.get(), retriesCount.get());
         logger.info("CLI app has finished");
+
     }
 
     @Bean
@@ -87,6 +104,7 @@ public class Application implements CommandLineRunner {
             @Override
             public <T, E extends Throwable> boolean open(RetryContext ctx, RetryCallback<T, E> callback) {
                 executionsCount.incrementAndGet();
+                executionsCounter.increment();
                 return true;
             }
 
@@ -94,6 +112,12 @@ public class Application implements CommandLineRunner {
             public <T, E extends Throwable> void onError(RetryContext ctx, RetryCallback<T, E> callback, Throwable th) {
                 logger.debug("Retry operation with error {} ", printSqlException(th));
                 retriesCount.incrementAndGet();
+                errorsCounter.increment();
+            }
+
+            @Override
+            public <T, E extends Throwable> void close(RetryContext rc, RetryCallback<T, E> callback, Throwable th) {
+                // nothing
             }
         };
     }
