@@ -1,6 +1,5 @@
 package tech.ydb.apps;
 
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -14,7 +13,6 @@ import java.util.stream.IntStream;
 
 import javax.annotation.PreDestroy;
 
-import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,8 +21,6 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.retry.RetryCallback;
-import org.springframework.retry.RetryContext;
 import org.springframework.retry.RetryListener;
 import org.springframework.retry.annotation.EnableRetry;
 
@@ -50,42 +46,27 @@ public class Application implements CommandLineRunner {
         }
     }
 
-    private final Ticker ticker = new Ticker(logger);
+    private final AppMetrics ticker;
 
     private final Config config;
     private final SchemeService schemeService;
     private final TokenService tokenService;
-    private final MeterRegistry meterRegistry;
 
     private final ExecutorService executor;
-
     private final AtomicInteger threadCounter = new AtomicInteger(0);
-    private final AtomicInteger executionsCount = new AtomicInteger(0);
-    private final AtomicInteger retriesCount = new AtomicInteger(0);
-
-    private final Counter executionsCounter;
-    private final Counter errorsCounter;
-//    private final Counter successCounter;
 
     public Application(Config config, SchemeService schemeService, TokenService tokenService, MeterRegistry registry) {
         this.config = config;
         this.schemeService = schemeService;
         this.tokenService = tokenService;
-        this.meterRegistry = registry;
+        this.ticker = new AppMetrics(logger, registry);
 
         this.executor = Executors.newFixedThreadPool(config.getThreadCount(), this::threadFactory);
-
-        this.executionsCounter = Counter.builder("sdk.operations").register(meterRegistry);
-        this.errorsCounter = Counter.builder("sdk.operations.errors").register(meterRegistry);
-//        this.successCounter = Counter.builder("OK").register(meterRegistry);
     }
 
     @PreDestroy
     public void close() throws Exception {
         logger.info("CLI app is waiting for finishing");
-
-        errorsCounter.close();
-        executionsCounter.close();
 
         executor.shutdown();
         executor.awaitTermination(5, TimeUnit.MINUTES);
@@ -93,44 +74,12 @@ public class Application implements CommandLineRunner {
         ticker.printTotal();
         ticker.close();
 
-        logger.info("Executed {} transactions with {} retries", executionsCount.get(), retriesCount.get());
         logger.info("CLI app has finished");
-
     }
 
     @Bean
     public RetryListener retryListener() {
-        return new RetryListener() {
-            @Override
-            public <T, E extends Throwable> boolean open(RetryContext ctx, RetryCallback<T, E> callback) {
-                executionsCount.incrementAndGet();
-                executionsCounter.increment();
-                return true;
-            }
-
-            @Override
-            public <T, E extends Throwable> void onError(RetryContext ctx, RetryCallback<T, E> callback, Throwable th) {
-                logger.debug("Retry operation with error {} ", printSqlException(th));
-                retriesCount.incrementAndGet();
-                errorsCounter.increment();
-            }
-
-            @Override
-            public <T, E extends Throwable> void close(RetryContext rc, RetryCallback<T, E> callback, Throwable th) {
-                // nothing
-            }
-        };
-    }
-
-    private String printSqlException(Throwable th) {
-        Throwable ex = th;
-        while (ex != null) {
-            if (ex instanceof SQLException) {
-                return ex.getMessage();
-            }
-            ex = ex.getCause();
-        }
-        return th.getMessage();
+        return ticker.getRetryListener();
     }
 
     @Override
@@ -182,11 +131,10 @@ public class Application implements CommandLineRunner {
             final int last = id < recordsCount ? id : recordsCount;
 
             futures.add(CompletableFuture.runAsync(() -> {
-                try (Ticker.Measure measure = ticker.getLoad().newCall()) {
+                ticker.getLoad().measure(() -> {
                     tokenService.insertBatch(first, last);
                     logger.debug("inserted tokens [{}, {})", first, last);
-                    measure.inc();
-                }
+                });
             }, executor));
         }
 
@@ -240,27 +188,20 @@ public class Application implements CommandLineRunner {
 
     private void executeFetch(Random rnd, int recordCount) {
         int id = rnd.nextInt(recordCount);
-        try (Ticker.Measure measure = ticker.getFetch().newCall()) {
-            tokenService.fetchToken(id);
-            measure.inc();
-        }
+        ticker.getFetch().measure(() -> tokenService.fetchToken(id));
     }
 
     private void executeUpdate(Random rnd, int recordCount) {
         int id = rnd.nextInt(recordCount);
-        try (Ticker.Measure measure = ticker.getUpdate().newCall()) {
-            tokenService.updateToken(id);
-            measure.inc();
-        }
+        ticker.getUpdate().measure(() -> tokenService.updateToken(id));
     }
 
     private void executeBatchUpdate(Random rnd, int recordCount) {
-        try (Ticker.Measure measure = ticker.getBatchUpdate().newCall()) {
+        ticker.getBatchUpdate().measure(() -> {
             List<Integer> randomIds = IntStream.range(0, 100)
                     .mapToObj(idx -> rnd.nextInt(recordCount))
                     .collect(Collectors.toList());
             tokenService.updateBatch(randomIds);
-            measure.inc();
-        }
+        });
     }
 }
