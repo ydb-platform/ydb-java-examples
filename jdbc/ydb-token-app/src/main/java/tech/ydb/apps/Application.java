@@ -54,6 +54,7 @@ public class Application implements CommandLineRunner {
 
     private final ExecutorService executor;
     private final AtomicInteger threadCounter = new AtomicInteger(0);
+    private volatile boolean isStopped = false;
 
     public Application(Config config, SchemeService schemeService, TokenService tokenService, MeterRegistry registry) {
         this.config = config;
@@ -66,6 +67,7 @@ public class Application implements CommandLineRunner {
 
     @PreDestroy
     public void close() throws Exception {
+        isStopped = true;
         logger.info("CLI app is waiting for finishing");
 
         executor.shutdown();
@@ -131,6 +133,10 @@ public class Application implements CommandLineRunner {
             final int last = id < recordsCount ? id : recordsCount;
 
             futures.add(CompletableFuture.runAsync(() -> {
+                if (isStopped) {
+                    return;
+                }
+
                 ticker.getLoad().measure(() -> {
                     tokenService.insertBatch(first, last);
                     logger.debug("inserted tokens [{}, {})", first, last);
@@ -168,7 +174,7 @@ public class Application implements CommandLineRunner {
         final Random rnd = new Random();
         final int recordCount = config.getRecordsCount();
 
-        while (System.currentTimeMillis() < finishAt) {
+        while ((System.currentTimeMillis() < finishAt) && !isStopped) {
             rt.acquire();
             int mode = rnd.nextInt(10);
 
