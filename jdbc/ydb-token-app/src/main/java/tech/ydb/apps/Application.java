@@ -57,6 +57,8 @@ public class Application implements CommandLineRunner {
     private volatile boolean isStopped = false;
 
     public Application(Config config, SchemeService schemeService, TokenService tokenService, MeterRegistry registry) {
+        GrpcMetrics.init(registry);
+
         this.config = config;
         this.schemeService = schemeService;
         this.tokenService = tokenService;
