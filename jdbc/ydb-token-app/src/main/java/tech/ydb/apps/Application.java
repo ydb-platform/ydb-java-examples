@@ -3,11 +3,13 @@ package tech.ydb.apps;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -25,7 +27,7 @@ import org.springframework.retry.RetryListener;
 import org.springframework.retry.annotation.EnableRetry;
 
 import tech.ydb.apps.service.SchemeService;
-import tech.ydb.apps.service.TokenService;
+import tech.ydb.apps.service.WorkloadService;
 import tech.ydb.jdbc.YdbTracer;
 
 /**
@@ -50,18 +52,19 @@ public class Application implements CommandLineRunner {
 
     private final Config config;
     private final SchemeService schemeService;
-    private final TokenService tokenService;
+    private final WorkloadService workloadService;
 
     private final ExecutorService executor;
     private final AtomicInteger threadCounter = new AtomicInteger(0);
+    private final AtomicLong logCounter = new AtomicLong(0);
     private volatile boolean isStopped = false;
 
-    public Application(Config config, SchemeService schemeService, TokenService tokenService, MeterRegistry registry) {
+    public Application(Config config, SchemeService scheme, WorkloadService worload, MeterRegistry registry) {
         GrpcMetrics.init(registry);
 
         this.config = config;
-        this.schemeService = schemeService;
-        this.tokenService = tokenService;
+        this.schemeService = scheme;
+        this.workloadService = worload;
         this.ticker = new AppMetrics(logger, registry);
 
         this.executor = Executors.newFixedThreadPool(config.getThreadCount(), this::threadFactory);
@@ -140,7 +143,7 @@ public class Application implements CommandLineRunner {
                 }
 
                 ticker.getLoad().measure(() -> {
-                    tokenService.insertBatch(first, last);
+                    workloadService.loadData(first, last);
                     logger.debug("inserted tokens [{}, {})", first, last);
                 });
             }, executor));
@@ -154,15 +157,16 @@ public class Application implements CommandLineRunner {
 
         int recordsCount = config.getRecordsCount();
         final Random rnd = new Random();
-        List<Integer> randomIds = IntStream.range(0, 100)
+        Set<Integer> randomIds = IntStream.range(0, 100)
                 .mapToObj(idx -> rnd.nextInt(recordsCount))
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
 
-        tokenService.updateBatch(randomIds);
+        workloadService.updateBatch(randomIds, 0);
     }
 
     private void runWorkloads() {
         RateLimiter rt = config.getRpsLimiter();
+        logCounter.set(workloadService.readLastGlobalVersion());
         long finishAt = System.currentTimeMillis() + config.getWorkloadDurationSec() * 1000;
         List<CompletableFuture<?>> futures = new ArrayList<>();
         for (int i = 0; i < config.getThreadCount(); i++) {
@@ -196,20 +200,21 @@ public class Application implements CommandLineRunner {
 
     private void executeFetch(Random rnd, int recordCount) {
         int id = rnd.nextInt(recordCount);
-        ticker.getFetch().measure(() -> tokenService.fetchToken(id));
+        ticker.getFetch().measure(() -> workloadService.fetchToken(id));
     }
 
     private void executeUpdate(Random rnd, int recordCount) {
         int id = rnd.nextInt(recordCount);
-        ticker.getUpdate().measure(() -> tokenService.updateToken(id));
+        ticker.getUpdate().measure(() -> workloadService.updateToken(id, logCounter.incrementAndGet()));
     }
 
     private void executeBatchUpdate(Random rnd, int recordCount) {
         ticker.getBatchUpdate().measure(() -> {
-            List<Integer> randomIds = IntStream.range(0, 100)
+            Set<Integer> randomIds = IntStream.range(0, 100)
                     .mapToObj(idx -> rnd.nextInt(recordCount))
-                    .collect(Collectors.toList());
-            tokenService.updateBatch(randomIds);
+                    .collect(Collectors.toSet());
+            long counter = logCounter.getAndAdd(randomIds.size()) + 1;
+            workloadService.updateBatch(randomIds, counter);
         });
     }
 }

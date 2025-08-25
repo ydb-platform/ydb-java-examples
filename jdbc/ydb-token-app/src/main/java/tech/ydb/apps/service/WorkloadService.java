@@ -3,6 +3,7 @@ package tech.ydb.apps.service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -13,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import tech.ydb.apps.annotation.YdbRetryable;
 import tech.ydb.apps.entity.Token;
+import tech.ydb.apps.entity.TokenLog;
+import tech.ydb.apps.repo.TokenLogRepository;
 import tech.ydb.apps.repo.TokenRepository;
 
 /**
@@ -20,12 +23,14 @@ import tech.ydb.apps.repo.TokenRepository;
  * @author Aleksandr Gorshenin
  */
 @Service
-public class TokenService {
-    private final static Logger logger = LoggerFactory.getLogger(TokenService.class);
-    private final TokenRepository repository;
+public class WorkloadService {
+    private final static Logger logger = LoggerFactory.getLogger(WorkloadService.class);
+    private final TokenRepository tokenRepo;
+    private final TokenLogRepository tokenLogRepo;
 
-    public TokenService(TokenRepository repository) {
-        this.repository = repository;
+    public WorkloadService(TokenRepository tokenRepo, TokenLogRepository tokenLogRepo) {
+        this.tokenRepo = tokenRepo;
+        this.tokenLogRepo = tokenLogRepo;
     }
 
     private UUID getKey(int id) {
@@ -34,18 +39,18 @@ public class TokenService {
 
     @YdbRetryable
     @Transactional
-    public void insertBatch(int firstID, int lastID) {
+    public void loadData(int firstID, int lastID) {
         List<Token> batch = new ArrayList<>();
         for (int id = firstID; id < lastID; id++) {
             batch.add(new Token("user_" + id));
         }
-        repository.saveAll(batch);
+        tokenRepo.saveAll(batch);
     }
 
     @YdbRetryable
     @Transactional
     public Token fetchToken(int id) {
-        Optional<Token> token = repository.findById(getKey(id));
+        Optional<Token> token = tokenRepo.findById(getKey(id));
 
         if (!token.isPresent()) {
             logger.warn("token {} is not found", id);
@@ -57,45 +62,44 @@ public class TokenService {
 
     @YdbRetryable
     @Transactional
-    public void updateToken(int id) {
+    public void updateToken(int id, long counter) {
         Token token = fetchToken(id);
         if (token != null) {
             token.incVersion();
-            repository.save(token);
+            tokenRepo.save(token);
+            tokenLogRepo.save(new TokenLog(token, counter));
             logger.trace("updated token {} -> {}", id, token.getVersion());
+        } else {
+            logger.warn("token {} is not found", id);
         }
     }
 
     @YdbRetryable
     @Transactional
-    public void updateBatch(List<Integer> ids) {
+    public void updateBatch(Set<Integer> ids, long counterFrom) {
         List<UUID> uuids = ids.stream().map(this::getKey).collect(Collectors.toList());
 
-        Iterable<Token> batch = repository.findAllById(uuids);
+        Iterable<Token> batch = tokenRepo.findAllById(uuids);
+        List<TokenLog> logs = new ArrayList<>();
         for (Token token: batch) {
             logger.trace("update token {}", token);
             token.incVersion();
+            logs.add(new TokenLog(token, counterFrom++));
         }
 
-        repository.saveAllAndFlush(batch);
+        tokenRepo.saveAll(batch);
+        tokenLogRepo.saveAll(logs);
     }
 
     @YdbRetryable
     @Transactional
     public void removeBatch(List<Integer> ids) {
         List<UUID> uuids = ids.stream().map(this::getKey).collect(Collectors.toList());
-        repository.deleteAllByIdInBatch(uuids);
+        tokenRepo.deleteAllByIdInBatch(uuids);
     }
 
     @YdbRetryable
-    @Transactional
-    public void listManyRecords() {
-        long count = 0;
-        for (String id : repository.scanFindAll()) {
-            count ++;
-            if (count % 1000 == 0) {
-                logger.info("scan readed {} records", count);
-            }
-        }
+    public long readLastGlobalVersion() {
+        return tokenLogRepo.findTopGlobalVersion().orElse(0l);
     }
 }

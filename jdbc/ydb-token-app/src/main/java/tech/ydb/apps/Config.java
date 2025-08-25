@@ -19,10 +19,8 @@ public class Config {
     private final int workloadDurationSec;
     private final int rpsLimit;
 
-    public Config(String connection, int threadsCount, int recordsCount,
-            @Name("load.batchSize") int loadBatchSize, @Name("workload.duration") int workloadDuration,
-            int rpsLimit
-            ) {
+    public Config(String connection, int threadsCount, int recordsCount, @Name("load.batchSize") int loadBatchSize,
+            @Name("workload.duration") int workloadDuration, int rpsLimit) {
         this.connection = connection;
         this.threadsCount = threadsCount <= 0 ? Runtime.getRuntime().availableProcessors() : threadsCount;
         this.recordsCount = recordsCount;
