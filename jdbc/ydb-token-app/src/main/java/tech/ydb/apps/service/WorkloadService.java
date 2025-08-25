@@ -102,4 +102,14 @@ public class WorkloadService {
     public long readLastGlobalVersion() {
         return tokenLogRepo.findTopGlobalVersion().orElse(0l);
     }
+
+    @YdbRetryable
+    public long countTokenLogs() {
+        return tokenLogRepo.count();
+    }
+
+    @YdbRetryable
+    public long countAllTokenUpdates() {
+        return tokenRepo.countAllUpdates().orElse(0l);
+    }
 }

@@ -35,10 +35,11 @@ java -jar ydb-token-app-1.1.0-SNAPSHOT.jar <options> <commands>
 ```
 Where `options` are application parameters (see the Application Parameters section), and `commands` are the sequence of
 commands the application will execute one after the other. Currently, the following commands are supported:
-* clean - clean the database, the `app_token` table will be deleted
-* init  - prepare the database, the empty `app_token` table will be created
-* load  - load test data, the `app_token` table will be filled with initial data
-* run   - start the test workload
+* clean    - clean the database, the `app_token` table will be deleted
+* init     - prepare the database, the empty `app_token` table will be created
+* load     - load test data, the `app_token` table will be filled with initial data
+* run      - start the test workload
+* validate - validate current data stored in database
 
 Commands can be used individually or sequenced, for example:
 

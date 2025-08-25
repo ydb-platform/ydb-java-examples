@@ -116,6 +116,10 @@ public class Application implements CommandLineRunner {
                 ticker.runWithMonitor(this::runWorkloads);
             }
 
+            if ("validate".equalsIgnoreCase(arg)) {
+                executeValidate();
+            }
+
             if ("test".equalsIgnoreCase(arg)) {
                 ticker.runWithMonitor(this::test);
             }
@@ -216,5 +220,12 @@ public class Application implements CommandLineRunner {
             long counter = logCounter.getAndAdd(randomIds.size()) + 1;
             workloadService.updateBatch(randomIds, counter);
         });
+    }
+
+    private void executeValidate() {
+        logger.info("=========== VALIDATE ==============");
+        logger.info("Log table size      = {}", workloadService.countTokenLogs());
+        logger.info("Last log version    = {}", workloadService.readLastGlobalVersion());
+        logger.info("Token updates count = {}", workloadService.countAllTokenUpdates());
     }
 }
