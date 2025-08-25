@@ -19,7 +19,7 @@ import org.springframework.retry.annotation.Retryable;
 @Retention(RetentionPolicy.RUNTIME)
 @Retryable(
         retryFor = { SQLRecoverableException.class, SQLTransientException.class },
-        maxAttempts = 5,
+        maxAttempts = 15,
         backoff = @Backoff(delay = 100, multiplier = 2.0, maxDelay = 5000, random = true)
 )
 public @interface YdbRetryable {

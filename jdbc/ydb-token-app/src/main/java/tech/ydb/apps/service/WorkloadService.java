@@ -7,6 +7,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import javax.persistence.EntityNotFoundException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -54,7 +56,7 @@ public class WorkloadService {
 
         if (!token.isPresent()) {
             logger.warn("token {} is not found", id);
-            return null;
+            throw new EntityNotFoundException("token " + id + " is not found");
         }
 
         return token.get();
@@ -71,6 +73,7 @@ public class WorkloadService {
             logger.trace("updated token {} -> {}", id, token.getVersion());
         } else {
             logger.warn("token {} is not found", id);
+            throw new EntityNotFoundException("token " + id + " is not found");
         }
     }
 

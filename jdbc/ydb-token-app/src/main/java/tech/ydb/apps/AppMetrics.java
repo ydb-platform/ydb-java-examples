@@ -147,6 +147,7 @@ public class AppMetrics {
     private final Method batchUpdate;
 
     private final AtomicInteger executionsCount = new AtomicInteger(0);
+    private final AtomicInteger failturesCount = new AtomicInteger(0);
     private final AtomicInteger retriesCount = new AtomicInteger(0);
 
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
@@ -177,6 +178,10 @@ public class AppMetrics {
         return this.batchUpdate;
     }
 
+    public void incrementFaiture() {
+        failturesCount.incrementAndGet();
+    }
+
     public void runWithMonitor(Runnable runnable) {
         Arrays.asList(load, fetch, update, batchUpdate).forEach(Method::reset);
         final ScheduledFuture<?> future = scheduler.scheduleAtFixedRate(this::print, 1, 10, TimeUnit.SECONDS);
@@ -197,9 +202,16 @@ public class AppMetrics {
     }
 
     public void printTotal() {
-        logger.info("=========== TOTAL ==============");
-        Arrays.asList(load, fetch, update, batchUpdate).forEach(m -> m.printTotal(logger));
-        logger.info("Executed {} transactions with {} retries", executionsCount.get(), retriesCount.get());
+        if (failturesCount.get() > 0) {
+            logger.error("=========== TOTAL ==============");
+            Arrays.asList(load, fetch, update, batchUpdate).forEach(m -> m.printTotal(logger));
+            logger.error("Executed {} transactions with {} retries and {} failtures", executionsCount.get(),
+                    retriesCount.get() - failturesCount.get(), failturesCount.get());
+        } else {
+            logger.info("=========== TOTAL ==============");
+            Arrays.asList(load, fetch, update, batchUpdate).forEach(m -> m.printTotal(logger));
+            logger.info("Executed {} transactions with {} retries", executionsCount.get(), retriesCount.get());
+        }
     }
 
     public RetryListener getRetryListener() {
@@ -218,7 +230,6 @@ public class AppMetrics {
                 if (m != null) {
                     m.retriesCounter.apply(extractStatusCode(th)).increment();
                 }
-
             }
 
             @Override
