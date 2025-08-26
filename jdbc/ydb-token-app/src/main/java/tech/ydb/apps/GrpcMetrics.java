@@ -1,5 +1,6 @@
 package tech.ydb.apps;
 
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import javax.annotation.Nullable;
@@ -15,6 +16,7 @@ import io.grpc.MethodDescriptor;
 import io.grpc.Status;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 
 /**
  *
@@ -23,6 +25,8 @@ import io.micrometer.core.instrument.MeterRegistry;
 public class GrpcMetrics implements Consumer<ManagedChannelBuilder<?>>, ClientInterceptor {
     private static final Counter.Builder REQUEST = Counter.builder("grpc.request");
     private static final Counter.Builder RESPONSE = Counter.builder("grpc.response");
+    private static final Timer.Builder LATENCY = Timer.builder("grpc.latency")
+            .publishPercentiles(0.5, 0.9, 0.95, 0.99);
 
     private static MeterRegistry REGISTRY = null;
 
@@ -101,9 +105,11 @@ public class GrpcMetrics implements Consumer<ManagedChannelBuilder<?>>, ClientIn
 
         private class ProxyListener extends Listener<RespT> {
             private final Listener<RespT> delegate;
+            private final long startedAt;
 
             public ProxyListener(Listener<RespT> delegate) {
                 this.delegate = delegate;
+                this.startedAt = System.currentTimeMillis();
             }
 
 
@@ -119,8 +125,11 @@ public class GrpcMetrics implements Consumer<ManagedChannelBuilder<?>>, ClientIn
 
             @Override
             public void onClose(Status status, Metadata trailers) {
+                long ms = System.currentTimeMillis() - startedAt;
                 RESPONSE.tag("method", method).tag("authority", authority).tag("status", status.getCode().toString())
                         .register(registry).increment();
+                LATENCY.tag("method", method).tag("authority", authority)
+                        .register(registry).record(ms, TimeUnit.MILLISECONDS);
                 delegate.onClose(status, trailers);
             }
 

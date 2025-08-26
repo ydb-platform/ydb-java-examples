@@ -67,6 +67,7 @@ public class Application implements CommandLineRunner {
         this.workloadService = worload;
         this.ticker = new AppMetrics(logger, registry);
 
+        logger.info("Create fixed thread pool with size {}", config.getThreadCount());
         this.executor = Executors.newFixedThreadPool(config.getThreadCount(), this::threadFactory);
     }
 
