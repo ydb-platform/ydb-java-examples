@@ -1,6 +1,7 @@
 package tech.ydb.apps;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;
@@ -13,8 +14,8 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
 
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.springframework.retry.RetryCallback;
 import org.springframework.retry.RetryContext;
@@ -35,10 +36,11 @@ public class AppMetrics {
     private static final Counter.Builder SDK_OPERATIONS_FAILTURE = Counter.builder("sdk.operations.failture");
     private static final Counter.Builder SDK_RETRY_ATTEMPS = Counter.builder("sdk.retry.attempts");
 
-//    private static final Timer.Builder SDK_OPERATION_LATENCY = Timer.builder("sdk.operation.latency")
-    private static final DistributionSummary.Builder SDK_OPERATION_LATENCY = DistributionSummary
-            .builder("sdk.operation.latency")
-            .serviceLevelObjectives(0.001, 0.002, 0.003, 0.004, 0.005, 0.0075, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1);
+    private static final Timer.Builder SDK_OPERATION_LATENCY = Timer.builder("sdk.operation.latency")
+//            .serviceLevelObjectives(Duration.ofMillis(8), Duration.ofMillis(16), Duration.ofMillis(32),
+//                    Duration.ofMillis(64), Duration.ofMillis(128), Duration.ofMillis(256), Duration.ofMillis(512),
+//                    Duration.ofMillis(1024), Duration.ofMillis(2048), Duration.ofMillis(4096))
+            .publishPercentiles(0.5, 0.9, 0.95, 0.99);
 
     public class Method {
         private final String name;
@@ -53,10 +55,10 @@ public class AppMetrics {
         private final Counter successCounter;
         private final Map<StatusCode, Counter> errorsCountersMap = new EnumMap<>(StatusCode.class);
         private final Map<StatusCode, Counter> retriesCountersMap = new EnumMap<>(StatusCode.class);
-        private final Map<StatusCode, DistributionSummary> durationTimerMap = new EnumMap<>(StatusCode.class);
+        private final Map<StatusCode, Timer> durationTimerMap = new EnumMap<>(StatusCode.class);
         private final Function<StatusCode, Counter> errorCounter;
         private final Function<StatusCode, Counter> retriesCounter;
-        private final Function<StatusCode, DistributionSummary> durationTimer;
+        private final Function<StatusCode, Timer> durationTimer;
 
         private volatile long lastPrinted = 0;
 
@@ -104,7 +106,7 @@ public class AppMetrics {
                 timeMs.add(ms);
                 totalTimeMs.add(ms);
 
-                durationTimer.apply(code).record(0.001 * ms);
+                durationTimer.apply(code).record(Duration.ofMillis(ms));
             }
         }
 
