@@ -1,5 +1,6 @@
 package tech.ydb.apps.repo;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.Query;
@@ -19,4 +20,7 @@ public interface TokenRepository extends CrudRepository<Token, UUID> {
     void saveAllAndFlush(Iterable<Token> list);
 
     void deleteAllByIdInBatch(Iterable<UUID> ids);
+
+    @Query("SELECT SUM(token.version - 1) FROM Token token")
+    Optional<Long> countAllUpdates();
 }
