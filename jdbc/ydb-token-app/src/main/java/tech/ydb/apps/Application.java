@@ -199,7 +199,7 @@ public class Application implements CommandLineRunner {
                 }
             } catch (RuntimeException ex) {
                 ticker.incrementFaiture();
-                logger.debug("got exception {}", ex.getMessage());
+                logger.warn("got exception {}", ex.getMessage());
             }
         }
     }
