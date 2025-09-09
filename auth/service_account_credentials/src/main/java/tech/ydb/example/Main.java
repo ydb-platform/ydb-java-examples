@@ -13,6 +13,7 @@ import tech.ydb.table.transaction.TxControl;
 
 public final class Main {
     public static void main(String[] args) {
+        long nano = System.nanoTime();
         if (args.length != 2) {
             System.err.println("Usage: java -jar ydb-service-account-example <connection-string> <sa-key-file>");
             return;
@@ -38,5 +39,6 @@ public final class Main {
                 }
             }
         }
+        System.out.println("ms: " +  (System.nanoTime() - nano) / 1_000_000);
     }
 }
