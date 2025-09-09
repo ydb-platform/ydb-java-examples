@@ -34,7 +34,7 @@ class TestDbApplication : CommandLineRunner {
         }
         val duration = step.toEpochMilli() - start.toEpochMilli()
 
-        log.info("Throughput = {}", duration.takeIf { it != 0L }?.let { count * 1000.0 / it } ?: 0.0)
+        log.info("Average time = {}ms",  1.0 * duration / count )
     }
 
     fun getFixedString(s: String): String {
