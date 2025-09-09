@@ -23,18 +23,18 @@ class TestDbApplication : CommandLineRunner {
     override fun run(vararg args: String?) {
         val testString = String(ByteArray(1024) { 'a'.code.toByte() })
 
-        val start = Instant.now()
-        val end = start.plusSeconds(10)
-        var step = start
+        var sink = 0
+        val t0 = System.nanoTime()
+        val end = t0 + 10_000_000_000L
         var count = 0
-        while (step < end) {
-            getFixedString(testString)
+        while (System.nanoTime() < end) {
+            sink += getFixedString(testString).length
             count++
-            step = Instant.now()
         }
-        val duration = step.toEpochMilli() - start.toEpochMilli()
-
-        log.info("Average time = {}ms",  1.0 * duration / count )
+        val elapsed = System.nanoTime() - t0
+        val avgMs = elapsed.toDouble() / count / 1_000_000.0
+        val opsPerSec = count * 1e9 / elapsed
+        log.info("avg={} ms/op, throughput={} ops/s", avgMs, opsPerSec)
     }
 
     fun getFixedString(s: String): String {
