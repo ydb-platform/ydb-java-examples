@@ -1,0 +1,110 @@
+name: SLO JDBC
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - 'slo-workload/**'
+      - '.github/workflows/slo-test.yml'
+  pull_request:
+    paths:
+      - 'slo-workload/**'
+      - '.github/workflows/slo-test.yml'
+
+jobs:
+  slo-workload-test:
+    if: (!contains(github.event.pull_request.labels.*.name, 'no slo'))
+    name: Test SLO Workload
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        workload:
+          - simple-jdbc
+        include:
+          - workload: simple-jdbc
+            test_duration: 60
+            read_rps: 1000
+            write_rps: 100
+            read_timeout: 1000
+            write_timeout: 1000
+
+    concurrency:
+      group: slo-${{ github.ref }}-${{ matrix.workload }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize YDB SLO
+        uses: ydb-platform/ydb-slo-action/init@53e02500d4a98a6b67d9009bc46e839236f15f81
+        with:
+          github_pull_request_number: ${{ github.event.pull_request.number }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          workload_name: ${{ matrix.workload }}
+          ydb_database_node_count: 5
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Build project
+        run: mvn clean install -DskipTests -q
+
+      - name: Wait for YDB
+        run: |
+          echo "Waiting for YDB to start..."
+          for i in {1..30}; do
+            if nc -zv localhost 2135 2>&1 | grep -q "succeeded"; then
+              echo "YDB is ready!"
+              break
+            fi
+            echo "Attempt $i/30..."
+            sleep 2
+          done
+
+      - name: Run SLO test
+        env:
+          WORKLOAD_NAME: ${{ matrix.workload }}
+          YDB_JDBC_URL: jdbc:ydb:grpc://localhost:2135/Root/testdb
+          PROM_PGW: http://localhost:9091
+          TEST_DURATION: ${{ matrix.test_duration }}
+          READ_RPS: ${{ matrix.read_rps }}
+          WRITE_RPS: ${{ matrix.write_rps }}
+          READ_TIMEOUT: ${{ matrix.read_timeout }}
+          WRITE_TIMEOUT: ${{ matrix.write_timeout }}
+          REPORT_PERIOD: 1000
+        run: |
+          mvn test -pl slo-workload/${{ matrix.workload }} \
+            -Dskip.jdbc.tests=false \
+            -Dtest=JdbcSloTest
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: slo-test-results-${{ matrix.workload }}
+          path: |
+            slo-workload/**/target/surefire-reports/
+            slo-workload/**/target/*.log
+          retention-days: 3
+
+  publish-slo-report:
+    name: Publish SLO Report
+    runs-on: ubuntu-latest
+    needs: slo-workload-test
+    if: success()
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    steps:
+      - name: Publish report
+        uses: ydb-platform/ydb-slo-action/report@53e02500d4a98a6b67d9009bc46e839236f15f81
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_run_id: ${{ github.run_id }}

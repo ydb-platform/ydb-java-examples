@@ -1,0 +1,67 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>tech.ydb.examples</groupId>
+        <artifactId>ydb-sdk-examples</artifactId>
+        <version>1.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>slo-workload</artifactId>
+    <packaging>pom</packaging>
+
+    <name>YDB SLO Workload Tests</name>
+    <description>SLO testing applications for YDB performance validation</description>
+
+    <properties>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <spring-boot.version>3.5.9</spring-boot.version>
+        <ydb.jdbc.version>2.3.20</ydb.jdbc.version>
+        <prometheus.version>0.16.0</prometheus.version>
+        <junit.jupiter.version>5.12.2</junit.jupiter.version>
+        <skip.jdbc.tests>true</skip.jdbc.tests>
+    </properties>
+
+    <modules>
+        <module>simple-jdbc</module>
+    </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Spring Boot BOM -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- YDB JDBC Driver -->
+            <dependency>
+                <groupId>tech.ydb.jdbc</groupId>
+                <artifactId>ydb-jdbc-driver</artifactId>
+                <version>${ydb.jdbc.version}</version>
+            </dependency>
+
+            <!-- Prometheus -->
+            <dependency>
+                <groupId>io.prometheus</groupId>
+                <artifactId>simpleclient</artifactId>
+                <version>${prometheus.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.prometheus</groupId>
+                <artifactId>simpleclient_pushgateway</artifactId>
+                <version>${prometheus.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+</project>
