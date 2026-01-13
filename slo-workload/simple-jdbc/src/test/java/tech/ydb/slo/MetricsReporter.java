@@ -38,6 +38,7 @@ public class MetricsReporter {
         try {
             URL url = URI.create(promPgwUrl).toURL();
             this.pushGateway = new PushGateway(url);
+            log.info("Initialized PushGateway: {}", promPgwUrl);
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize PushGateway: " + promPgwUrl, e);
         }
@@ -76,22 +77,17 @@ public class MetricsReporter {
      * Record successful operation
      */
     public void recordSuccess(String operation, double latencySeconds) {
-        // Increment total operations
         operationsTotal.labels(operation, "java", javaVersion, jobName, "0.0.0").inc();
-
-        // Increment successful operations
         operationsSuccessTotal.labels(operation, "java", javaVersion, jobName, "0.0.0").inc();
-
-        // Record latency
         operationLatencySeconds.labels(operation, "success", "java", javaVersion, jobName, "0.0.0")
                 .observe(latencySeconds);
 
         totalSuccess++;
 
-        // Log every 100 operations
-        if (totalSuccess % 100 == 0) {
-            System.out.printf("✅ [%s] Success #%d, latency: %.3f ms%n",
-                    operation, totalSuccess, latencySeconds * 1000);
+        // Log only at milestones
+        if (totalSuccess % 1000 == 0) {
+            log.info("{} operations completed successfully (avg latency: {:.2f} ms)",
+                    totalSuccess, latencySeconds * 1000);
         }
     }
 
@@ -99,17 +95,10 @@ public class MetricsReporter {
      * Record failed operation
      */
     public void recordError(String operation, String errorType) {
-        // Increment total operations (errors are also operations)
         operationsTotal.labels(operation, "java", javaVersion, jobName, "0.0.0").inc();
-
-        // Note: We could add error latency here if we tracked it
-        // For now, we just count the error
-
         totalErrors++;
 
-        // Log errors
-        System.out.printf("❌ [%s] Error #%d, type: %s%n",
-                operation, totalErrors, errorType);
+        log.warn("Operation failed: {} (type: {}, total errors: {})", operation, errorType, totalErrors);
     }
 
     /**
@@ -132,15 +121,9 @@ public class MetricsReporter {
                             "instance", "jdbc"
                     )
             );
-
-            System.out.println("📤 Metrics pushed to Prometheus");
-            System.out.println("   Success total: " + totalSuccess);
-            System.out.println("   Errors total: " + totalErrors);
-
-            log.debug("Metrics pushed to Prometheus");
+            log.info("Metrics pushed to Prometheus (success: {}, errors: {})", totalSuccess, totalErrors);
         } catch (IOException e) {
-            System.err.println("❌ Failed to push metrics: " + e.getMessage());
-            log.error("Failed to push metrics", e);
+            log.error("Failed to push metrics to Prometheus", e);
         }
     }
 
@@ -154,14 +137,19 @@ public class MetricsReporter {
             writer.println("LATENCY_MS=" + String.format("%.2f", latencySeconds * 1000));
             writer.println("PENDING_OPERATIONS=0");
 
-            System.out.println("💾 Metrics saved to file:");
-            System.out.println("   Success: " + totalSuccess);
-            System.out.println("   Errors: " + totalErrors);
-            System.out.println("   Latency: " + String.format("%.2f ms", latencySeconds * 1000));
-
-            log.info("Metrics saved to {}", filename);
+            log.info("Metrics saved to {} (success: {}, errors: {}, latency: {:.2f} ms)",
+                    filename, totalSuccess, totalErrors, latencySeconds * 1000);
         } catch (IOException e) {
-            log.error("Failed to save metrics to file", e);
+            log.error("Failed to save metrics to file: {}", filename, e);
         }
+    }
+
+    /**
+     * Get summary statistics
+     */
+    public String getSummary() {
+        return String.format("Success: %d, Errors: %d, Error rate: %.2f%%",
+                totalSuccess, totalErrors,
+                totalSuccess > 0 ? (totalErrors * 100.0 / (totalSuccess + totalErrors)) : 0.0);
     }
 }

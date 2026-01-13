@@ -68,7 +68,7 @@
                     <skipTests>${skip.jdbc.tests}</skipTests>
                 </configuration>
             </plugin>
-            
+
         </plugins>
     </build>
 </project>
