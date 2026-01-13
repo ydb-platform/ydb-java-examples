@@ -1,85 +1,137 @@
-# simple-jdbc-test
+# Simple JDBC SLO Test
 
-Модуль, содержащий полноценный SLO тест с использованием JDBC подключения к YDB.
+Базовый SLO тест для YDB JDBC Driver без использования фреймворков (plain JDBC).
+
+## Описание
+
+Тестирует производительность и надежность YDB JDBC Driver под нагрузкой:
+- **Latency**: P50 < 10ms, P95 < 50ms, P99 < 100ms
+- **Success Rate**: > 99.9%
+- **Технологии**: YDB JDBC Driver, Spring Boot (только для DI)
+
+> 📖 **Подробнее о стратегии тестирования, метриках и архитектуре:** [slo-workload/README.md](../README.md)
+
+## Быстрый старт
+
+### Запуск в CI/CD
+
+Тест автоматически запускается через GitHub Actions при изменениях в `slo-workload/**`.
+
+**Workflow:** `.github/workflows/slo-test.yml`
+
+Пропустить тест: добавьте label `no slo` к PR.
+
+### Параметры
+
+| Параметр | Описание | Значение по умолчанию |
+|----------|----------|----------------------|
+| `TEST_DURATION` | Длительность теста (секунды) | 60 |
+| `READ_RPS` | Read операций в секунду | 1000 |
+| `WRITE_RPS` | Write операций в секунду | 100 |
+| `READ_TIMEOUT` | Timeout для read (ms) | 1000 |
+| `WRITE_TIMEOUT` | Timeout для write (ms) | 1000 |
 
 ## Компоненты
 
 ### JdbcSloTableContext
-Сервисный класс для работы с таблицей `slo_table`. Реализует retry logic с exponential backoff.
+Сервисный класс для работы с таблицей `slo_table`.
 
-**Методы:**
-- `createTable(timeout)` - создание таблицы с составным ключом (Guid, Id)
-- `save(row, timeout)` - UPSERT запись с автоматическим retry (до 5 попыток)
-- `select(guid, id, timeout)` - чтение записи по ключу с retry
-- `selectCount()` - подсчёт общего количества записей
-- `tableExists()` - проверка существования таблицы
-- `isRetryableError(exception)` - определение временных ошибок (timeout, network, overload)
+**Основные методы:**
+```java
+createTable(timeout)           // Создание таблицы
+save(row, timeout)             // UPSERT с retry
+select(guid, id, timeout)      // SELECT с retry
+```
 
-**Retry стратегия:**
-- Максимум попыток: 5
-- Backoff: 100ms → 200ms → 400ms → 800ms → 1600ms
-- Повторяет: timeout, connection, network, overload, session expired
-- Не повторяет: schema errors, constraint violations, syntax errors
+**Особенности:**
+- Retry с exponential backoff (5 попыток)
+- Автоматическое восстановление после временных ошибок
+- Подробности: см. [родительский README](../README.md#retry-механизм)
 
 ### SloTableRow
-Data Transfer Object для строки таблицы. Используется для тестирования и будущих workload'ов.
-
-**Поля:**
-- `guid: UUID` - уникальный идентификатор
-- `id: int` - порядковый номер
-- `payloadStr: String` - строковая нагрузка (~1KB)
-- `payloadDouble: double` - числовая нагрузка
-- `payloadTimestamp: Timestamp` - время создания
-
-**Методы:**
-- `generate(id)` - генерация случайной строки с заданным id
-- `generatePayloadString(size)` - создание payload заданного размера
+DTO для строки таблицы (~1KB payload).
+```java
+SloTableRow row = SloTableRow.generate(id);
+// Поля: guid, id, payloadStr, payloadDouble, payloadTimestamp
+```
 
 ### JdbcSloTest
-Основной SLO тест. Выполняет полный цикл нагрузочного тестирования.
+Основной тест JUnit, выполняющий полный цикл SLO тестирования.
 
-**Фазы выполнения:**
-1. **Table Initialization** - создание таблицы
-2. **Data Preparation** - генерация и запись начальных данных
-3. **SLO Test Execution** - параллельная нагрузка (read + write) в течение заданного времени
-4. **Results Validation** - проверка соответствия SLO порогам
-5. **Metrics Export** - отправка метрик в Prometheus и сохранение в файл
-
-**SLO пороги:**
-- P50 Latency: < 10ms
-- P95 Latency: < 50ms
-- P99 Latency: < 100ms
-- Success Rate: > 99.9%
-
-**Параметры окружения:**
-- `TEST_DURATION` - длительность теста в секундах (default: 60)
-- `READ_RPS` - read операций в секунду (default: 100)
-- `WRITE_RPS` - write операций в секунду (default: 10)
-- `READ_TIMEOUT` - timeout для read в ms (default: 1000)
-- `WRITE_TIMEOUT` - timeout для write в ms (default: 1000)
-- `PROM_PGW` - URL Prometheus Push Gateway (default: http://localhost:9091)
-- `REPORT_PERIOD` - период отправки метрик в ms (default: 10000)
-- `YDB_JDBC_URL` - строка подключения к YDB
+**Фазы:**
+1. Инициализация таблицы
+2. Warmup (10 потоков, 10s)
+3. Load test (30 потоков, TEST_DURATION)
+4. Валидация SLO
+5. Экспорт метрик
 
 ### MetricsReporter
-Класс для сбора и отправки метрик в Prometheus Push Gateway.
+Экспорт метрик в Prometheus Push Gateway.
 
 **Метрики:**
-- `jdbc_test_success_total` - Counter успешных операций (labels: operation)
-- `jdbc_test_errors_total` - Counter ошибок (labels: operation, error_type)
-- `jdbc_test_latency_seconds` - Histogram latency (labels: operation)
-- `jdbc_test_active_connections` - Gauge активных подключений
+- `sdk_operations_total` - всего операций
+- `sdk_operations_success_total` - успешных операций
+- `sdk_operation_latency_seconds` - histogram latency
+- `sdk_pending_operations` - активных операций
 
-**Методы:**
-- `recordSuccess(operation, latency)` - запись успешной операции
-- `recordError(operation, errorType)` - запись ошибки
-- `push()` - отправка метрик в Prometheus (полная замена)
-- `pushAdd()` - инкрементальное обновление метрик
-- `saveToFile(filename, latency)` - сохранение в файл для GitHub Summary
+Подробнее о метриках: [родительский README](../README.md#метрики)
 
-### SimpleJdbcConfig
-Spring конфигурация для DataSource и JdbcTemplate.
+## Локальная разработка
 
-**Beans:**
-- `dataSource()` - DriverManagerDataSource для YDB JDBC Driver
-- `jdbcTemplate(dataSource)` - Spring JdbcTemplate (для будущего использования)
+Разработка кода возможна локально, но **полноценный запуск теста только в CI/CD** (требуется YDB):
+```bash
+# Компиляция
+mvn clean compile -pl slo-workload/simple-jdbc
+
+# Тесты (требует YDB)
+mvn test -pl slo-workload/simple-jdbc -Dskip.jdbc.tests=false
+```
+
+## Troubleshooting
+
+### JDBC-специфичные проблемы
+
+**Connection pool exhausted**
+```
+Симптом: Много ошибок "Cannot get connection from pool"
+Решение: Увеличить pool size в SimpleJdbcConfig
+```
+
+**Prepared statement cache issues**
+```
+Симптом: OutOfMemoryError: Metaspace
+Решение: Ограничить кэш prepared statements
+```
+
+**Long GC pauses**
+```
+Симптом: Периодические всплески latency P99
+Решение: Настроить JVM параметры (-XX:+UseG1GC)
+```
+
+### Общие проблемы
+
+Для общих проблем (compilation, YDB connection, метрики) см. [Troubleshooting в родительском README](../README.md#troubleshooting).
+
+## Развитие
+
+### Сравнение с другими реализациями
+
+После появления других workload'ов (Spring JdbcTemplate, Spring Data JDBC, JPA) можно будет сравнить:
+- Overhead каждого слоя абстракции
+- Trade-off между производительностью и удобством
+- Рекомендации по выбору стека
+
+### Оптимизации
+
+Потенциальные улучшения этого теста:
+- [ ] Batch operations для write
+- [ ] Использование prepared statements
+- [ ] Connection pool tuning
+- [ ] Асинхронное логирование
+
+## Ссылки
+
+- [Родительский README (стратегия, метрики, архитектура)](../README.md)
+- [YDB JDBC Driver](https://github.com/ydb-platform/ydb-jdbc-driver)
+- [YDB Documentation](https://ydb.tech/docs/)
