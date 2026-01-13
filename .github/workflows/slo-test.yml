@@ -2,7 +2,7 @@ name: SLO JDBC
 
 on:
   push:
-    branches: [master, main]
+    branches: [master, main, add-slo-workload]]
     paths:
       - 'slo-workload/**'
       - '.github/workflows/slo-test.yml'
