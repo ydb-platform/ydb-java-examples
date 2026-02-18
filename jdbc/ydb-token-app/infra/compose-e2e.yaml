@@ -33,12 +33,6 @@ services:
       - "8765:8765"
     volumes:
       - ./ydb:/ydb_config:ro
-    healthcheck:
-      test: [ "CMD-SHELL", "bash -lc 'true >/dev/tcp/127.0.0.1/2136'" ]
-      interval: 5s
-      timeout: 5s
-      retries: 30
-      start_period: 10s
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
