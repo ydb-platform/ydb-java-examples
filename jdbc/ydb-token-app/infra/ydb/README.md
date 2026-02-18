@@ -7,7 +7,7 @@ This folder is used to keep a **custom YDB config** that enables server-side Ope
 If YDB is running as `ydb-local`:
 
 ```bash
-docker cp ydb-local:/ydb_data/cluster/kikimr_configs/config.yaml ./ydb_config/ydb-config.yaml
+docker cp ydb-local:/ydb_data/cluster/kikimr_configs/config.yaml ./infra/ydb/ydb-config.yaml
 ```
 
 ## 2) Enable OpenTelemetry exporter in the config
@@ -19,10 +19,10 @@ Default service name (so you can find it in Tempo/Grafana): `ydb`
 
 ## 3) Run with the overridden config
 
-Restart YDB (the main `compose-e2e.yaml` will automatically use `--config-path` if `ydb-config.yaml` exists):
+Restart YDB:
 
 ```bash
-docker-compose -f compose-e2e.yaml up -d --force-recreate ydb
+docker compose -f infra/compose-e2e.yaml up -d --force-recreate ydb
 ```
 
-Now you should see additional server-side traces in Tempo/Grafana (service name defaults to `ydb-local` in the snippet).
+Now you should see additional server-side traces in Tempo/Grafana.

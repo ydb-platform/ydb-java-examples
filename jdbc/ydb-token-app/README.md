@@ -74,3 +74,29 @@ The main parameters list:
 
 All parameters can be passed directly when launching the application (in the format `--param_name=value`) or can be
 preconfigured in an `application.properties` file saved next to the executable jar of the application.
+
+### Local observability infrastructure
+
+All Docker and observability-related configs are stored in `infra/` to keep the example sources clean:
+
+- `infra/compose-e2e.yaml`
+- `infra/application/application.properties`
+- `infra/otel/otel-collector-config.yaml`
+- `infra/prometheus/prometheus.yaml`
+- `infra/tempo/tempo.yaml`
+- `infra/grafana/...`
+- `infra/ydb/...`
+
+Run the full stack:
+
+```bash
+cd jdbc/ydb-token-app
+docker compose -f infra/compose-e2e.yaml up -d
+```
+
+Run one-shot app commands in the same stack:
+
+```bash
+cd jdbc/ydb-token-app
+docker compose -f infra/compose-e2e.yaml run --rm ydb-token-app clean init load run
+```

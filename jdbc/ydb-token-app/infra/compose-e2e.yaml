@@ -1,7 +1,7 @@
 services:
   ydb-token-app:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: jdbc/ydb-token-app/Dockerfile
     depends_on:
       ydb:
@@ -14,13 +14,12 @@ services:
       - "load"
       - "run"
     volumes:
-      - ./application-docker.properties:/app/config:ro
+      - ./application/application.properties:/app/config/application.properties:ro
     restart: on-failure
 
   ydb:
     image: ydbplatform/local-ydb:trunk
     platform: linux/amd64
-    # Use custom config that already includes tracing + storage profile setup.
     command: [ "--config-path", "/ydb_config/ydb-config.yaml" ]
     environment:
       YDB_DEFAULT_LOG_LEVEL: NOTICE
@@ -33,13 +32,20 @@ services:
       - "2136:2136"
       - "8765:8765"
     volumes:
-      - ./ydb_config:/ydb_config:ro
+      - ./ydb:/ydb_config:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -lc 'true >/dev/tcp/127.0.0.1/2136'" ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
     command: [ "--config=/etc/otelcol/config.yaml" ]
     depends_on: [ tempo ]
     volumes:
-      - ./otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
+      - ./otel/otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
     ports:
       - "4317:4317"
       - "4318:4318"
@@ -50,19 +56,19 @@ services:
   prometheus:
     image: prom/prometheus:latest
     volumes:
-      - ./prometheus.yaml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/prometheus.yaml:/etc/prometheus/prometheus.yml:ro
     ports:
       - "9090:9090"
     depends_on: [ otel-collector ]
-  
+
   tempo:
     image: grafana/tempo:2.4.1
     command: [ "-config.file=/etc/tempo.yaml" ]
     volumes:
-      - ./tempo.yaml:/etc/tempo.yaml:ro
+      - ./tempo/tempo.yaml:/etc/tempo.yaml:ro
     ports:
       - "3200:3200"
-    
+
   grafana:
     image: grafana/grafana:10.4.2
     environment:

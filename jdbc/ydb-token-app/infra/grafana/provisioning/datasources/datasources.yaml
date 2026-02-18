@@ -18,5 +18,3 @@ datasources:
         datasourceUid: Prometheus
       serviceMap:
         datasourceUid: Prometheus
-
-
