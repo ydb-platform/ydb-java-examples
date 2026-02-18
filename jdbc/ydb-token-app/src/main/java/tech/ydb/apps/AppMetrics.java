@@ -101,7 +101,8 @@ public class AppMetrics {
                     .startSpan();
             StatusCode code = StatusCode.SUCCESS;
             long startedAt = System.currentTimeMillis();
-            try (Scope ignored = span.makeCurrent()) {
+            Scope scope = span.makeCurrent();
+            try {
                 run.run();
                 successCounter.increment();
             } catch (RuntimeException ex) {
@@ -111,6 +112,7 @@ public class AppMetrics {
                 span.setStatus(io.opentelemetry.api.trace.StatusCode.ERROR);
                 throw ex;
             } finally {
+                scope.close();
                 LOCAL.remove();
 
                 long ms = System.currentTimeMillis() - startedAt;
