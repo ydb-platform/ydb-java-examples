@@ -1,5 +1,20 @@
 package tech.ydb.apps;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.context.Scope;
+import org.slf4j.Logger;
+import org.springframework.retry.RetryCallback;
+import org.springframework.retry.RetryContext;
+import org.springframework.retry.RetryListener;
+import tech.ydb.core.StatusCode;
+import tech.ydb.jdbc.exception.YdbStatusable;
+
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.Arrays;
@@ -13,22 +28,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
-
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Timer;
-import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.context.Scope;
-import org.slf4j.Logger;
-import org.springframework.retry.RetryCallback;
-import org.springframework.retry.RetryContext;
-import org.springframework.retry.RetryListener;
-
-import tech.ydb.core.StatusCode;
-import tech.ydb.jdbc.exception.YdbStatusable;
 
 /**
  *
@@ -97,7 +96,7 @@ public class AppMetrics {
             executionsCounter.increment();
 
             Span span = tracer.spanBuilder(Objects.requireNonNull(spanName, "spanName"))
-                    .setSpanKind(SpanKind.INTERNAL)
+                    .setSpanKind(SpanKind.CLIENT)
                     .startSpan();
             StatusCode code = StatusCode.SUCCESS;
             long startedAt = System.currentTimeMillis();

@@ -27,7 +27,7 @@ public class Config {
             String connection, int threadsCount, int recordsCount,
             @Name("load.batchSize") int loadBatchSize,
             @Name("workload.duration") int workloadDuration, int rpsLimit,
-            @Name("otel.enabled") @DefaultValue("true") boolean otelEnabled,
+            @Name("otel.enabled") @DefaultValue("false") boolean otelEnabled,
             @Name("otel.endpoint") @DefaultValue("http://otel-collector:4317") String otelEndpoint,
             @Name("otel.serviceName") @DefaultValue("ydb-token-app") String otelServiceName) {
         this.connection = connection;
