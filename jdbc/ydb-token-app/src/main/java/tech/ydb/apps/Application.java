@@ -1,5 +1,21 @@
 package tech.ydb.apps;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.opentelemetry.api.OpenTelemetry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.retry.RetryListener;
+import org.springframework.retry.annotation.EnableRetry;
+import tech.ydb.apps.service.SchemeService;
+import tech.ydb.apps.service.WorkloadService;
+import tech.ydb.jdbc.YdbTracer;
+
+import javax.annotation.PreDestroy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -12,23 +28,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import javax.annotation.PreDestroy;
-
-import io.micrometer.core.instrument.MeterRegistry;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.boot.CommandLineRunner;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.context.annotation.Bean;
-import org.springframework.retry.RetryListener;
-import org.springframework.retry.annotation.EnableRetry;
-
-import tech.ydb.apps.service.SchemeService;
-import tech.ydb.apps.service.WorkloadService;
-import tech.ydb.jdbc.YdbTracer;
 
 /**
  *
@@ -59,13 +58,20 @@ public class Application implements CommandLineRunner {
     private final AtomicLong logCounter = new AtomicLong(0);
     private volatile boolean isStopped = false;
 
-    public Application(Config config, SchemeService scheme, WorkloadService worload, MeterRegistry registry) {
+    public Application(
+            Config config,
+            SchemeService scheme,
+            WorkloadService worload,
+            MeterRegistry registry,
+            OpenTelemetry openTelemetry
+    ) {
         GrpcMetrics.init(registry);
+        GrpcTracing.init(openTelemetry);
 
         this.config = config;
         this.schemeService = scheme;
         this.workloadService = worload;
-        this.ticker = new AppMetrics(logger, registry);
+        this.ticker = new AppMetrics(logger, registry, openTelemetry);
 
         logger.info("Create fixed thread pool with size {}", config.getThreadCount());
         this.executor = Executors.newFixedThreadPool(config.getThreadCount(), this::threadFactory);
@@ -140,7 +146,7 @@ public class Application implements CommandLineRunner {
         while (id < recordsCount) {
             final int first = id;
             id += batchSize;
-            final int last = id < recordsCount ? id : recordsCount;
+            final int last = Math.min(id, recordsCount);
 
             futures.add(CompletableFuture.runAsync(() -> {
                 if (isStopped) {

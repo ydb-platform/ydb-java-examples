@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -16,6 +17,11 @@ import java.util.function.Function;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.context.Scope;
 import org.slf4j.Logger;
 import org.springframework.retry.RetryCallback;
 import org.springframework.retry.RetryContext;
@@ -44,6 +50,7 @@ public class AppMetrics {
 
     public class Method {
         private final String name;
+        private final String spanName;
 
         private final LongAdder totalCount = new LongAdder();
         private final LongAdder totalTimeMs = new LongAdder();
@@ -62,8 +69,9 @@ public class AppMetrics {
 
         private volatile long lastPrinted = 0;
 
-        public Method(MeterRegistry registry, String name, String label) {
+        public Method(MeterRegistry registry, String name, String label, String spanName) {
             this.name = name;
+            this.spanName = spanName;
             this.executionsCounter = SDK_OPERATIONS.tag("operation_type", label).register(registry);
             this.successCounter = SDK_OPERATIONS_SUCCESS.tag("operation_type", label).register(registry);
             this.errorCounter = code -> errorsCountersMap.computeIfAbsent(code, key -> SDK_OPERATIONS_FAILTURE
@@ -88,14 +96,19 @@ public class AppMetrics {
 
             executionsCounter.increment();
 
+            Span span = tracer.spanBuilder(Objects.requireNonNull(spanName, "spanName"))
+                    .setSpanKind(SpanKind.INTERNAL)
+                    .startSpan();
             StatusCode code = StatusCode.SUCCESS;
             long startedAt = System.currentTimeMillis();
-            try {
+            try (Scope ignored = span.makeCurrent()) {
                 run.run();
                 successCounter.increment();
             } catch (RuntimeException ex) {
                 code = extractStatusCode(ex);
                 errorCounter.apply(code).increment();
+                span.recordException(ex);
+                span.setStatus(io.opentelemetry.api.trace.StatusCode.ERROR);
                 throw ex;
             } finally {
                 LOCAL.remove();
@@ -107,6 +120,7 @@ public class AppMetrics {
                 totalTimeMs.add(ms);
 
                 durationTimer.apply(code).record(Duration.ofMillis(ms));
+                span.end();
             }
         }
 
@@ -147,6 +161,7 @@ public class AppMetrics {
     private final Method fetch;
     private final Method update;
     private final Method batchUpdate;
+    private final Tracer tracer;
 
     private final AtomicInteger executionsCount = new AtomicInteger(0);
     private final AtomicInteger failturesCount = new AtomicInteger(0);
@@ -156,12 +171,13 @@ public class AppMetrics {
             r -> new Thread(r, "ticker")
     );
 
-    public AppMetrics(Logger logger, MeterRegistry meterRegistry) {
+    public AppMetrics(Logger logger, MeterRegistry meterRegistry, OpenTelemetry openTelemetry) {
         this.logger = logger;
-        this.load = new Method(meterRegistry, "LOAD  ", "load");
-        this.fetch = new Method(meterRegistry, "FETCH ", "read");
-        this.update = new Method(meterRegistry, "UPDATE", "update");
-        this.batchUpdate = new Method(meterRegistry, "BULK_UP", "batch_update");
+        this.tracer = openTelemetry.getTracer("tech.ydb.apps.business");
+        this.load = new Method(meterRegistry, "LOAD  ", "load", "business.load_batch");
+        this.fetch = new Method(meterRegistry, "FETCH ", "read", "business.fetch");
+        this.update = new Method(meterRegistry, "UPDATE", "update", "business.update");
+        this.batchUpdate = new Method(meterRegistry, "BULK_UP", "batch_update", "business.batch_update");
     }
 
     public Method getLoad() {
@@ -187,9 +203,12 @@ public class AppMetrics {
     public void runWithMonitor(Runnable runnable) {
         Arrays.asList(load, fetch, update, batchUpdate).forEach(Method::reset);
         final ScheduledFuture<?> future = scheduler.scheduleAtFixedRate(this::print, 1, 10, TimeUnit.SECONDS);
-        runnable.run();
-        future.cancel(false);
-        print();
+        try {
+            runnable.run();
+        } finally {
+            future.cancel(false);
+            print();
+        }
     }
 
     public void close() throws InterruptedException {
