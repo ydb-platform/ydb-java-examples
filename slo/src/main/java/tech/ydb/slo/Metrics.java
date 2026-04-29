@@ -16,6 +16,7 @@ import io.opentelemetry.sdk.metrics.SdkMeterProvider;
 import io.opentelemetry.sdk.metrics.SdkMeterProviderBuilder;
 import io.opentelemetry.sdk.metrics.export.PeriodicMetricReader;
 import io.opentelemetry.sdk.resources.Resource;
+import org.HdrHistogram.AtomicHistogram;
 import org.HdrHistogram.Histogram;
 
 /**
@@ -112,7 +113,7 @@ public final class Metrics implements AutoCloseable {
         this.pendingOperations = pendingOperations;
     }
 
-    /**
+    /*
      * Builds a {@code Metrics} instance configured to push OTLP metrics every
      * second to the endpoint from {@code config.otlpEndpoint()}. If the
      * endpoint is empty, all metrics are still observable in-process but never
@@ -232,7 +233,7 @@ public final class Metrics implements AutoCloseable {
         return trimmed + "/v1/metrics";
     }
 
-    /**
+    /*
      * Records a started operation and returns a span used to record the
      * outcome.
      */
@@ -286,9 +287,7 @@ public final class Metrics implements AutoCloseable {
         if (status == OperationStatus.SUCCESS) {
             Histogram histogram = histograms.computeIfAbsent(type, k -> newHistogram());
             long clamped = Math.max(HDR_MIN_MICROS, Math.min(HDR_MAX_MICROS, latencyMicros));
-            synchronized (histogram) {
-                histogram.recordValue(clamped);
-            }
+            histogram.recordValue(clamped);
         } else {
             errorsTotal.add(1, Attributes.of(
                     ATTR_REF, ref,
@@ -319,15 +318,13 @@ public final class Metrics implements AutoCloseable {
             long p50Micros;
             long p95Micros;
             long p99Micros;
-            synchronized (histogram) {
-                if (histogram.getTotalCount() == 0) {
-                    continue;
-                }
-                p50Micros = histogram.getValueAtPercentile(50.0);
-                p95Micros = histogram.getValueAtPercentile(95.0);
-                p99Micros = histogram.getValueAtPercentile(99.0);
-                histogram.reset();
+            if (histogram.getTotalCount() == 0) {
+                continue;
             }
+            p50Micros = histogram.getValueAtPercentile(50.0);
+            p95Micros = histogram.getValueAtPercentile(95.0);
+            p99Micros = histogram.getValueAtPercentile(99.0);
+            histogram.reset();
 
             // Percentile gauges are always tagged with operation_status="success"
             // because we only record successful samples (see recordOutcome).
@@ -345,7 +342,7 @@ public final class Metrics implements AutoCloseable {
     }
 
     private static Histogram newHistogram() {
-        return new Histogram(HDR_MIN_MICROS, HDR_MAX_MICROS, HDR_SIGNIFICANT_DIGITS);
+        return new AtomicHistogram(HDR_MIN_MICROS, HDR_MAX_MICROS, HDR_SIGNIFICANT_DIGITS);
     }
 
     /**

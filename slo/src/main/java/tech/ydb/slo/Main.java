@@ -5,6 +5,9 @@ import com.beust.jcommander.ParameterException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import tech.ydb.auth.AuthProvider;
+import tech.ydb.auth.NopAuthProvider;
+import tech.ydb.auth.TokenAuthProvider;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.query.QueryClient;
 import tech.ydb.slo.kv.KvWorkload;
@@ -78,7 +81,12 @@ public final class Main {
 
         int exitCode = 0;
         Metrics metrics = Metrics.create(config);
+        AuthProvider provider = NopAuthProvider.INSTANCE;
+        if (config.token() != null && !config.token().isEmpty()) {
+            provider = new TokenAuthProvider(config.token());
+        }
         GrpcTransport transport = GrpcTransport.forConnectionString(config.connectionString())
+                .withAuthProvider(provider)
                 .build();
         QueryClient queryClient = QueryClient.newClient(transport).build();
 
