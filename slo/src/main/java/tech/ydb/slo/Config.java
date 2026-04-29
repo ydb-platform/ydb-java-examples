@@ -15,6 +15,7 @@ package tech.ydb.slo;
  */
 public final class Config {
     private final String connectionString;
+    private final String token;
     private final String ref;
     private final String workloadName;
     private final int durationSeconds;
@@ -22,12 +23,14 @@ public final class Config {
 
     private Config(
             String connectionString,
+            String token,
             String ref,
             String workloadName,
             int durationSeconds,
             String otlpEndpoint
     ) {
         this.connectionString = connectionString;
+        this.token = token;
         this.ref = ref;
         this.workloadName = workloadName;
         this.durationSeconds = durationSeconds;
@@ -36,6 +39,10 @@ public final class Config {
 
     public String connectionString() {
         return connectionString;
+    }
+
+    public String token() {
+        return token;
     }
 
     public String ref() {
@@ -57,6 +64,7 @@ public final class Config {
     /**
      * Loads configuration from environment variables.
      *
+     * @return configuration instance
      * @throws IllegalStateException if required variables are missing or invalid
      */
     public static Config fromEnv() {
@@ -67,12 +75,13 @@ public final class Config {
             );
         }
 
+        String token = envOrDefault("YDB_TOKEN", "");
         String ref = envOrDefault("WORKLOAD_REF", "unknown");
         String workloadName = envOrDefault("WORKLOAD_NAME", "java-slo-workload");
         int durationSeconds = parseInt(envOrDefault("WORKLOAD_DURATION", "600"), 600);
         String otlpEndpoint = envOrDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "");
 
-        return new Config(connectionString, ref, workloadName, durationSeconds, otlpEndpoint);
+        return new Config(connectionString, token, ref, workloadName, durationSeconds, otlpEndpoint);
     }
 
     private static String resolveConnectionString() {
