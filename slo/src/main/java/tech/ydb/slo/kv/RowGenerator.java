@@ -1,6 +1,5 @@
 package tech.ydb.slo.kv;
 
-import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.concurrent.ThreadLocalRandom;
@@ -19,8 +18,6 @@ public final class RowGenerator {
     private static final int MIN_PAYLOAD_LENGTH = 20;
     private static final int MAX_PAYLOAD_LENGTH = 40;
 
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
-
     private final AtomicLong nextId;
 
     public RowGenerator(long startId) {
@@ -29,6 +26,7 @@ public final class RowGenerator {
 
     /**
      * Generates a new row with a fresh monotonically increasing id.
+     * @return a new row
      */
     public Row generate() {
         long id = nextId.getAndIncrement();
@@ -37,8 +35,10 @@ public final class RowGenerator {
 
     /**
      * Generates a row with an explicit id (used during prefill to control IDs).
+     * @param id
+     * @return a new row
      */
-    public Row generate(long id) {
+    public static Row generate(long id) {
         long payloadHash = ThreadLocalRandom.current().nextLong();
         double payloadDouble = ThreadLocalRandom.current().nextDouble();
         String payloadStr = randomPayloadString();
@@ -51,7 +51,7 @@ public final class RowGenerator {
         int length = MIN_PAYLOAD_LENGTH
                 + ThreadLocalRandom.current().nextInt(MAX_PAYLOAD_LENGTH - MIN_PAYLOAD_LENGTH + 1);
         byte[] bytes = new byte[length];
-        SECURE_RANDOM.nextBytes(bytes);
+        ThreadLocalRandom.current().nextBytes(bytes);
         return Base64.getEncoder().withoutPadding().encodeToString(bytes);
     }
 }

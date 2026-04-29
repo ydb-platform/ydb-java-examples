@@ -92,7 +92,7 @@ public final class KvWorkload {
             + "  FROM `%s`"
             + "  WHERE id = $id AND hash = Digest::NumericHash($id);";
 
-    /**
+    /*
      * Hard cap on the number of worker threads spawned for a single operation
      * type. The SLO targets a few hundred RPS in CI; allowing more workers
      * than this just wastes threads on JIT-warmup contention without
@@ -100,7 +100,7 @@ public final class KvWorkload {
      */
     private static final int MAX_WORKERS = 64;
 
-    /**
+    /*
      * Extra time, on top of the workload duration, given to worker pools to
      * complete their last in-flight operations before {@link #run()} forces
      * shutdown. Picked to be larger than the default per-attempt timeout so
@@ -123,7 +123,7 @@ public final class KvWorkload {
         this.generator = new RowGenerator(params.prefillCount());
     }
 
-    /**
+    /*
      * Creates the table (if missing) and prefills it with
      * {@code params.prefillCount()} rows. Prefill uses a fixed-size thread pool
      * so we don't open thousands of sessions in parallel on slow runners.
@@ -147,7 +147,7 @@ public final class KvWorkload {
         logger.info("table {} created", tablePath);
 
         logger.info("prefilling {} rows into {}", params.prefillCount(), tablePath);
-        int parallelism = Math.min(MAX_WORKERS, Math.max(1, (int) Math.min(params.prefillCount(), MAX_WORKERS)));
+        int parallelism = Math.min(MAX_WORKERS, Math.max(1, Math.min(params.prefillCount(), MAX_WORKERS)));
         ExecutorService prefillPool = Executors.newFixedThreadPool(
                 parallelism, namedThreadFactory("slo-prefill-")
         );
@@ -156,7 +156,7 @@ public final class KvWorkload {
             for (long i = 0; i < params.prefillCount(); i++) {
                 final long id = i;
                 futures.add(CompletableFuture.supplyAsync(
-                        () -> writeRowSilently(generator.generate(id)),
+                        () -> writeRowSilently(RowGenerator.generate(id)),
                         prefillPool
                 ));
             }
@@ -184,7 +184,7 @@ public final class KvWorkload {
         }
     }
 
-    /**
+    /*
      * Runs the workload until the configured deadline or thread interruption.
      *
      * <p>Read and write workers run concurrently on dedicated thread pools.
@@ -285,7 +285,7 @@ public final class KvWorkload {
         }
     }
 
-    /**
+    /*
      * Drops the workload table. Called from the {@code finally} block in
      * {@code Main} so the database is left clean even on failure.
      */
@@ -306,7 +306,7 @@ public final class KvWorkload {
 
     // --- internals ---------------------------------------------------------
 
-    /**
+    /*
      * Loops on a single worker thread until the deadline or interruption,
      * pacing each iteration through the shared rate limiter and running the
      * operation inline. No work queue is involved — backpressure comes
@@ -323,7 +323,7 @@ public final class KvWorkload {
         }
     }
 
-    /**
+    /*
      * Computes the number of worker threads for a given RPS target.
      * Returns 0 for non-positive RPS so the caller skips the loop entirely.
      */
@@ -334,7 +334,7 @@ public final class KvWorkload {
         return Math.min(MAX_WORKERS, Math.max(1, rps));
     }
 
-    /**
+    /*
      * Picks a random id in [0, keyspaceUpper) and reads it back from the table.
      * Reads target only ids known to exist (the prefilled range plus rows
      * written so far during this run), so a successful read always returns
@@ -397,7 +397,7 @@ public final class KvWorkload {
         }
     }
 
-    /**
+    /*
      * Writes a single row without recording metrics. Used during prefill so
      * the histogram of operation latencies is not polluted with bulk-load
      * timings.
@@ -440,7 +440,7 @@ public final class KvWorkload {
         };
     }
 
-    /**
+    /*
      * Final cleanup for an executor service. The graceful shutdown is done
      * inline in {@link #run()} so deadlines line up with workload duration;
      * this method is the safety net invoked from the {@code finally} block,

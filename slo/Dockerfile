@@ -21,7 +21,7 @@ ARG MAVEN_IMAGE=maven:3.9-eclipse-temurin-17
 ARG RUNTIME_IMAGE=eclipse-temurin:17-jre
 
 # ---------- builder: install the SDK ---------------------------------------
-FROM ${MAVEN_IMAGE} AS sdk-build
+FROM ${MAVEN_IMAGE} AS workload-build
 
 WORKDIR /src
 
@@ -47,9 +47,6 @@ RUN cd /src/ydb-java-sdk && \
 RUN cd /src/ydb-java-sdk && \
     mvn -B -q help:evaluate -Dexpression=project.version -DforceStdout > /tmp/sdk.version && \
     echo "Built SDK version: $(cat /tmp/sdk.version)"
-
-# ---------- builder: build the workload ------------------------------------
-FROM sdk-build AS workload-build
 
 # Copy the examples checkout. We do this in a separate stage so changes to
 # the workload code don't invalidate the SDK install layer above.

@@ -2,7 +2,6 @@ package tech.ydb.slo;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterException;
-import org.apache.logging.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -112,10 +111,6 @@ public final class Main {
             closeQuietly(queryClient, "query client");
             closeQuietly(transport, "transport");
         }
-
-        // Flush and stop log4j2 before exit so async appenders don't drop
-        // the last messages. Replaces the previous Thread.sleep(100) hack.
-        LogManager.shutdown();
 
         System.exit(exitCode);
     }
