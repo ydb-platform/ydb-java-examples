@@ -10,6 +10,7 @@ import com.beust.jcommander.Parameter;
  * any field from the command line, e.g.
  * {@code --read-rps 500 --write-rps 50}.
  */
+@SuppressWarnings("FieldMayBeFinal")
 public final class KvWorkloadParams {
 
     @Parameter(
@@ -40,7 +41,7 @@ public final class KvWorkloadParams {
             names = {"--prefill-count"},
             description = "Number of rows to prefill before the run phase"
     )
-    private long prefillCount = 1_000L;
+    private int prefillCount = 1_000;
 
     @Parameter(
             names = {"--partition-size"},
@@ -82,7 +83,7 @@ public final class KvWorkloadParams {
         return writeTimeoutMs;
     }
 
-    public long prefillCount() {
+    public int prefillCount() {
         return prefillCount;
     }
 
@@ -102,6 +103,7 @@ public final class KvWorkloadParams {
      * Effective run duration. If the CLI flag was omitted (left at 0), falls
      * back to the value supplied via the {@code WORKLOAD_DURATION} environment
      * variable through {@code Config}.
+     * @return Effective run duration value
      */
     public int durationSeconds() {
         return durationSeconds;
