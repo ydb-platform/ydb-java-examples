@@ -1,0 +1,137 @@
+services:
+  ydb:
+    image: ydbplatform/local-ydb:trunk
+    platform: linux/amd64
+    command: [ "--config-path", "/ydb_config/ydb-config.yaml" ]
+    environment:
+      YDB_DEFAULT_LOG_LEVEL: NOTICE
+      GRPC_TLS_PORT: "2135"
+      GRPC_PORT: "2136"
+      MON_PORT: "8765"
+      YDB_USE_IN_MEMORY_PDISKS: "true"
+    ports:
+      - "2135:2135"
+      - "2136:2136"
+      - "8765:8765"
+    volumes:
+      - ./ydb:/ydb_config:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -lc 'true >/dev/tcp/127.0.0.1/2136'" ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: [ "--config=/etc/otelcol/config.yaml" ]
+    depends_on: [ tempo ]
+    volumes:
+      - ./otel/otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "9464:9464"
+      - "13133:13133"
+      - "55679:55679"
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus/prometheus.yaml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on: [ otel-collector ]
+
+  tempo:
+    image: grafana/tempo:2.4.1
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./tempo/tempo.yaml:/etc/tempo.yaml:ro
+    ports:
+      - "3200:3200"
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on: [ prometheus, tempo ]
+
+  query-service-trace:
+    image: eclipse-temurin:21-jre
+    working_dir: /app
+    depends_on:
+      ydb:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    volumes:
+      - ./application/query-service/target/trace-query-service.jar:/app/trace-query-service.jar:ro
+      - ./application/query-service/target/libs:/app/libs:ro
+    command: [ "java", "-cp", "/app/trace-query-service.jar:/app/libs/*", "tech.ydb.trace.query.QueryServiceTraceApp" ]
+    environment:
+      YDB_ANONYMOUS_CREDENTIALS: "1"
+
+  table-client-impl-trace:
+    image: eclipse-temurin:21-jre
+    working_dir: /app
+    depends_on:
+      ydb:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    volumes:
+      - ./application/table-client-impl/target/trace-table-client-impl.jar:/app/trace-table-client-impl.jar:ro
+      - ./application/table-client-impl/target/libs:/app/libs:ro
+    command: [ "java", "-cp", "/app/trace-table-client-impl.jar:/app/libs/*", "tech.ydb.trace.table.TableClientImplTraceApp" ]
+    environment:
+      YDB_ANONYMOUS_CREDENTIALS: "1"
+
+#  jdbc-trace:
+#    image: eclipse-temurin:21-jre
+#    working_dir: /app
+#    depends_on:
+#      ydb:
+#        condition: service_healthy
+#      otel-collector:
+#        condition: service_started
+#    volumes:
+#      - ./application/jdbc-trace/target/trace-jdbc.jar:/app/trace-jdbc.jar:ro
+#      - ./application/jdbc-trace/target/libs:/app/libs:ro
+#    command: [ "java", "-cp", "/app/trace-jdbc.jar:/app/libs/*", "tech.ydb.trace.jdbc.JdbcTraceApp" ]
+#    environment:
+#      YDB_ANONYMOUS_CREDENTIALS: "1"
+
+#  spring-data-jpa-v6-trace:
+#    image: eclipse-temurin:21-jre
+#    working_dir: /app
+#    depends_on:
+#      ydb:
+#        condition: service_healthy
+#      otel-collector:
+#        condition: service_started
+#    volumes:
+#      - ./application/spring-data-jpa-v6-trace/target/trace-spring-data-jpa-v6.jar:/app/app.jar:ro
+#    command: [ "java", "-jar", "/app/app.jar" ]
+#    environment:
+#      YDB_ANONYMOUS_CREDENTIALS: "1"
+#
+#  spring-data-jdbc-trace:
+#    image: eclipse-temurin:21-jre
+#    working_dir: /app
+#    depends_on:
+#      ydb:
+#        condition: service_healthy
+#      otel-collector:
+#        condition: service_started
+#    volumes:
+#      - ./application/spring-data-jdbc-trace/target/trace-spring-data-jdbc.jar:/app/app.jar:ro
+#    command: [ "java", "-jar", "/app/app.jar" ]
+#    environment:
+#      YDB_ANONYMOUS_CREDENTIALS: "1"
