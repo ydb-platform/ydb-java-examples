@@ -1,0 +1,77 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>tech.ydb.examples</groupId>
+        <artifactId>ydb-sdk-examples</artifactId>
+        <version>1.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>slo-workload</artifactId>
+    <packaging>pom</packaging>
+
+    <name>YDB SLO Workload Tests</name>
+    <description>SLO workload applications for validating YDB Java clients under load and chaos</description>
+
+    <properties>
+        <maven.compiler.release>17</maven.compiler.release>
+
+        <ydb.jdbc.version>2.3.20</ydb.jdbc.version>
+        <opentelemetry.version>1.59.0</opentelemetry.version>
+        <hdrhistogram.version>2.2.2</hdrhistogram.version>
+        <guava.version>33.4.0-jre</guava.version>
+    </properties>
+
+    <modules>
+        <module>jdbc</module>
+    </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- OpenTelemetry BOM keeps every otel artifact on one version -->
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-bom</artifactId>
+                <version>${opentelemetry.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- YDB JDBC Driver: the component under SLO test -->
+            <dependency>
+                <groupId>tech.ydb.jdbc</groupId>
+                <artifactId>ydb-jdbc-driver</artifactId>
+                <version>${ydb.jdbc.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.hdrhistogram</groupId>
+                <artifactId>HdrHistogram</artifactId>
+                <version>${hdrhistogram.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>${guava.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <release>${maven.compiler.release}</release>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>

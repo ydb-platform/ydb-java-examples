@@ -1,0 +1,148 @@
+package tech.ydb.slo;
+
+/**
+ * Configuration for the JDBC SLO workload, populated from environment
+ * variables provided by the YDB SLO action runtime.
+ *
+ * <p>The action sets these variables on the workload container:
+ * <ul>
+ *   <li>{@code YDB_CONNECTION_STRING} or {@code YDB_ENDPOINT} + {@code YDB_DATABASE} — YDB connection</li>
+ *   <li>{@code WORKLOAD_REF} — value used as the {@code ref} label on all metrics</li>
+ *   <li>{@code WORKLOAD_NAME} — workload name (also used as part of the table path)</li>
+ *   <li>{@code WORKLOAD_DURATION} — workload run duration in seconds (0 = unlimited)</li>
+ *   <li>{@code OTEL_EXPORTER_OTLP_ENDPOINT} — OTLP endpoint for pushing metrics</li>
+ * </ul>
+ *
+ * <p>Because the component under test here is the <em>JDBC driver</em>, the
+ * YDB connection is expressed as a JDBC URL ({@code jdbc:ydb:...}). The URL is
+ * resolved in this order: {@code YDB_JDBC_URL} (used verbatim), then
+ * {@code YDB_CONNECTION_STRING} (prefixed with {@code jdbc:ydb:}), then
+ * {@code YDB_ENDPOINT} + {@code YDB_DATABASE}.
+ */
+public final class Config {
+    private final String jdbcUrl;
+    private final String token;
+    private final String ref;
+    private final String workloadName;
+    private final int durationSeconds;
+    private final String otlpEndpoint;
+
+    private Config(
+            String jdbcUrl,
+            String token,
+            String ref,
+            String workloadName,
+            int durationSeconds,
+            String otlpEndpoint
+    ) {
+        this.jdbcUrl = jdbcUrl;
+        this.token = token;
+        this.ref = ref;
+        this.workloadName = workloadName;
+        this.durationSeconds = durationSeconds;
+        this.otlpEndpoint = otlpEndpoint;
+    }
+
+    public String jdbcUrl() {
+        return jdbcUrl;
+    }
+
+    public String token() {
+        return token;
+    }
+
+    public String ref() {
+        return ref;
+    }
+
+    public String workloadName() {
+        return workloadName;
+    }
+
+    public int durationSeconds() {
+        return durationSeconds;
+    }
+
+    public String otlpEndpoint() {
+        return otlpEndpoint;
+    }
+
+    /**
+     * Loads configuration from environment variables.
+     *
+     * @return configuration instance
+     * @throws IllegalStateException if required variables are missing or invalid
+     */
+    public static Config fromEnv() {
+        String jdbcUrl = resolveJdbcUrl();
+        if (jdbcUrl == null || jdbcUrl.isEmpty()) {
+            throw new IllegalStateException(
+                    "YDB connection is not configured: set YDB_JDBC_URL, "
+                            + "YDB_CONNECTION_STRING or YDB_ENDPOINT + YDB_DATABASE"
+            );
+        }
+
+        String token = envOrDefault("YDB_TOKEN", "");
+        String ref = envOrDefault("WORKLOAD_REF", "unknown");
+        String workloadName = envOrDefault("WORKLOAD_NAME", "java-slo-jdbc-workload");
+        int durationSeconds = parseInt(envOrDefault("WORKLOAD_DURATION", "600"), 600);
+        String otlpEndpoint = envOrDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "");
+
+        return new Config(jdbcUrl, token, ref, workloadName, durationSeconds, otlpEndpoint);
+    }
+
+    private static String resolveJdbcUrl() {
+        String explicit = System.getenv("YDB_JDBC_URL");
+        if (explicit != null && !explicit.isEmpty()) {
+            return explicit;
+        }
+
+        String connectionString = System.getenv("YDB_CONNECTION_STRING");
+        if (connectionString != null && !connectionString.isEmpty()) {
+            return toJdbcUrl(connectionString);
+        }
+
+        String endpoint = System.getenv("YDB_ENDPOINT");
+        String database = System.getenv("YDB_DATABASE");
+        if (endpoint == null || endpoint.isEmpty() || database == null || database.isEmpty()) {
+            return null;
+        }
+        return toJdbcUrl(composeConnectionString(endpoint, database));
+    }
+
+    /**
+     * Turns a YDB connection string ({@code grpc://host:port/database}) into a
+     * JDBC URL understood by the YDB JDBC driver. If the value already starts
+     * with {@code jdbc:}, it is returned unchanged.
+     */
+    private static String toJdbcUrl(String connectionString) {
+        if (connectionString.startsWith("jdbc:")) {
+            return connectionString;
+        }
+        return "jdbc:ydb:" + connectionString;
+    }
+
+    private static String composeConnectionString(String endpoint, String database) {
+        // Compose a connection string in the form grpc://host:port/database.
+        if (endpoint.endsWith("/") && database.startsWith("/")) {
+            return endpoint + database.substring(1);
+        }
+        if (!endpoint.endsWith("/") && !database.startsWith("/")) {
+            return endpoint + "/" + database;
+        }
+        return endpoint + database;
+    }
+
+    private static String envOrDefault(String name, String defaultValue) {
+        String value = System.getenv(name);
+        return (value == null || value.isEmpty()) ? defaultValue : value;
+    }
+
+    private static int parseInt(String value, int defaultValue) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+}
