@@ -25,9 +25,17 @@
         <guava.version>33.4.0-jre</guava.version>
     </properties>
 
-    <modules>
-        <module>jdbc</module>
-    </modules>
+    <profiles>
+        <profile>
+            <id>jdk17-examples</id>
+            <activation>
+                <jdk>[17</jdk>
+            </activation>
+            <modules>
+                <module>jdbc</module>
+            </modules>
+        </profile>
+    </profiles>
 
     <dependencyManagement>
         <dependencies>
