@@ -31,6 +31,7 @@
         <module>jdbc</module>
         <module>project-course</module>
         <module>slo</module>
+        <module>slo-workload</module>
     </modules>
 
     <dependencyManagement>
