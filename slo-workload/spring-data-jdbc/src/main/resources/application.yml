@@ -2,6 +2,14 @@ spring:
   main:
     banner-mode: "off"
     web-application-type: none
+  datasource:
+    hikari:
+      # Sized to cover the worker pools (default --max-workers=64 × {read, write} = 128).
+      # Override with SLO_HIKARI_POOL_SIZE if --max-workers is raised; otherwise
+      # the workload measures Hikari contention instead of the JDBC driver.
+      maximum-pool-size: ${SLO_HIKARI_POOL_SIZE:130}
+      minimum-idle: 16
+      connection-timeout: 10000
 
 logging:
   level:

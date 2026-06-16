@@ -16,10 +16,12 @@ import tech.ydb.query.tools.QueryReader;
 import tech.ydb.query.tools.SessionRetryContext;
 import tech.ydb.slo.core.Config;
 import tech.ydb.slo.core.kv.KvClient;
+import tech.ydb.slo.core.kv.KvSchema;
 import tech.ydb.slo.core.kv.KvSession;
 import tech.ydb.slo.core.kv.KvWorkloadParams;
 import tech.ydb.slo.core.kv.OpOutcome;
 import tech.ydb.slo.core.kv.Row;
+import tech.ydb.slo.core.kv.RowGenerator;
 import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.values.PrimitiveValue;
@@ -27,38 +29,27 @@ import tech.ydb.table.values.PrimitiveValue;
 /**
  * {@link KvClient} backed by the native YDB query client and
  * {@link SessionRetryContext}.
+ *
+ * <p>The {@code hash} primary-key column is computed client-side via
+ * {@link RowGenerator#numericHash(long)} (rather than YQL's
+ * {@code Digest::NumericHash}) so a table written by this workload is
+ * byte-compatible with the JDBC and Spring Data workloads. The exact mixing
+ * function doesn't matter to the workload — only that every implementation
+ * agrees.
  */
 public final class QueryKvClient implements KvClient {
-    private static final String CREATE_TABLE_QUERY_TEMPLATE = ""
-            + "CREATE TABLE IF NOT EXISTS `%s` ("
-            + "  hash Uint64,"
-            + "  id Uint64,"
-            + "  payload_str Utf8,"
-            + "  payload_double Double,"
-            + "  payload_timestamp Timestamp,"
-            + "  payload_hash Uint64,"
-            + "  PRIMARY KEY (hash, id)"
-            + ") WITH ("
-            + "  UNIFORM_PARTITIONS = %d,"
-            + "  AUTO_PARTITIONING_BY_SIZE = ENABLED,"
-            + "  AUTO_PARTITIONING_PARTITION_SIZE_MB = %d,"
-            + "  AUTO_PARTITIONING_MIN_PARTITIONS_COUNT = %d,"
-            + "  AUTO_PARTITIONING_MAX_PARTITIONS_COUNT = %d"
-            + ")";
-
-    private static final String DROP_TABLE_QUERY_TEMPLATE = "DROP TABLE `%s`";
-
     private static final String WRITE_QUERY_TEMPLATE = ""
+            + "DECLARE $hash AS Uint64;"
             + "DECLARE $id AS Uint64;"
             + "DECLARE $payload_str AS Utf8;"
             + "DECLARE $payload_double AS Double;"
             + "DECLARE $payload_timestamp AS Timestamp;"
             + "DECLARE $payload_hash AS Uint64;"
             + "UPSERT INTO `%s` ("
-            + "  id, hash, payload_str, payload_double, payload_timestamp, payload_hash"
+            + "  hash, id, payload_str, payload_double, payload_timestamp, payload_hash"
             + ") VALUES ("
+            + "  $hash,"
             + "  $id,"
-            + "  Digest::NumericHash($id),"
             + "  $payload_str,"
             + "  $payload_double,"
             + "  $payload_timestamp,"
@@ -67,16 +58,17 @@ public final class QueryKvClient implements KvClient {
 
     private static final String READ_QUERY_TEMPLATE = ""
             + "DECLARE $id AS Uint64;"
+            + "DECLARE $hash AS Uint64;"
             + "SELECT id, payload_str, payload_double, payload_timestamp, payload_hash"
             + "  FROM `%s`"
-            + "  WHERE id = $id AND hash = Digest::NumericHash($id);";
+            + "  WHERE id = $id AND hash = $hash;";
 
     private final SessionRetryContext retryCtx;
     private final String tablePath;
     private final GrpcTransport transport;
     private final QueryClient queryClient;
 
-    public QueryKvClient(Config config, String tablePath) {
+    public QueryKvClient(Config config, KvWorkloadParams params, String tablePath) {
         this.tablePath = tablePath;
         AuthProvider provider = NopAuthProvider.INSTANCE;
         if (config.token() != null && !config.token().isEmpty()) {
@@ -86,7 +78,12 @@ public final class QueryKvClient implements KvClient {
                 .withAuthProvider(provider)
                 .build();
         this.queryClient = QueryClient.newClient(transport).build();
-        this.retryCtx = SessionRetryContext.create(queryClient).build();
+        // Align the retry budget with the JDBC client so dashboards comparing
+        // the two implementations measure comparable retry pressure under
+        // chaos.
+        this.retryCtx = SessionRetryContext.create(queryClient)
+                .maxRetries(Math.max(1, params.maxAttempts()))
+                .build();
     }
 
     @Override
@@ -94,7 +91,7 @@ public final class QueryKvClient implements KvClient {
         Status status = retryCtx.supplyResult(session ->
                 session.createQuery(
                         String.format(
-                                CREATE_TABLE_QUERY_TEMPLATE,
+                                KvSchema.CREATE_TABLE_TEMPLATE,
                                 tablePath,
                                 params.minPartitionCount(),
                                 params.partitionSizeMb(),
@@ -111,7 +108,7 @@ public final class QueryKvClient implements KvClient {
     public void dropTable(String tablePath) {
         Status status = retryCtx.supplyResult(session ->
                 session.createQuery(
-                        String.format(DROP_TABLE_QUERY_TEMPLATE, tablePath),
+                        String.format(KvSchema.DROP_TABLE_TEMPLATE, tablePath),
                         TxMode.NONE
                 ).execute()
         ).join().getStatus();
@@ -151,6 +148,7 @@ public final class QueryKvClient implements KvClient {
 
         @Override
         public OpOutcome read(long id, int timeoutMs) {
+            long hash = RowGenerator.numericHash(id);
             AtomicInteger attempts = new AtomicInteger();
             ExecuteQuerySettings settings = ExecuteQuerySettings.newBuilder()
                     .withRequestTimeout(Duration.ofMillis(timeoutMs))
@@ -161,7 +159,10 @@ public final class QueryKvClient implements KvClient {
                 return QueryReader.readFrom(session.createQuery(
                         String.format(READ_QUERY_TEMPLATE, tablePath),
                         TxMode.SNAPSHOT_RO,
-                        Params.of("$id", PrimitiveValue.newUint64(id)),
+                        Params.of(
+                                "$id", PrimitiveValue.newUint64(id),
+                                "$hash", PrimitiveValue.newUint64(hash)
+                        ),
                         settings
                 ));
             }).join();
@@ -183,6 +184,7 @@ public final class QueryKvClient implements KvClient {
 
         @Override
         public OpOutcome write(Row row, int timeoutMs) {
+            long hash = RowGenerator.numericHash(row.id());
             AtomicInteger attempts = new AtomicInteger();
             ExecuteQuerySettings settings = ExecuteQuerySettings.newBuilder()
                     .withRequestTimeout(Duration.ofMillis(timeoutMs))
@@ -194,6 +196,7 @@ public final class QueryKvClient implements KvClient {
                         String.format(WRITE_QUERY_TEMPLATE, tablePath),
                         TxMode.SERIALIZABLE_RW,
                         Params.of(
+                                "$hash", PrimitiveValue.newUint64(hash),
                                 "$id", PrimitiveValue.newUint64(row.id()),
                                 "$payload_str", PrimitiveValue.newText(row.payloadStr()),
                                 "$payload_double", PrimitiveValue.newDouble(row.payloadDouble()),

@@ -5,6 +5,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLRecoverableException;
 import java.sql.SQLTransientConnectionException;
 import java.sql.SQLTransientException;
@@ -18,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import tech.ydb.jdbc.exception.YdbStatusable;
 import tech.ydb.slo.core.Config;
 import tech.ydb.slo.core.kv.KvClient;
+import tech.ydb.slo.core.kv.KvSchema;
 import tech.ydb.slo.core.kv.KvSession;
 import tech.ydb.slo.core.kv.KvWorkloadParams;
 import tech.ydb.slo.core.kv.OpOutcome;
@@ -30,46 +32,18 @@ import tech.ydb.slo.core.kv.RowGenerator;
 public final class JdbcKvClient implements KvClient {
     private static final Logger logger = LoggerFactory.getLogger(JdbcKvClient.class);
 
-    private static final String CREATE_TABLE_QUERY_TEMPLATE = ""
-            + "CREATE TABLE IF NOT EXISTS `%s` ("
-            + "  hash Uint64,"
-            + "  id Uint64,"
-            + "  payload_str Utf8,"
-            + "  payload_double Double,"
-            + "  payload_timestamp Timestamp,"
-            + "  payload_hash Uint64,"
-            + "  PRIMARY KEY (hash, id)"
-            + ") WITH ("
-            + "  UNIFORM_PARTITIONS = %d,"
-            + "  AUTO_PARTITIONING_BY_SIZE = ENABLED,"
-            + "  AUTO_PARTITIONING_PARTITION_SIZE_MB = %d,"
-            + "  AUTO_PARTITIONING_MIN_PARTITIONS_COUNT = %d,"
-            + "  AUTO_PARTITIONING_MAX_PARTITIONS_COUNT = %d"
-            + ")";
-
-    private static final String DROP_TABLE_QUERY_TEMPLATE = "DROP TABLE `%s`";
-
-    private static final String WRITE_QUERY_TEMPLATE = ""
-            + "UPSERT INTO `%s` ("
-            + "  hash, id, payload_str, payload_double, payload_timestamp, payload_hash"
-            + ") VALUES (?, ?, ?, ?, ?, ?)";
-
-    private static final String READ_QUERY_TEMPLATE = ""
-            + "SELECT id, payload_str, payload_double, payload_timestamp, payload_hash"
-            + "  FROM `%s`"
-            + "  WHERE id = ? AND hash = ?";
-
-    private static final int MAX_ATTEMPTS = 10;
     private static final long INITIAL_BACKOFF_MS = 10L;
     private static final long MAX_BACKOFF_MS = 1_000L;
 
     private final String jdbcUrl;
     private final Properties connectionProperties;
     private final String tablePath;
+    private final int maxAttempts;
 
-    public JdbcKvClient(Config config, String tablePath) {
+    public JdbcKvClient(Config config, KvWorkloadParams params, String tablePath) {
         this.jdbcUrl = config.jdbcUrl();
         this.tablePath = tablePath;
+        this.maxAttempts = Math.max(1, params.maxAttempts());
         this.connectionProperties = new Properties();
         if (config.token() != null && !config.token().isEmpty()) {
             connectionProperties.setProperty("token", config.token());
@@ -81,7 +55,7 @@ public final class JdbcKvClient implements KvClient {
         try (Connection conn = openConnection();
              Statement stmt = conn.createStatement()) {
             stmt.execute(String.format(
-                    CREATE_TABLE_QUERY_TEMPLATE,
+                    KvSchema.CREATE_TABLE_TEMPLATE,
                     tablePath,
                     params.minPartitionCount(),
                     params.partitionSizeMb(),
@@ -95,7 +69,7 @@ public final class JdbcKvClient implements KvClient {
     public void dropTable(String tablePath) {
         try (Connection conn = openConnection();
              Statement stmt = conn.createStatement()) {
-            stmt.execute(String.format(DROP_TABLE_QUERY_TEMPLATE, tablePath));
+            stmt.execute(String.format(KvSchema.DROP_TABLE_TEMPLATE, tablePath));
         } catch (SQLException e) {
             logger.warn("failed to drop table {}: {}", tablePath, e.toString());
         }
@@ -120,18 +94,23 @@ public final class JdbcKvClient implements KvClient {
             long hash = RowGenerator.numericHash(id);
             int attempts = 0;
             SQLException last = null;
-            while (attempts < MAX_ATTEMPTS) {
+            while (attempts < maxAttempts) {
                 attempts++;
                 try {
                     read(id, hash, timeoutSeconds(timeoutMs));
                     return OpOutcome.success(attempts - 1);
                 } catch (SQLException e) {
                     last = e;
-                    if (!isRetryable(e) || attempts >= MAX_ATTEMPTS) {
+                    if (!isRetryable(e) || attempts >= maxAttempts) {
                         break;
                     }
                     invalidateOnConnectionError(e);
-                    backoff(attempts);
+                    if (!backoff(attempts)) {
+                        // Interrupt during shutdown: stop retrying, return the
+                        // last error so the worker loop can exit cleanly without
+                        // contributing a spurious "interrupted" entry to errors.
+                        break;
+                    }
                 }
             }
             return OpOutcome.error(attempts - 1, classifyError(last));
@@ -142,18 +121,20 @@ public final class JdbcKvClient implements KvClient {
             long hash = RowGenerator.numericHash(row.id());
             int attempts = 0;
             SQLException last = null;
-            while (attempts < MAX_ATTEMPTS) {
+            while (attempts < maxAttempts) {
                 attempts++;
                 try {
                     write(row, hash, timeoutSeconds(timeoutMs));
                     return OpOutcome.success(attempts - 1);
                 } catch (SQLException e) {
                     last = e;
-                    if (!isRetryable(e) || attempts >= MAX_ATTEMPTS) {
+                    if (!isRetryable(e) || attempts >= maxAttempts) {
                         break;
                     }
                     invalidateOnConnectionError(e);
-                    backoff(attempts);
+                    if (!backoff(attempts)) {
+                        break;
+                    }
                 }
             }
             return OpOutcome.error(attempts - 1, classifyError(last));
@@ -181,7 +162,7 @@ public final class JdbcKvClient implements KvClient {
         private PreparedStatement readStmt() throws SQLException {
             Connection conn = connection();
             if (readStmt == null) {
-                readStmt = conn.prepareStatement(String.format(READ_QUERY_TEMPLATE, tablePath));
+                readStmt = conn.prepareStatement(String.format(KvSchema.SELECT_TEMPLATE, tablePath));
             }
             return readStmt;
         }
@@ -189,7 +170,7 @@ public final class JdbcKvClient implements KvClient {
         private PreparedStatement writeStmt() throws SQLException {
             Connection conn = connection();
             if (writeStmt == null) {
-                writeStmt = conn.prepareStatement(String.format(WRITE_QUERY_TEMPLATE, tablePath));
+                writeStmt = conn.prepareStatement(String.format(KvSchema.UPSERT_TEMPLATE, tablePath));
             }
             return writeStmt;
         }
@@ -229,12 +210,28 @@ public final class JdbcKvClient implements KvClient {
         return Math.max(1, (timeoutMs + 999) / 1000);
     }
 
+    /*
+     * Reads and writes are idempotent (SELECT and UPSERT respectively), so any
+     * YdbStatusable error whose status code is retryable for idempotent ops
+     * should be retried. The plain JDBC exception types are kept as a fallback
+     * for non-YDB errors (e.g. a network blip surfaced as a generic
+     * SQLRecoverableException).
+     */
     private static boolean isRetryable(SQLException e) {
+        if (e instanceof YdbStatusable) {
+            try {
+                return ((YdbStatusable) e).getStatus().getCode().isRetryable(true);
+            } catch (RuntimeException ignored) {
+                // fall through
+            }
+        }
         return e instanceof SQLRecoverableException || e instanceof SQLTransientException;
     }
 
     private static boolean isConnectionError(SQLException e) {
-        return e instanceof SQLRecoverableException || e instanceof SQLTransientConnectionException;
+        return e instanceof SQLRecoverableException
+                || e instanceof SQLTransientConnectionException
+                || e instanceof SQLNonTransientConnectionException;
     }
 
     private static String classifyError(SQLException e) {
@@ -251,12 +248,19 @@ public final class JdbcKvClient implements KvClient {
         return e.getClass().getSimpleName().toLowerCase();
     }
 
-    private static void backoff(int attempt) {
+    /**
+     * Sleeps for an exponentially growing delay between retry attempts.
+     * @return {@code true} if the sleep completed normally, {@code false} if
+     *     the thread was interrupted (caller should stop retrying)
+     */
+    private static boolean backoff(int attempt) {
         long delay = Math.min(MAX_BACKOFF_MS, INITIAL_BACKOFF_MS * (1L << Math.min(attempt - 1, 20)));
         try {
             Thread.sleep(delay);
+            return true;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            return false;
         }
     }
 
@@ -266,6 +270,8 @@ public final class JdbcKvClient implements KvClient {
         }
         try {
             closeable.close();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         } catch (Exception ignored) {
             // best-effort
         }

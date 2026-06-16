@@ -16,7 +16,7 @@ public final class Main {
                 "ydb-slo-query-workload",
                 "java-query-kv",
                 args,
-                (config, params, tablePath) -> new QueryKvClient(config, tablePath)
+                (config, params, tablePath) -> new QueryKvClient(config, params, tablePath)
         );
     }
 }

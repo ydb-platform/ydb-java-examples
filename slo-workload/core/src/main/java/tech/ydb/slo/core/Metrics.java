@@ -95,7 +95,7 @@ public final class Metrics implements AutoCloseable {
     private final LongCounter retryAttemptsTotal;
     private final LongUpDownCounter pendingOperations;
 
-    private final Map<OperationType, Histogram> histograms = new ConcurrentHashMap<>();
+    private final Map<OperationType, Histogram> histograms;
 
     private Metrics(
             SdkMeterProvider meterProvider,
@@ -103,7 +103,8 @@ public final class Metrics implements AutoCloseable {
             LongCounter operationsTotal,
             LongCounter errorsTotal,
             LongCounter retryAttemptsTotal,
-            LongUpDownCounter pendingOperations
+            LongUpDownCounter pendingOperations,
+            Map<OperationType, Histogram> histograms
     ) {
         this.meterProvider = meterProvider;
         this.ref = ref;
@@ -111,6 +112,7 @@ public final class Metrics implements AutoCloseable {
         this.errorsTotal = errorsTotal;
         this.retryAttemptsTotal = retryAttemptsTotal;
         this.pendingOperations = pendingOperations;
+        this.histograms = histograms;
     }
 
     /*
@@ -207,16 +209,15 @@ public final class Metrics implements AutoCloseable {
                 p50Observer, p95Observer, p99Observer
         );
 
-        Metrics metrics = new Metrics(
+        return new Metrics(
                 provider,
                 ref,
                 operationsTotal,
                 errorsTotal,
                 retryAttemptsTotal,
-                pendingOperations
+                pendingOperations,
+                histograms
         );
-        metrics.histograms.putAll(histograms);
-        return metrics;
     }
 
     private static String metricsEndpoint(String otlpEndpoint) {
@@ -235,7 +236,10 @@ public final class Metrics implements AutoCloseable {
 
     /*
      * Records a started operation and returns a span used to record the
-     * outcome.
+     * outcome. Callers should wrap the operation in try/finally and call
+     * one of {@code finishSuccess} / {@code finishError} / {@code finishAborted}
+     * so the {@code pendingOperations} gauge always decrements even when an
+     * unexpected exception escapes the user code.
      */
     public Span startOperation(OperationType type) {
         pendingOperations.add(1, Attributes.of(
@@ -298,11 +302,14 @@ public final class Metrics implements AutoCloseable {
     }
 
     /**
-     * Observes p50/p95/p99 for every populated histogram in one go and then
-     * resets the histogram. Called from a single OTel batch callback so all
-     * three percentiles are read from a consistent snapshot — without that,
-     * a concurrent record could land between the p50 and p99 reads and
-     * produce inconsistent values across gauges.
+     * Observes p50/p95/p99 for every populated histogram and then resets it.
+     * Uses {@code copy()} + {@code reset()} on the live AtomicHistogram so the
+     * three percentile reads see a stable snapshot — calling
+     * {@code getValueAtPercentile} directly on a histogram that is still being
+     * recorded into can produce torn values where p50 &gt; p99. The recorder
+     * window between {@code copy} and {@code reset} can drop at most a handful
+     * of concurrent samples per export interval; that's an acceptable trade
+     * for atomic percentile readings.
      */
     private static void observeAndResetPercentiles(
             Map<OperationType, Histogram> histograms,
@@ -313,18 +320,16 @@ public final class Metrics implements AutoCloseable {
     ) {
         for (Map.Entry<OperationType, Histogram> entry : histograms.entrySet()) {
             OperationType type = entry.getKey();
-            Histogram histogram = entry.getValue();
+            Histogram live = entry.getValue();
 
-            long p50Micros;
-            long p95Micros;
-            long p99Micros;
-            if (histogram.getTotalCount() == 0) {
+            Histogram snapshot = live.copy();
+            live.reset();
+            if (snapshot.getTotalCount() == 0) {
                 continue;
             }
-            p50Micros = histogram.getValueAtPercentile(50.0);
-            p95Micros = histogram.getValueAtPercentile(95.0);
-            p99Micros = histogram.getValueAtPercentile(99.0);
-            histogram.reset();
+            long p50Micros = snapshot.getValueAtPercentile(50.0);
+            long p95Micros = snapshot.getValueAtPercentile(95.0);
+            long p99Micros = snapshot.getValueAtPercentile(99.0);
 
             // Percentile gauges are always tagged with operation_status="success"
             // because we only record successful samples (see recordOutcome).
@@ -346,13 +351,21 @@ public final class Metrics implements AutoCloseable {
     }
 
     /**
-     * One in-flight operation. Call exactly one of the {@code finish} methods.
+     * One in-flight operation. Call exactly one of the {@code finish} methods,
+     * or rely on {@link #finishAbortedIfOpen()} from a {@code finally} block to
+     * decrement {@code pendingOperations} when an unexpected throwable escapes.
      */
     public static final class Span {
+        // Volatile + CAS so a worker thread + a finally-block clean-up cannot
+        // double-decrement pendingOperations if they race.
+        private static final java.util.concurrent.atomic.AtomicIntegerFieldUpdater<Span> FINISHED =
+                java.util.concurrent.atomic.AtomicIntegerFieldUpdater.newUpdater(Span.class, "finished");
+
         private final Metrics metrics;
         private final OperationType type;
         private final long startNanos;
-        private boolean finished;
+        @SuppressWarnings("unused")
+        private volatile int finished;
 
         private Span(Metrics metrics, OperationType type, long startNanos) {
             this.metrics = metrics;
@@ -368,14 +381,35 @@ public final class Metrics implements AutoCloseable {
             finish(OperationStatus.ERROR, attempts, errorKind);
         }
 
-        private void finish(OperationStatus status, int attempts, String errorKind) {
-            if (finished) {
+        /**
+         * Idempotent safety net for {@code finally} blocks. If the span has
+         * already been finished, this is a no-op; otherwise the in-flight
+         * gauge is decremented without recording an operation or error sample
+         * (the user code never reached a meaningful outcome). Use this only
+         * for unexpected control-flow exits — interrupts during shutdown, or
+         * a throwable escaping the operation closure.
+         */
+        public void finishAbortedIfOpen() {
+            if (!FINISHED.compareAndSet(this, 0, 1)) {
                 return;
             }
-            finished = true;
+            metrics.decrementPending(type);
+        }
+
+        private void finish(OperationStatus status, int attempts, String errorKind) {
+            if (!FINISHED.compareAndSet(this, 0, 1)) {
+                return;
+            }
             long latencyMicros = (System.nanoTime() - startNanos) / 1_000L;
             metrics.recordOutcome(type, status, attempts, latencyMicros, errorKind);
         }
+    }
+
+    private void decrementPending(OperationType type) {
+        pendingOperations.add(-1, Attributes.of(
+                ATTR_REF, ref,
+                ATTR_OPERATION_TYPE, type.label()
+        ));
     }
 
 }

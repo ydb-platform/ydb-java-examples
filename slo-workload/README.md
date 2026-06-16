@@ -82,11 +82,27 @@ KV tunables are passed on the command line and parsed by JCommander:
 --partition-size <int>      Auto-partitioning partition size in MB (default 1)
 --min-partition-count <int> Minimum number of table partitions (default 6)
 --max-partition-count <int> Maximum number of table partitions (default 1000)
---duration <int>            Override WORKLOAD_DURATION when > 0
+--duration / --time <int>   Override WORKLOAD_DURATION when > 0
+--shutdown-time <int>       Extra grace seconds for in-flight ops on shutdown (default 30)
+--max-attempts <int>        Per-operation attempt cap, initial + retries (default 10)
+--max-workers <int>         Hard cap on workers per operation type (default 64)
 ```
 
-Unknown flags are ignored, so a workload accepts command strings designed for
-other SDKs without erroring.
+Unknown flags are rejected — a typo in the ydb-slo-action invocation should
+fail loudly rather than silently fall back to defaults.
+
+The Spring-backed workloads expose one more knob via the `SLO_HIKARI_POOL_SIZE`
+environment variable (default `130`, sized for `2 × max-workers` plus headroom).
+Raise it together with `--max-workers` or the workload measures Hikari
+contention rather than the JDBC driver.
+
+### Cross-implementation comparability
+
+Every implementation derives the primary-key `hash` column from `id` with the
+same client-side mix (`RowGenerator.numericHash`). A table written by the
+`query` workload is therefore byte-compatible with the `jdbc` and Spring-Data
+workloads — useful when one prefills the table and another reads from it
+during cross-driver experiments.
 
 ## How CI uses this module
 

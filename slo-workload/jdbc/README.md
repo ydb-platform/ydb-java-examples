@@ -40,14 +40,21 @@ relying on server-side YQL builtins inside parameterized statements.
 
 ## Retries
 
-Operations are retried with exponential backoff (up to 10 attempts). An error
-is considered retryable when the driver throws a `SQLRecoverableException` or
-`SQLTransientException` (which covers the driver's
-`YdbRetryableException`, `YdbConditionallyRetryableException`,
-`YdbUnavailbaleException` and `YdbTimeoutException`). The number of retries is
-recorded in `sdk_retry_attempts_total`, and the failure reason is reported via
-the `error_kind` label on `sdk_errors_total` (using the YDB status code when
-available).
+Reads (`SELECT`) and writes (`UPSERT`) are both idempotent, so retries decide
+based on the YDB status code: a `YdbStatusable` whose
+`StatusCode.isRetryable(true)` is true is retried (this covers ABORTED,
+OVERLOADED, UNAVAILABLE, BAD_SESSION, SESSION_BUSY, UNDETERMINED on idempotent
+operations). Anything else falls back to the JDBC marker types
+`SQLRecoverableException` / `SQLTransientException`. The retry attempt cap is
+configurable via `--max-attempts` (default 10) and backoff is capped at 1s.
+Connection-level errors (`SQLRecoverableException`,
+`SQLTransientConnectionException`, `SQLNonTransientConnectionException`)
+invalidate the worker's cached connection before the next attempt opens a
+fresh one.
+
+The number of retries is recorded in `sdk_retry_attempts_total`, and the
+failure reason is reported via the `error_kind` label on `sdk_errors_total`
+(using the YDB status code when available).
 
 ## Files
 
@@ -58,17 +65,17 @@ jdbc/
 ├── README.md
 └── src/main/
     ├── java/tech/ydb/slo/
-    │   ├── Config.java              Reads env vars, resolves the JDBC URL
-    │   ├── Main.java                Entry point
-    │   ├── Metrics.java             OTLP metrics + HDR histograms
-    │   └── kv/
-    │       ├── KvWorkload.java      Setup/run/teardown loop over JDBC
-    │       ├── KvWorkloadParams.java JCommander-bound CLI flags
-    │       ├── Row.java             Row data class
-    │       └── RowGenerator.java    Random payload generator
+    │   ├── Main.java                Entry point, loads the JDBC driver
+    │   └── jdbc/
+    │       └── JdbcKvClient.java    KvClient: connection lifecycle + retry
     └── resources/
         └── log4j2.xml               Console logging config
 ```
+
+The shared harness (`Config`, `Metrics`, `KvWorkloadParams`, `Row`,
+`RowGenerator`, `WorkloadRunner`, `Launcher`) lives in
+[`../core`](../core/src/main/java/tech/ydb/slo/core), so every implementation
+emits the same metric contract.
 
 ## Building and running locally
 

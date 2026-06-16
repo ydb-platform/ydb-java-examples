@@ -61,10 +61,28 @@ public final class KvWorkloadParams {
     private int maxPartitionCount = 1_000;
 
     @Parameter(
-            names = {"--duration"},
+            names = {"--duration", "--time"},
             description = "Run duration in seconds (overrides WORKLOAD_DURATION when > 0)"
     )
     private int durationSeconds = 0;
+
+    @Parameter(
+            names = {"--shutdown-time"},
+            description = "Extra seconds, on top of --duration, given to in-flight ops before force-shutdown"
+    )
+    private int shutdownTimeSeconds = 30;
+
+    @Parameter(
+            names = {"--max-attempts"},
+            description = "Maximum total attempts per operation (initial + retries)"
+    )
+    private int maxAttempts = 10;
+
+    @Parameter(
+            names = {"--max-workers"},
+            description = "Hard cap on the number of worker threads per operation type"
+    )
+    private int maxWorkers = 64;
 
     public int readRps() {
         return readRps;
@@ -110,5 +128,17 @@ public final class KvWorkloadParams {
 
     public void setDurationSeconds(int durationSeconds) {
         this.durationSeconds = durationSeconds;
+    }
+
+    public int shutdownTimeSeconds() {
+        return shutdownTimeSeconds;
+    }
+
+    public int maxAttempts() {
+        return maxAttempts;
+    }
+
+    public int maxWorkers() {
+        return maxWorkers;
     }
 }

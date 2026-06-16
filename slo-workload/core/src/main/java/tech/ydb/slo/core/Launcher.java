@@ -88,7 +88,9 @@ public final class Launcher {
         try {
             JCommander.newBuilder()
                     .programName(programName)
-                    .acceptUnknownOptions(true)
+                    // Strict parsing: a typo in the ydb-slo-action invocation
+                    // should fail loudly, not silently fall back to defaults.
+                    .acceptUnknownOptions(false)
                     .addObject(params)
                     .build()
                     .parse(args);
@@ -180,7 +182,8 @@ public final class Launcher {
      * Replaces characters that aren't valid in YDB table names with
      * underscores. Refs from CI may include slashes (release/1.2) or dots,
      * which the action permits in metrics labels but YDB rejects in table
-     * paths.
+     * paths. YDB also rejects identifiers starting with a digit and limits
+     * the total length, so we guard both.
      */
     private static String sanitize(String value) {
         StringBuilder sb = new StringBuilder(value.length());
@@ -191,6 +194,15 @@ public final class Launcher {
             } else {
                 sb.append('_');
             }
+        }
+        if (sb.length() == 0) {
+            sb.append('_');
+        } else if (Character.isDigit(sb.charAt(0))) {
+            sb.insert(0, '_');
+        }
+        // 64-char cap keeps the joined table name comfortably under YDB's limit.
+        if (sb.length() > 64) {
+            sb.setLength(64);
         }
         return sb.toString();
     }

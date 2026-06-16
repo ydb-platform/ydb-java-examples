@@ -27,7 +27,7 @@ public final class Main {
                 "ydb-slo-jdbc-workload",
                 "java-jdbc-kv",
                 args,
-                (config, params, tablePath) -> new JdbcKvClient(config, tablePath)
+                (config, params, tablePath) -> new JdbcKvClient(config, params, tablePath)
         );
     }
 }

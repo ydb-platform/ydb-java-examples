@@ -1,11 +1,14 @@
 package tech.ydb.slo.springjpa;
 
+import java.sql.SQLException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import tech.ydb.jdbc.exception.YdbStatusable;
 import tech.ydb.slo.core.kv.KvClient;
+import tech.ydb.slo.core.kv.KvSchema;
 import tech.ydb.slo.core.kv.KvSession;
 import tech.ydb.slo.core.kv.KvWorkloadParams;
 import tech.ydb.slo.core.kv.OpOutcome;
@@ -15,66 +18,64 @@ import tech.ydb.slo.core.kv.RowGenerator;
 /**
  * {@link KvClient} backed by Spring Data JPA ({@link jakarta.persistence.EntityManager})
  * and {@code spring-ydb-retry}.
+ *
+ * <p>This singleton bean is bound to a workload table by calling
+ * {@link #forTable(String)}, which returns a fresh {@link KvClient} that closes
+ * over the table path — the bean itself stays immutable so Spring's
+ * thread-safety contract is preserved.
  */
 @Component
-public class SpringJpaKvClient implements KvClient {
-    private static final Logger logger = LoggerFactory.getLogger(SpringJpaKvClient.class);
-
-    private static final String CREATE_TABLE_QUERY_TEMPLATE = ""
-            + "CREATE TABLE IF NOT EXISTS `%s` ("
-            + "  hash Uint64,"
-            + "  id Uint64,"
-            + "  payload_str Utf8,"
-            + "  payload_double Double,"
-            + "  payload_timestamp Timestamp,"
-            + "  payload_hash Uint64,"
-            + "  PRIMARY KEY (hash, id)"
-            + ") WITH ("
-            + "  UNIFORM_PARTITIONS = %d,"
-            + "  AUTO_PARTITIONING_BY_SIZE = ENABLED,"
-            + "  AUTO_PARTITIONING_PARTITION_SIZE_MB = %d,"
-            + "  AUTO_PARTITIONING_MIN_PARTITIONS_COUNT = %d,"
-            + "  AUTO_PARTITIONING_MAX_PARTITIONS_COUNT = %d"
-            + ")";
-
-    private static final String DROP_TABLE_QUERY_TEMPLATE = "DROP TABLE `%s`";
-
+public class SpringJpaKvClient {
     private final KvOperationService operations;
-    private String tablePath;
 
     public SpringJpaKvClient(KvOperationService operations) {
         this.operations = operations;
     }
 
-    SpringJpaKvClient forTable(String tablePath) {
-        this.tablePath = tablePath;
-        return this;
+    /**
+     * Binds the workload to a table path, returning a {@link KvClient} that
+     * proxies create/drop/openSession against it.
+     */
+    public KvClient forTable(String tablePath) {
+        return new BoundClient(operations, tablePath);
     }
 
-    @Override
-    public void createTable(KvWorkloadParams params, String tablePath) {
-        operations.executeDdl(String.format(
-                CREATE_TABLE_QUERY_TEMPLATE,
-                tablePath,
-                params.minPartitionCount(),
-                params.partitionSizeMb(),
-                params.minPartitionCount(),
-                params.maxPartitionCount()
-        ));
-    }
+    private static final class BoundClient implements KvClient {
+        private static final Logger logger = LoggerFactory.getLogger(BoundClient.class);
 
-    @Override
-    public void dropTable(String tablePath) {
-        try {
-            operations.executeDdl(String.format(DROP_TABLE_QUERY_TEMPLATE, tablePath));
-        } catch (RuntimeException e) {
-            logger.warn("failed to drop table {}: {}", tablePath, e.toString());
+        private final KvOperationService operations;
+        private final String tablePath;
+
+        BoundClient(KvOperationService operations, String tablePath) {
+            this.operations = operations;
+            this.tablePath = tablePath;
         }
-    }
 
-    @Override
-    public KvSession openSession() {
-        return new SpringJpaKvSession(operations, tablePath);
+        @Override
+        public void createTable(KvWorkloadParams params, String table) {
+            operations.executeDdl(String.format(
+                    KvSchema.CREATE_TABLE_TEMPLATE,
+                    table,
+                    params.minPartitionCount(),
+                    params.partitionSizeMb(),
+                    params.minPartitionCount(),
+                    params.maxPartitionCount()
+            ));
+        }
+
+        @Override
+        public void dropTable(String table) {
+            try {
+                operations.executeDdl(String.format(KvSchema.DROP_TABLE_TEMPLATE, table));
+            } catch (RuntimeException e) {
+                logger.warn("failed to drop table {}: {}", table, e.toString());
+            }
+        }
+
+        @Override
+        public KvSession openSession() {
+            return new SpringJpaKvSession(operations, tablePath);
+        }
     }
 
     private static final class SpringJpaKvSession implements KvSession {
@@ -88,26 +89,39 @@ public class SpringJpaKvClient implements KvClient {
 
         @Override
         public OpOutcome read(long id, int timeoutMs) {
+            KvOperationService.resetAttempts();
             try {
                 long hash = RowGenerator.numericHash(id);
                 operations.read(tablePath, id, hash);
-                return OpOutcome.success(0);
+                return OpOutcome.success(Math.max(0, KvOperationService.currentAttempts() - 1));
             } catch (RuntimeException e) {
-                return OpOutcome.error(0, classifyError(e));
+                return OpOutcome.error(
+                        Math.max(0, KvOperationService.currentAttempts() - 1),
+                        classifyError(e)
+                );
             }
         }
 
         @Override
         public OpOutcome write(Row row, int timeoutMs) {
+            KvOperationService.resetAttempts();
             try {
                 long hash = RowGenerator.numericHash(row.id());
                 operations.write(tablePath, row, hash);
-                return OpOutcome.success(0);
+                return OpOutcome.success(Math.max(0, KvOperationService.currentAttempts() - 1));
             } catch (RuntimeException e) {
-                return OpOutcome.error(0, classifyError(e));
+                return OpOutcome.error(
+                        Math.max(0, KvOperationService.currentAttempts() - 1),
+                        classifyError(e)
+                );
             }
         }
 
+        /*
+         * Walks the cause chain looking for the most informative label:
+         * a YDB status, then a SQLState, then the exception's simple name.
+         * The SQLException step preserves Hikari pool-exhaustion → 08006 etc.
+         */
         private static String classifyError(Throwable e) {
             Throwable current = e;
             while (current != null) {
@@ -117,6 +131,17 @@ public class SpringJpaKvClient implements KvClient {
                     } catch (RuntimeException ignored) {
                         // fall through
                     }
+                }
+                current = current.getCause();
+            }
+            current = e;
+            while (current != null) {
+                if (current instanceof SQLException) {
+                    String state = ((SQLException) current).getSQLState();
+                    if (state != null && !state.isEmpty()) {
+                        return "sql/" + state;
+                    }
+                    return "sql/" + current.getClass().getSimpleName().toLowerCase();
                 }
                 current = current.getCause();
             }

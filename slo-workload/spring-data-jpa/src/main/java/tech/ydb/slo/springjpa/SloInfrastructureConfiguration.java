@@ -6,13 +6,10 @@ import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import tech.ydb.slo.core.Config;
 
 @Configuration
-@EnableTransactionManagement
 public class SloInfrastructureConfiguration {
 
     @Bean
@@ -32,10 +29,5 @@ public class SloInfrastructureConfiguration {
             dataSource.addDataSourceProperty("token", sloConfig.token());
         }
         return dataSource;
-    }
-
-    @Bean
-    JdbcTemplate sloJdbcTemplate(DataSource sloDataSource) {
-        return new JdbcTemplate(sloDataSource);
     }
 }
