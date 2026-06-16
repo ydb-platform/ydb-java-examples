@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} %-5level [%t] %logger{36} - %msg%n"/>
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Logger name="io.grpc" level="warn"/>
+        <Logger name="io.netty" level="warn"/>
+        <Logger name="io.opentelemetry" level="warn"/>
+        <Logger name="tech.ydb" level="info"/>
+        <Logger name="tech.ydb.slo" level="info"/>
+        <Root level="info">
+            <AppenderRef ref="Console"/>
+        </Root>
+    </Loggers>
+</Configuration>

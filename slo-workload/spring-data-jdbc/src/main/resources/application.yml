@@ -1,0 +1,11 @@
+spring:
+  main:
+    banner-mode: "off"
+    web-application-type: none
+
+logging:
+  level:
+    root: info
+    tech.ydb: info
+    tech.ydb.slo: info
+    org.springframework: warn

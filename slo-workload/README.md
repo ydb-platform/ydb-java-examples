@@ -5,14 +5,20 @@ reliability of YDB Java clients under load and chaos using the
 [YDB SLO action](https://github.com/ydb-platform/ydb-slo-action).
 
 Each submodule is a self-contained, runnable workload that follows the same
-contract as the SDK SLO workload in [`../slo`](../slo): it reads its
-configuration from environment variables, runs setup/run/teardown phases, and
-pushes OpenTelemetry (OTLP) metrics that the action scrapes and compares
-between the current PR run and a baseline run.
+contract: it reads its configuration from environment variables, runs
+setup/run/teardown phases, and pushes OpenTelemetry (OTLP) metrics that the
+action scrapes and compares between the current PR run and a baseline run.
+
+Shared harness code lives in [`core`](core) (`Config`, `Metrics`, KV row
+model, rate-limited runner). Every workload plugs a `KvClient` adapter into
+that runner so all of them emit the same metric contract.
 
 | Module | Component under test | Description |
 | --- | --- | --- |
+| [`query`](query) | `ydb-java-sdk` (query client) | Native SDK KV workload |
 | [`jdbc`](jdbc) | `ydb-jdbc-driver` | Plain JDBC KV workload (no framework) |
+| [`spring-data-jdbc`](spring-data-jdbc) | `ydb-jdbc-driver` + `spring-data-jdbc-ydb` + `spring-ydb-retry` | Spring Data JDBC KV workload |
+| [`spring-data-jpa`](spring-data-jpa) | `ydb-jdbc-driver` + Hibernate 6 + `spring-ydb-retry` | Spring Data JPA KV workload |
 
 ## How a workload behaves
 

@@ -1,0 +1,21 @@
+spring:
+  main:
+    banner-mode: "off"
+    web-application-type: none
+  datasource:
+    driver-class-name: tech.ydb.jdbc.YdbDriver
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: tech.ydb.hibernate.dialect.YdbDialect
+
+logging:
+  level:
+    root: info
+    tech.ydb: info
+    tech.ydb.slo: info
+    org.springframework: warn
+    org.hibernate: warn
