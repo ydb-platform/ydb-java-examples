@@ -16,15 +16,6 @@ import tech.ydb.slo.core.kv.OpOutcome;
 import tech.ydb.slo.core.kv.Row;
 import tech.ydb.slo.core.kv.RowGenerator;
 
-/**
- * {@link KvClient} backed by Spring's {@link JdbcTemplate} and
- * {@code spring-ydb-retry}.
- *
- * <p>This singleton bean is bound to a workload table by calling
- * {@link #forTable(String)}, which returns a fresh {@link KvClient} that closes
- * over the table path — the bean itself stays immutable so Spring's
- * thread-safety contract is preserved.
- */
 @Component
 public class SpringJdbcKvClient {
     private final JdbcTemplate jdbc;
@@ -35,12 +26,8 @@ public class SpringJdbcKvClient {
         this.operations = operations;
     }
 
-    /**
-     * Binds the workload to a table path, returning a {@link KvClient} that
-     * proxies create/drop/openSession against it. The returned client shares
-     * the singleton's {@code JdbcTemplate} and {@code KvOperationService}, so
-     * Hikari pooling + AOP retry stay in effect.
-     */
+
+
     public KvClient forTable(String tablePath) {
         return new BoundClient(jdbc, operations, tablePath);
     }
@@ -124,15 +111,8 @@ public class SpringJdbcKvClient {
             }
         }
 
-        /*
-         * Walks the cause chain looking for the most informative label:
-         *   - a YDB status (best),
-         *   - else a SQLState (preserves Hikari pool-exhaustion → 08006, etc.),
-         *   - else the originating exception's simple name.
-         * Without the SQLException step, Hikari's CannotGetJdbcConnectionException
-         * masks the underlying transient state and every chaos run collapses to
-         * a single error_kind bucket.
-         */
+
+
         private static String classifyError(Throwable e) {
             Throwable current = e;
             while (current != null) {
@@ -140,7 +120,7 @@ public class SpringJdbcKvClient {
                     try {
                         return "ydb/" + ((YdbStatusable) current).getStatus().getCode().name().toLowerCase();
                     } catch (RuntimeException ignored) {
-                        // fall through
+
                     }
                 }
                 current = current.getCause();

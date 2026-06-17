@@ -1,25 +1,5 @@
 package tech.ydb.slo.core;
 
-/**
- * Configuration for the SLO workloads, populated from environment variables
- * provided by the YDB SLO action runtime.
- *
- * <p>The action sets these variables on the workload container:
- * <ul>
- *   <li>{@code YDB_CONNECTION_STRING} or {@code YDB_ENDPOINT} + {@code YDB_DATABASE} — YDB connection</li>
- *   <li>{@code YDB_TOKEN} — optional access token</li>
- *   <li>{@code WORKLOAD_REF} — value used as the {@code ref} label on all metrics</li>
- *   <li>{@code WORKLOAD_NAME} — workload name (also used as part of the table path)</li>
- *   <li>{@code WORKLOAD_DURATION} — workload run duration in seconds (0 = unlimited)</li>
- *   <li>{@code OTEL_EXPORTER_OTLP_ENDPOINT} — OTLP endpoint for pushing metrics</li>
- * </ul>
- *
- * <p>The same configuration object is shared by every workload, regardless of
- * the client it exercises. It therefore exposes the connection both as a YDB
- * connection string ({@code grpc://host:port/database}, consumed by the native
- * SDK transport) and as a JDBC URL ({@code jdbc:ydb:...}, consumed by the JDBC
- * driver and the Spring Data workloads).
- */
 public final class Config {
     private final String connectionString;
     private final String jdbcUrl;
@@ -47,20 +27,14 @@ public final class Config {
         this.otlpEndpoint = otlpEndpoint;
     }
 
-    /**
-     * YDB connection string in the {@code grpc://host:port/database} form,
-     * consumed by the native SDK transport.
-     * @return connection string, never empty
-     */
+
+
     public String connectionString() {
         return connectionString;
     }
 
-    /**
-     * YDB JDBC URL ({@code jdbc:ydb:...}), consumed by the JDBC driver and the
-     * Spring Data workloads.
-     * @return JDBC URL, never empty
-     */
+
+
     public String jdbcUrl() {
         return jdbcUrl;
     }
@@ -85,13 +59,8 @@ public final class Config {
         return otlpEndpoint;
     }
 
-    /**
-     * Loads configuration from environment variables.
-     *
-     * @param defaultWorkloadName workload name to use when {@code WORKLOAD_NAME} is not set
-     * @return configuration instance
-     * @throws IllegalStateException if the YDB connection is not configured
-     */
+
+
     public static Config fromEnv(String defaultWorkloadName) {
         String connectionString = resolveConnectionString();
         if (connectionString == null || connectionString.isEmpty()) {
@@ -118,11 +87,8 @@ public final class Config {
         );
     }
 
-    /*
-     * Resolves the connection in grpc://host:port/database form. YDB_JDBC_URL,
-     * if provided, is normalized back to a plain connection string so the
-     * native transport can use it too.
-     */
+
+
     private static String resolveConnectionString() {
         String jdbc = System.getenv("YDB_JDBC_URL");
         if (jdbc != null && !jdbc.isEmpty()) {
@@ -149,11 +115,8 @@ public final class Config {
         return value;
     }
 
-    /**
-     * Turns a YDB connection string ({@code grpc://host:port/database}) into a
-     * JDBC URL understood by the YDB JDBC driver. If the value already starts
-     * with {@code jdbc:}, it is returned unchanged.
-     */
+
+
     private static String toJdbcUrl(String connectionString) {
         if (connectionString.startsWith("jdbc:")) {
             return connectionString;

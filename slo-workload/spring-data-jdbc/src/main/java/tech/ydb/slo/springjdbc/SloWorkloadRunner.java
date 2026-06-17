@@ -6,9 +6,6 @@ import org.springframework.stereotype.Component;
 
 import tech.ydb.slo.core.Launcher;
 
-/**
- * Runs the shared SLO workload harness once the Spring context is up.
- */
 @Component
 public class SloWorkloadRunner implements ApplicationRunner {
     private final SpringJdbcKvClient client;

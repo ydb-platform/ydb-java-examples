@@ -5,9 +5,6 @@ import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 
-/**
- * Spring Data JPA / Hibernate 6 SLO workload entry point.
- */
 @SpringBootApplication
 public class SloSpringDataJpaApplication {
 

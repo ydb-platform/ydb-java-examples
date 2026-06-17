@@ -14,33 +14,11 @@ import org.slf4j.LoggerFactory;
 
 import tech.ydb.slo.core.Metrics;
 
-/**
- * Driver-agnostic load generator for the KV SLO workload.
- *
- * <p>The runner owns the whole lifecycle — create the table, prefill it, run
- * read/write loops at fixed RPS for the configured duration, drop the table —
- * and delegates the actual data access to a {@link KvClient}. Because the
- * runner is shared by every workload (native query client, JDBC, Spring Data),
- * all of them produce the exact same metric contract that
- * {@code ydb-platform/ydb-slo-action} compares.
- *
- * <p>Concurrency model: each operation type (read / write) gets a dedicated
- * thread pool sized to the configured RPS (capped by {@code --max-workers}).
- * Every worker thread owns its own {@link KvSession}, pulls a permit from a
- * shared Guava {@link RateLimiter}, and executes the operation inline. There is
- * no separate driver thread and no work queue, which removes the unbounded
- * backlog risk under chaos and keeps the worker count proportional to the
- * actual concurrency budget.
- */
 public final class WorkloadRunner {
     private static final Logger logger = LoggerFactory.getLogger(WorkloadRunner.class);
 
-    /*
-     * Fraction of the prefill that has to succeed for setup() to consider the
-     * cluster usable. If we accept silent failures, reads then target a
-     * key-space that was never populated and the workload reports green
-     * metrics on an empty table.
-     */
+
+
     private static final double PREFILL_SUCCESS_THRESHOLD = 0.5;
 
     private final KvClient client;
@@ -57,15 +35,8 @@ public final class WorkloadRunner {
         this.generator = new RowGenerator(params.prefillCount());
     }
 
-    /**
-     * Creates the table (if missing) and prefills it with
-     * {@code params.prefillCount()} rows using a bounded pool of worker
-     * sessions. Prefill writes are not recorded into metrics so the latency
-     * histograms aren't polluted with bulk-load timings.
-     * @throws Exception if the table cannot be created or if more than half of
-     *     the prefill rows failed to write
-     * @throws InterruptedException if interrupted while prefilling
-     */
+
+
     public void setup() throws Exception {
         logger.info("creating table {}", tablePath);
         client.createTable(params, tablePath);
@@ -100,11 +71,11 @@ public final class WorkloadRunner {
                             }
                         }
                     } catch (Exception e) {
-                        // A worker that can't open a session won't write
-                        // anything; charge the entire remaining range to
-                        // `failed` so the threshold check below catches the
-                        // condition even when sessions never get off the
-                        // ground.
+
+
+
+
+
                         sessionOpenFailures.incrementAndGet();
                         long firstUnclaimed = nextId.getAndSet(params.prefillCount());
                         if (firstUnclaimed < params.prefillCount()) {
@@ -144,24 +115,17 @@ public final class WorkloadRunner {
         }
     }
 
-    /**
-     * Runs the workload until the configured deadline or thread interruption.
-     *
-     * <p>Read and write workers run concurrently on dedicated thread pools.
-     * Each worker pulls a permit from its rate limiter and executes the
-     * operation inline. Non-positive RPS disables the corresponding loop
-     * entirely (useful for write-only or read-only smoke tests).
-     * @throws InterruptedException if interrupted while awaiting pool drain
-     */
+
+
     public void run() throws InterruptedException {
         long durationSeconds = params.durationSeconds();
         long endNanos = durationSeconds > 0
                 ? System.nanoTime() + TimeUnit.SECONDS.toNanos(durationSeconds)
                 : Long.MAX_VALUE;
 
-        // Track how many writes have completed so reads target a key-space
-        // that's actually been populated. The generator was constructed with
-        // nextId = prefillCount, so writes pick up where prefill left off.
+
+
+
         AtomicLong writesIssued = new AtomicLong();
 
         int readWorkers = workerCount(params.readRps());
@@ -195,7 +159,7 @@ public final class WorkloadRunner {
                 logger.info("write RPS <= 0, skipping write workers");
             }
 
-            // Wait for workers to drain naturally as they hit the deadline.
+
             long graceNanos = TimeUnit.SECONDS.toNanos(params.shutdownTimeSeconds());
             long waitNanos = durationSeconds > 0
                     ? Math.max(0L, endNanos - System.nanoTime()) + graceNanos
@@ -228,16 +192,14 @@ public final class WorkloadRunner {
         }
     }
 
-    /**
-     * Drops the workload table. Called from the {@code finally} block in the
-     * launcher so the database is left clean even on failure.
-     */
+
+
     public void teardown() {
         logger.info("dropping table {}", tablePath);
         client.dropTable(tablePath);
     }
 
-    // --- worker loops ------------------------------------------------------
+
 
     private void readWorkerLoop(long endNanos, RateLimiter limiter, AtomicLong writesIssued) {
         try (KvSession session = client.openSession()) {
@@ -246,9 +208,9 @@ public final class WorkloadRunner {
                 if (remaining <= 0) {
                     return;
                 }
-                // tryAcquire bounded by the deadline so a chaos-induced
-                // limiter stall during shutdown doesn't issue one extra
-                // operation after the workload was supposed to finish.
+
+
+
                 if (!limiter.tryAcquire(remaining, TimeUnit.NANOSECONDS)) {
                     return;
                 }
@@ -285,45 +247,34 @@ public final class WorkloadRunner {
         }
     }
 
-    // --- single operations -------------------------------------------------
+
 
     private void readOnce(KvSession session, long writesObserved) {
         long upperBound = Math.max(1L, params.prefillCount() + writesObserved);
         long id = ThreadLocalRandom.current().nextLong(upperBound);
 
         Metrics.Span span = metrics.startOperation(Metrics.OperationType.READ);
-        try {
-            OpOutcome outcome = session.read(id, params.readTimeoutMs());
-            if (outcome.isSuccess()) {
-                span.finishSuccess(outcome.retryAttempts());
-            } else {
-                span.finishError(outcome.retryAttempts(), outcome.errorKind());
-                logger.debug("read {} failed: {}", id, outcome.errorKind());
-            }
-        } finally {
-            // Decrement pending if the session threw before producing an
-            // OpOutcome (it shouldn't — KvSession.read is "never throws" —
-            // but the safety net keeps the gauge truthful regardless).
-            span.finishAbortedIfOpen();
+        OpOutcome outcome = session.read(id, params.readTimeoutMs());
+        if (outcome.isSuccess()) {
+            span.finishSuccess(outcome.retryAttempts());
+        } else {
+            span.finishError(outcome.retryAttempts(), outcome.errorKind());
+            logger.debug("read {} failed: {}", id, outcome.errorKind());
         }
     }
 
     private void writeOnce(KvSession session, Row row) {
         Metrics.Span span = metrics.startOperation(Metrics.OperationType.WRITE);
-        try {
-            OpOutcome outcome = session.write(row, params.writeTimeoutMs());
-            if (outcome.isSuccess()) {
-                span.finishSuccess(outcome.retryAttempts());
-            } else {
-                span.finishError(outcome.retryAttempts(), outcome.errorKind());
-                logger.debug("write {} failed: {}", row.id(), outcome.errorKind());
-            }
-        } finally {
-            span.finishAbortedIfOpen();
+        OpOutcome outcome = session.write(row, params.writeTimeoutMs());
+        if (outcome.isSuccess()) {
+            span.finishSuccess(outcome.retryAttempts());
+        } else {
+            span.finishError(outcome.retryAttempts(), outcome.errorKind());
+            logger.debug("write {} failed: {}", row.id(), outcome.errorKind());
         }
     }
 
-    // --- helpers -----------------------------------------------------------
+
 
     private int workerCount(int rps) {
         if (rps <= 0) {

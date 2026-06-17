@@ -3,14 +3,11 @@ package tech.ydb.slo;
 import tech.ydb.slo.core.Launcher;
 import tech.ydb.slo.jdbc.JdbcKvClient;
 
-/**
- * Entry point of the JDBC SLO workload.
- */
 public final class Main {
     private static final String YDB_DRIVER_CLASS = "tech.ydb.jdbc.YdbDriver";
 
     private Main() {
-        // utility class
+
     }
 
     public static void main(String[] args) {

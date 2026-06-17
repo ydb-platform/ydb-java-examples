@@ -26,17 +26,6 @@ import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.values.PrimitiveValue;
 
-/**
- * {@link KvClient} backed by the native YDB query client and
- * {@link SessionRetryContext}.
- *
- * <p>The {@code hash} primary-key column is computed client-side via
- * {@link RowGenerator#numericHash(long)} (rather than YQL's
- * {@code Digest::NumericHash}) so a table written by this workload is
- * byte-compatible with the JDBC and Spring Data workloads. The exact mixing
- * function doesn't matter to the workload — only that every implementation
- * agrees.
- */
 public final class QueryKvClient implements KvClient {
     private static final String WRITE_QUERY_TEMPLATE = ""
             + "DECLARE $hash AS Uint64;"
@@ -78,9 +67,9 @@ public final class QueryKvClient implements KvClient {
                 .withAuthProvider(provider)
                 .build();
         this.queryClient = QueryClient.newClient(transport).build();
-        // Align the retry budget with the JDBC client so dashboards comparing
-        // the two implementations measure comparable retry pressure under
-        // chaos.
+
+
+
         this.retryCtx = SessionRetryContext.create(queryClient)
                 .maxRetries(Math.max(1, params.maxAttempts()))
                 .build();
@@ -128,12 +117,12 @@ public final class QueryKvClient implements KvClient {
         try {
             queryClient.close();
         } catch (Exception ignored) {
-            // best-effort
+
         }
         try {
             transport.close();
         } catch (Exception ignored) {
-            // best-effort
+
         }
     }
 

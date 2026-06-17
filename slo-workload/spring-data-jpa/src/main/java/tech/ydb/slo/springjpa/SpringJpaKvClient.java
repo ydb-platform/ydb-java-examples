@@ -15,15 +15,6 @@ import tech.ydb.slo.core.kv.OpOutcome;
 import tech.ydb.slo.core.kv.Row;
 import tech.ydb.slo.core.kv.RowGenerator;
 
-/**
- * {@link KvClient} backed by Spring Data JPA ({@link jakarta.persistence.EntityManager})
- * and {@code spring-ydb-retry}.
- *
- * <p>This singleton bean is bound to a workload table by calling
- * {@link #forTable(String)}, which returns a fresh {@link KvClient} that closes
- * over the table path — the bean itself stays immutable so Spring's
- * thread-safety contract is preserved.
- */
 @Component
 public class SpringJpaKvClient {
     private final KvOperationService operations;
@@ -32,10 +23,8 @@ public class SpringJpaKvClient {
         this.operations = operations;
     }
 
-    /**
-     * Binds the workload to a table path, returning a {@link KvClient} that
-     * proxies create/drop/openSession against it.
-     */
+
+
     public KvClient forTable(String tablePath) {
         return new BoundClient(operations, tablePath);
     }
@@ -117,11 +106,8 @@ public class SpringJpaKvClient {
             }
         }
 
-        /*
-         * Walks the cause chain looking for the most informative label:
-         * a YDB status, then a SQLState, then the exception's simple name.
-         * The SQLException step preserves Hikari pool-exhaustion → 08006 etc.
-         */
+
+
         private static String classifyError(Throwable e) {
             Throwable current = e;
             while (current != null) {
@@ -129,7 +115,7 @@ public class SpringJpaKvClient {
                     try {
                         return "ydb/" + ((YdbStatusable) current).getStatus().getCode().name().toLowerCase();
                     } catch (RuntimeException ignored) {
-                        // fall through
+
                     }
                 }
                 current = current.getCause();

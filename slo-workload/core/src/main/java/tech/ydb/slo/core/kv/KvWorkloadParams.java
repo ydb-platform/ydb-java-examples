@@ -2,13 +2,6 @@ package tech.ydb.slo.core.kv;
 
 import com.beust.jcommander.Parameter;
 
-/**
- * Tunable parameters for the KV workload.
- *
- * <p>Defaults match the SLO workloads in the Go and JavaScript SDKs so the
- * runs are comparable. JCommander annotations let the operator override any
- * field from the command line, e.g. {@code --read-rps 500 --write-rps 50}.
- */
 @SuppressWarnings("FieldMayBeFinal")
 public final class KvWorkloadParams {
 
@@ -116,12 +109,8 @@ public final class KvWorkloadParams {
         return maxPartitionCount;
     }
 
-    /**
-     * Effective run duration. If the CLI flag was omitted (left at 0), falls
-     * back to the value supplied via the {@code WORKLOAD_DURATION} environment
-     * variable through {@code Config}.
-     * @return Effective run duration value
-     */
+
+
     public int durationSeconds() {
         return durationSeconds;
     }

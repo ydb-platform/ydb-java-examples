@@ -26,9 +26,6 @@ import tech.ydb.slo.core.kv.OpOutcome;
 import tech.ydb.slo.core.kv.Row;
 import tech.ydb.slo.core.kv.RowGenerator;
 
-/**
- * {@link KvClient} backed by the YDB JDBC driver with application-level retry.
- */
 public final class JdbcKvClient implements KvClient {
     private static final Logger logger = LoggerFactory.getLogger(JdbcKvClient.class);
 
@@ -106,9 +103,9 @@ public final class JdbcKvClient implements KvClient {
                     }
                     invalidateOnConnectionError(e);
                     if (!backoff(attempts)) {
-                        // Interrupt during shutdown: stop retrying, return the
-                        // last error so the worker loop can exit cleanly without
-                        // contributing a spurious "interrupted" entry to errors.
+
+
+
                         break;
                     }
                 }
@@ -210,19 +207,14 @@ public final class JdbcKvClient implements KvClient {
         return Math.max(1, (timeoutMs + 999) / 1000);
     }
 
-    /*
-     * Reads and writes are idempotent (SELECT and UPSERT respectively), so any
-     * YdbStatusable error whose status code is retryable for idempotent ops
-     * should be retried. The plain JDBC exception types are kept as a fallback
-     * for non-YDB errors (e.g. a network blip surfaced as a generic
-     * SQLRecoverableException).
-     */
+
+
     private static boolean isRetryable(SQLException e) {
         if (e instanceof YdbStatusable) {
             try {
                 return ((YdbStatusable) e).getStatus().getCode().isRetryable(true);
             } catch (RuntimeException ignored) {
-                // fall through
+
             }
         }
         return e instanceof SQLRecoverableException || e instanceof SQLTransientException;
@@ -242,17 +234,14 @@ public final class JdbcKvClient implements KvClient {
             try {
                 return "ydb/" + ((YdbStatusable) e).getStatus().getCode().name().toLowerCase();
             } catch (RuntimeException ignored) {
-                // fall through
+
             }
         }
         return e.getClass().getSimpleName().toLowerCase();
     }
 
-    /**
-     * Sleeps for an exponentially growing delay between retry attempts.
-     * @return {@code true} if the sleep completed normally, {@code false} if
-     *     the thread was interrupted (caller should stop retrying)
-     */
+
+
     private static boolean backoff(int attempt) {
         long delay = Math.min(MAX_BACKOFF_MS, INITIAL_BACKOFF_MS * (1L << Math.min(attempt - 1, 20)));
         try {
@@ -273,7 +262,7 @@ public final class JdbcKvClient implements KvClient {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (Exception ignored) {
-            // best-effort
+
         }
     }
 }

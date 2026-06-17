@@ -19,29 +19,6 @@ import io.opentelemetry.sdk.resources.Resource;
 import org.HdrHistogram.AtomicHistogram;
 import org.HdrHistogram.Histogram;
 
-/**
- * Collects and pushes SLO workload metrics to the OTLP endpoint configured by
- * the YDB SLO action runtime.
- *
- * <p>Metrics emitted (matching the contract from
- * {@code ydb-platform/ydb-slo-action}):
- * <ul>
- *   <li>{@code sdk.operations.total} — counter, labeled by
- *       {@code operation_type} and {@code operation_status}</li>
- *   <li>{@code sdk.errors.total} — counter, labeled by
- *       {@code operation_type} and {@code error_kind}</li>
- *   <li>{@code sdk.retry.attempts.total} — counter, labeled by
- *       {@code operation_type} and {@code operation_status}</li>
- *   <li>{@code sdk.pending.operations} — up/down counter, labeled by
- *       {@code operation_type}</li>
- *   <li>{@code sdk.operation.latency.p50.seconds} /
- *       {@code .p95.seconds} / {@code .p99.seconds} —
- *       observable gauges fed from per-operation HDR histograms</li>
- * </ul>
- *
- * <p>Every metric carries the {@code ref} label so the report action can
- * separate current and baseline series.
- */
 public final class Metrics implements AutoCloseable {
 
     public enum OperationType {
@@ -83,7 +60,7 @@ public final class Metrics implements AutoCloseable {
     private static final AttributeKey<String> ATTR_REF =
             AttributeKey.stringKey("ref");
 
-    // HDR histograms record latencies in microseconds with high precision up to 60 s.
+
     private static final long HDR_MIN_MICROS = 1L;
     private static final long HDR_MAX_MICROS = 60L * 1_000_000L;
     private static final int HDR_SIGNIFICANT_DIGITS = 3;
@@ -115,12 +92,8 @@ public final class Metrics implements AutoCloseable {
         this.histograms = histograms;
     }
 
-    /*
-     * Builds a {@code Metrics} instance configured to push OTLP metrics every
-     * second to the endpoint from {@code config.otlpEndpoint()}. If the
-     * endpoint is empty, all metrics are still observable in-process but never
-     * exported.
-     */
+
+
     public static Metrics create(Config config) {
         String ref = config.ref();
 
@@ -169,26 +142,26 @@ public final class Metrics implements AutoCloseable {
 
         Map<OperationType, Histogram> histograms = new ConcurrentHashMap<>();
 
-        // Pre-create one histogram per operation_type so the first export
-        // already produces gauge series. We only track successful operations:
-        // failure latency is dominated by retry budgets / timeouts and would
-        // skew the percentiles without telling us anything useful about SDK
-        // performance. The SLO action's metrics.yaml filters by
-        // operation_status="success" anyway.
+
+
+
+
+
+
         for (OperationType type : OperationType.values()) {
             histograms.put(type, newHistogram());
         }
 
-        // Build the three percentile gauges as raw observers — their values
-        // are produced by a single batch callback below, which reads
-        // p50/p95/p99 from the same histogram snapshot and then resets the
-        // histogram. Reading all three percentiles from one snapshot avoids
-        // races where p99 could be observed against a freshly-reset histogram
-        // populated by p50, and resetting after each export means the gauge
-        // reflects only latencies recorded during the last export interval —
-        // matching the JS SDK's behaviour and avoiding cold-start tail drag
-        // on the JVM (without reset, JIT-warmup outliers stick to p99 for
-        // the rest of the run).
+
+
+
+
+
+
+
+
+
+
         ObservableDoubleMeasurement p50Observer = meter.gaugeBuilder("sdk.operation.latency.p50.seconds")
                 .setUnit("s")
                 .setDescription("p50 operation latency in seconds")
@@ -221,10 +194,10 @@ public final class Metrics implements AutoCloseable {
     }
 
     private static String metricsEndpoint(String otlpEndpoint) {
-        // OTLP HTTP exporter expects the full /v1/metrics path. The SLO action
-        // sets OTEL_EXPORTER_OTLP_ENDPOINT to the base URL (e.g.
-        // http://ydb-prometheus:9090/api/v1/otlp), so we append the suffix
-        // unless the user has already provided it.
+
+
+
+
         String trimmed = otlpEndpoint.endsWith("/")
                 ? otlpEndpoint.substring(0, otlpEndpoint.length() - 1)
                 : otlpEndpoint;
@@ -234,13 +207,8 @@ public final class Metrics implements AutoCloseable {
         return trimmed + "/v1/metrics";
     }
 
-    /*
-     * Records a started operation and returns a span used to record the
-     * outcome. Callers should wrap the operation in try/finally and call
-     * one of {@code finishSuccess} / {@code finishError} / {@code finishAborted}
-     * so the {@code pendingOperations} gauge always decrements even when an
-     * unexpected exception escapes the user code.
-     */
+
+
     public Span startOperation(OperationType type) {
         pendingOperations.add(1, Attributes.of(
                 ATTR_REF, ref,
@@ -249,10 +217,8 @@ public final class Metrics implements AutoCloseable {
         return new Span(this, type, System.nanoTime());
     }
 
-    /**
-     * Forces a final flush of pending metrics. Should be called before exit
-     * to make sure the report action sees the last seconds of data.
-     */
+
+
     public void flush() {
         meterProvider.forceFlush().join(10, TimeUnit.SECONDS);
     }
@@ -282,12 +248,12 @@ public final class Metrics implements AutoCloseable {
                 ATTR_OPERATION_TYPE, type.label()
         ));
 
-        // Latency is recorded only for successful operations. Failed
-        // operations spend most of their time inside the retry budget /
-        // timeout machinery, so their latency reflects the retry policy
-        // rather than the SDK's performance. Mixing those samples into the
-        // percentile gauges produces noisy spikes during chaos scenarios
-        // and tells us nothing actionable.
+
+
+
+
+
+
         if (status == OperationStatus.SUCCESS) {
             Histogram histogram = histograms.computeIfAbsent(type, k -> newHistogram());
             long clamped = Math.max(HDR_MIN_MICROS, Math.min(HDR_MAX_MICROS, latencyMicros));
@@ -301,16 +267,8 @@ public final class Metrics implements AutoCloseable {
         }
     }
 
-    /**
-     * Observes p50/p95/p99 for every populated histogram and then resets it.
-     * Uses {@code copy()} + {@code reset()} on the live AtomicHistogram so the
-     * three percentile reads see a stable snapshot — calling
-     * {@code getValueAtPercentile} directly on a histogram that is still being
-     * recorded into can produce torn values where p50 &gt; p99. The recorder
-     * window between {@code copy} and {@code reset} can drop at most a handful
-     * of concurrent samples per export interval; that's an acceptable trade
-     * for atomic percentile readings.
-     */
+
+
     private static void observeAndResetPercentiles(
             Map<OperationType, Histogram> histograms,
             String ref,
@@ -331,10 +289,10 @@ public final class Metrics implements AutoCloseable {
             long p95Micros = snapshot.getValueAtPercentile(95.0);
             long p99Micros = snapshot.getValueAtPercentile(99.0);
 
-            // Percentile gauges are always tagged with operation_status="success"
-            // because we only record successful samples (see recordOutcome).
-            // The SLO action's metrics.yaml filters on this same label, so the
-            // gauges line up with what the report expects.
+
+
+
+
             Attributes attrs = Attributes.of(
                     ATTR_REF, ref,
                     ATTR_OPERATION_TYPE, type.label(),
@@ -350,22 +308,11 @@ public final class Metrics implements AutoCloseable {
         return new AtomicHistogram(HDR_MIN_MICROS, HDR_MAX_MICROS, HDR_SIGNIFICANT_DIGITS);
     }
 
-    /**
-     * One in-flight operation. Call exactly one of the {@code finish} methods,
-     * or rely on {@link #finishAbortedIfOpen()} from a {@code finally} block to
-     * decrement {@code pendingOperations} when an unexpected throwable escapes.
-     */
     public static final class Span {
-        // Volatile + CAS so a worker thread + a finally-block clean-up cannot
-        // double-decrement pendingOperations if they race.
-        private static final java.util.concurrent.atomic.AtomicIntegerFieldUpdater<Span> FINISHED =
-                java.util.concurrent.atomic.AtomicIntegerFieldUpdater.newUpdater(Span.class, "finished");
-
         private final Metrics metrics;
         private final OperationType type;
         private final long startNanos;
-        @SuppressWarnings("unused")
-        private volatile int finished;
+        private boolean finished;
 
         private Span(Metrics metrics, OperationType type, long startNanos) {
             this.metrics = metrics;
@@ -381,35 +328,14 @@ public final class Metrics implements AutoCloseable {
             finish(OperationStatus.ERROR, attempts, errorKind);
         }
 
-        /**
-         * Idempotent safety net for {@code finally} blocks. If the span has
-         * already been finished, this is a no-op; otherwise the in-flight
-         * gauge is decremented without recording an operation or error sample
-         * (the user code never reached a meaningful outcome). Use this only
-         * for unexpected control-flow exits — interrupts during shutdown, or
-         * a throwable escaping the operation closure.
-         */
-        public void finishAbortedIfOpen() {
-            if (!FINISHED.compareAndSet(this, 0, 1)) {
-                return;
-            }
-            metrics.decrementPending(type);
-        }
-
         private void finish(OperationStatus status, int attempts, String errorKind) {
-            if (!FINISHED.compareAndSet(this, 0, 1)) {
+            if (finished) {
                 return;
             }
+            finished = true;
             long latencyMicros = (System.nanoTime() - startNanos) / 1_000L;
             metrics.recordOutcome(type, status, attempts, latencyMicros, errorKind);
         }
-    }
-
-    private void decrementPending(OperationType type) {
-        pendingOperations.add(-1, Attributes.of(
-                ATTR_REF, ref,
-                ATTR_OPERATION_TYPE, type.label()
-        ));
     }
 
 }

@@ -1,16 +1,5 @@
 package tech.ydb.slo.core.kv;
 
-/**
- * SQL templates shared by every KV workload implementation.
- *
- * <p>The schema and column order is part of the SLO contract — every workload
- * must read and write the same rows so cross-SDK reports are meaningful. Keeping
- * the templates in one place prevents accidental drift between implementations.
- *
- * <p>The {@code %s} placeholders are filled with a table path that
- * {@code Launcher.tablePathFor} already sanitized, so callers don't need to
- * re-validate the value.
- */
 public final class KvSchema {
 
     public static final String CREATE_TABLE_TEMPLATE = ""
