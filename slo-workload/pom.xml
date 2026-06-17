@@ -17,29 +17,35 @@
     <description>SLO workload applications for validating YDB Java clients under load and chaos</description>
 
     <properties>
-        <maven.compiler.release>17</maven.compiler.release>
-
         <ydb.jdbc.version>2.3.20</ydb.jdbc.version>
         <opentelemetry.version>1.59.0</opentelemetry.version>
         <hdrhistogram.version>2.2.2</hdrhistogram.version>
         <guava.version>33.4.0-jre</guava.version>
-    </properties>
+        <jcommander.version>1.82</jcommander.version>
 
-    <profiles>
-        <profile>
-            <id>jdk17-examples</id>
-            <activation>
-                <jdk>[17</jdk>
-            </activation>
-            <modules>
-                <module>jdbc</module>
-            </modules>
-        </profile>
-    </profiles>
+        <spring.boot.version>3.5.7</spring.boot.version>
+        <spring.ydb.retry.version>0.10.0</spring.ydb.retry.version>
+        <spring.data.jdbc.ydb.version>1.2.2</spring.data.jdbc.ydb.version>
+        <hibernate.ydb.dialect.version>1.4.0</hibernate.ydb.dialect.version>
+        <flyway.ydb.dialect.version>1.0.0</flyway.ydb.dialect.version>
+    </properties>
 
     <dependencyManagement>
         <dependencies>
-            <!-- OpenTelemetry BOM keeps every otel artifact on one version -->
+            <dependency>
+                <groupId>tech.ydb.examples</groupId>
+                <artifactId>slo-workload-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>tech.ydb</groupId>
+                <artifactId>ydb-sdk-bom</artifactId>
+                <version>${ydb.sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
             <dependency>
                 <groupId>io.opentelemetry</groupId>
                 <artifactId>opentelemetry-bom</artifactId>
@@ -48,11 +54,48 @@
                 <scope>import</scope>
             </dependency>
 
-            <!-- YDB JDBC Driver: the component under SLO test -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring.boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>com.beust</groupId>
+                <artifactId>jcommander</artifactId>
+                <version>${jcommander.version}</version>
+            </dependency>
+
             <dependency>
                 <groupId>tech.ydb.jdbc</groupId>
                 <artifactId>ydb-jdbc-driver</artifactId>
                 <version>${ydb.jdbc.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>tech.ydb</groupId>
+                <artifactId>spring-ydb-retry</artifactId>
+                <version>${spring.ydb.retry.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>tech.ydb.dialects</groupId>
+                <artifactId>spring-data-jdbc-ydb</artifactId>
+                <version>${spring.data.jdbc.ydb.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>tech.ydb.dialects</groupId>
+                <artifactId>hibernate-ydb-dialect</artifactId>
+                <version>${hibernate.ydb.dialect.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>tech.ydb.dialects</groupId>
+                <artifactId>flyway-ydb-dialect</artifactId>
+                <version>${flyway.ydb.dialect.version}</version>
             </dependency>
 
             <dependency>
@@ -69,17 +112,30 @@
         </dependencies>
     </dependencyManagement>
 
-    <build>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <configuration>
-                        <release>${maven.compiler.release}</release>
-                    </configuration>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-    </build>
+    <profiles>
+        <profile>
+            <id>jdk17-slo-workload</id>
+            <activation>
+                <jdk>[17</jdk>
+            </activation>
+            <modules>
+                <module>core</module>
+                <module>query</module>
+                <module>jdbc</module>
+                <module>spring-data-jdbc</module>
+                <module>spring-data-jpa</module>
+            </modules>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration>
+                            <release>17</release>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

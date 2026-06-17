@@ -1,0 +1,133 @@
+package tech.ydb.slo.core.kv;
+
+import com.beust.jcommander.Parameter;
+
+@SuppressWarnings("FieldMayBeFinal")
+public final class KvWorkloadParams {
+
+    @Parameter(
+            names = {"--read-rps"},
+            description = "Target read operations per second"
+    )
+    private int readRps = 1000;
+
+    @Parameter(
+            names = {"--write-rps"},
+            description = "Target write operations per second"
+    )
+    private int writeRps = 100;
+
+    @Parameter(
+            names = {"--read-timeout-ms"},
+            description = "Per-attempt read timeout in milliseconds"
+    )
+    private int readTimeoutMs = 10_000;
+
+    @Parameter(
+            names = {"--write-timeout-ms"},
+            description = "Per-attempt write timeout in milliseconds"
+    )
+    private int writeTimeoutMs = 10_000;
+
+    @Parameter(
+            names = {"--prefill-count"},
+            description = "Number of rows to prefill before the run phase"
+    )
+    private int prefillCount = 1_000;
+
+    @Parameter(
+            names = {"--partition-size"},
+            description = "Auto-partitioning partition size in MB"
+    )
+    private int partitionSizeMb = 1;
+
+    @Parameter(
+            names = {"--min-partition-count"},
+            description = "Minimum number of table partitions"
+    )
+    private int minPartitionCount = 6;
+
+    @Parameter(
+            names = {"--max-partition-count"},
+            description = "Maximum number of table partitions"
+    )
+    private int maxPartitionCount = 1_000;
+
+    @Parameter(
+            names = {"--duration", "--time"},
+            description = "Run duration in seconds (overrides WORKLOAD_DURATION when > 0)"
+    )
+    private int durationSeconds = 0;
+
+    @Parameter(
+            names = {"--shutdown-time"},
+            description = "Extra seconds, on top of --duration, given to in-flight ops before force-shutdown"
+    )
+    private int shutdownTimeSeconds = 30;
+
+    @Parameter(
+            names = {"--max-attempts"},
+            description = "Maximum total attempts per operation (initial + retries)"
+    )
+    private int maxAttempts = 10;
+
+    @Parameter(
+            names = {"--max-workers"},
+            description = "Hard cap on the number of worker threads per operation type"
+    )
+    private int maxWorkers = 64;
+
+    public int readRps() {
+        return readRps;
+    }
+
+    public int writeRps() {
+        return writeRps;
+    }
+
+    public int readTimeoutMs() {
+        return readTimeoutMs;
+    }
+
+    public int writeTimeoutMs() {
+        return writeTimeoutMs;
+    }
+
+    public int prefillCount() {
+        return prefillCount;
+    }
+
+    public int partitionSizeMb() {
+        return partitionSizeMb;
+    }
+
+    public int minPartitionCount() {
+        return minPartitionCount;
+    }
+
+    public int maxPartitionCount() {
+        return maxPartitionCount;
+    }
+
+
+
+    public int durationSeconds() {
+        return durationSeconds;
+    }
+
+    public void setDurationSeconds(int durationSeconds) {
+        this.durationSeconds = durationSeconds;
+    }
+
+    public int shutdownTimeSeconds() {
+        return shutdownTimeSeconds;
+    }
+
+    public int maxAttempts() {
+        return maxAttempts;
+    }
+
+    public int maxWorkers() {
+        return maxWorkers;
+    }
+}

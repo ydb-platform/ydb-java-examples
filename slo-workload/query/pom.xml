@@ -1,7 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -11,10 +11,12 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>slo-workload-jdbc</artifactId>
-    <packaging>jar</packaging>
-    <name>JDBC SLO workload</name>
-    <description>SLO workload exercising the YDB JDBC driver, compatible with ydb-slo-action</description>
+    <artifactId>slo-workload-query</artifactId>
+    <name>YDB SLO query workload</name>
+    <description>
+        SLO workload for the native YDB Java SDK query client, consumed by
+        ydb-platform/ydb-slo-action
+    </description>
 
     <dependencies>
         <dependency>
@@ -23,8 +25,8 @@
         </dependency>
 
         <dependency>
-            <groupId>tech.ydb.jdbc</groupId>
-            <artifactId>ydb-jdbc-driver</artifactId>
+            <groupId>tech.ydb</groupId>
+            <artifactId>ydb-sdk-query</artifactId>
         </dependency>
 
         <dependency>
@@ -34,7 +36,7 @@
     </dependencies>
 
     <build>
-        <finalName>ydb-slo-jdbc-workload</finalName>
+        <finalName>ydb-slo-query-workload</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

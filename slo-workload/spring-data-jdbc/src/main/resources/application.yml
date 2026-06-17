@@ -1,0 +1,16 @@
+spring:
+  main:
+    banner-mode: "off"
+    web-application-type: none
+  datasource:
+    hikari:
+      maximum-pool-size: ${SLO_HIKARI_POOL_SIZE:130}
+      minimum-idle: 16
+      connection-timeout: 10000
+
+logging:
+  level:
+    root: info
+    tech.ydb: info
+    tech.ydb.slo: info
+    org.springframework: warn

@@ -5,14 +5,20 @@ reliability of YDB Java clients under load and chaos using the
 [YDB SLO action](https://github.com/ydb-platform/ydb-slo-action).
 
 Each submodule is a self-contained, runnable workload that follows the same
-contract as the SDK SLO workload in [`../slo`](../slo): it reads its
-configuration from environment variables, runs setup/run/teardown phases, and
-pushes OpenTelemetry (OTLP) metrics that the action scrapes and compares
-between the current PR run and a baseline run.
+contract: it reads its configuration from environment variables, runs
+setup/run/teardown phases, and pushes OpenTelemetry (OTLP) metrics that the
+action scrapes and compares between the current PR run and a baseline run.
+
+Shared harness code lives in [`core`](core) (`Config`, `Metrics`, KV row
+model, rate-limited runner). Every workload plugs a `KvClient` adapter into
+that runner so all of them emit the same metric contract.
 
 | Module | Component under test | Description |
 | --- | --- | --- |
+| [`query`](query) | `ydb-java-sdk` (query client) | Native SDK KV workload |
 | [`jdbc`](jdbc) | `ydb-jdbc-driver` | Plain JDBC KV workload (no framework) |
+| [`spring-data-jdbc`](spring-data-jdbc) | `ydb-jdbc-driver` + `spring-data-jdbc-ydb` + `spring-ydb-retry` | Spring Data JDBC KV workload |
+| [`spring-data-jpa`](spring-data-jpa) | `ydb-jdbc-driver` + Hibernate 6 + `spring-ydb-retry` | Spring Data JPA KV workload |
 
 ## How a workload behaves
 
@@ -76,11 +82,27 @@ KV tunables are passed on the command line and parsed by JCommander:
 --partition-size <int>      Auto-partitioning partition size in MB (default 1)
 --min-partition-count <int> Minimum number of table partitions (default 6)
 --max-partition-count <int> Maximum number of table partitions (default 1000)
---duration <int>            Override WORKLOAD_DURATION when > 0
+--duration / --time <int>   Override WORKLOAD_DURATION when > 0
+--shutdown-time <int>       Extra grace seconds for in-flight ops on shutdown (default 30)
+--max-attempts <int>        Per-operation attempt cap, initial + retries (default 10)
+--max-workers <int>         Hard cap on workers per operation type (default 64)
 ```
 
-Unknown flags are ignored, so a workload accepts command strings designed for
-other SDKs without erroring.
+Unknown flags are rejected — a typo in the ydb-slo-action invocation should
+fail loudly rather than silently fall back to defaults.
+
+The Spring-backed workloads expose one more knob via the `SLO_HIKARI_POOL_SIZE`
+environment variable (default `130`, sized for `2 × max-workers` plus headroom).
+Raise it together with `--max-workers` or the workload measures Hikari
+contention rather than the JDBC driver.
+
+### Cross-implementation comparability
+
+Every implementation derives the primary-key `hash` column from `id` with the
+same client-side mix (`RowGenerator.numericHash`). A table written by the
+`query` workload is therefore byte-compatible with the `jdbc` and Spring-Data
+workloads — useful when one prefills the table and another reads from it
+during cross-driver experiments.
 
 ## How CI uses this module
 
