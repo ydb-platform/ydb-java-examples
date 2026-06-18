@@ -1,0 +1,53 @@
+ARG MAVEN_IMAGE=maven:3.9-eclipse-temurin-17
+ARG RUNTIME_IMAGE=eclipse-temurin:17-jre
+ARG WORKLOAD_MODULE=slo-workload/query
+ARG WORKLOAD_JAR=ydb-slo-query-workload.jar
+ARG COPY_LIBS=true
+
+FROM ${MAVEN_IMAGE} AS workload-build
+
+WORKDIR /src
+
+COPY ydb-java-sdk /src/ydb-java-sdk
+
+RUN cd /src/ydb-java-sdk && \
+    mvn -B -q \
+        -DskipTests \
+        -Dmaven.javadoc.skip=true \
+        -Dmaven.source.skip=true \
+        -Dgpg.skip=true \
+        install && \
+    mvn -B -q help:evaluate -Dexpression=project.version -DforceStdout > /tmp/sdk.version
+
+COPY ydb-java-examples /src/ydb-java-examples
+
+RUN SDK_VERSION="$(cat /tmp/sdk.version)" && \
+    cd /src/ydb-java-examples && \
+    mvn -B -q versions:set-property \
+        -Dproperty=ydb.sdk.version \
+        -DnewVersion="${SDK_VERSION}" \
+        -DgenerateBackupPoms=false && \
+    mvn -B -q \
+        -pl "${WORKLOAD_MODULE}" -am \
+        -DskipTests \
+        -Dmaven.javadoc.skip=true \
+        package
+
+FROM ${MAVEN_IMAGE} AS export
+ARG WORKLOAD_MODULE
+ARG WORKLOAD_JAR
+ARG COPY_LIBS
+RUN mkdir -p /export/libs && \
+    cp "/src/ydb-java-examples/${WORKLOAD_MODULE}/target/${WORKLOAD_JAR}" /export/workload.jar && \
+    if [ "${COPY_LIBS}" = "true" ]; then \
+        cp -r "/src/ydb-java-examples/${WORKLOAD_MODULE}/target/libs/." /export/libs/; \
+    fi
+
+FROM ${RUNTIME_IMAGE}
+
+WORKDIR /app
+
+COPY --from=export /export/workload.jar /app/workload.jar
+COPY --from=export /export/libs /app/libs
+
+ENTRYPOINT ["java", "-jar", "/app/workload.jar"]
