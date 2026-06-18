@@ -33,7 +33,7 @@ RUN SDK_VERSION="$(cat /tmp/sdk.version)" && \
         -Dmaven.javadoc.skip=true \
         package
 
-FROM ${MAVEN_IMAGE} AS export
+FROM workload-build AS export
 ARG WORKLOAD_MODULE
 ARG WORKLOAD_JAR
 ARG COPY_LIBS
