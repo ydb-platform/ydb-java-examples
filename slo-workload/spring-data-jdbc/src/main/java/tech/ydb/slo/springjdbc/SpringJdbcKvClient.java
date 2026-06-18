@@ -26,8 +26,6 @@ public class SpringJdbcKvClient {
         this.operations = operations;
     }
 
-
-
     public KvClient forTable(String tablePath) {
         return new BoundClient(jdbc, operations, tablePath);
     }
@@ -70,6 +68,10 @@ public class SpringJdbcKvClient {
         public KvSession openSession() {
             return new SpringJdbcKvSession(operations, tablePath);
         }
+
+        @Override
+        public void close() {
+        }
     }
 
     private static final class SpringJdbcKvSession implements KvSession {
@@ -111,8 +113,6 @@ public class SpringJdbcKvClient {
             }
         }
 
-
-
         private static String classifyError(Throwable e) {
             Throwable current = e;
             while (current != null) {
@@ -120,7 +120,6 @@ public class SpringJdbcKvClient {
                     try {
                         return "ydb/" + ((YdbStatusable) current).getStatus().getCode().name().toLowerCase();
                     } catch (RuntimeException ignored) {
-
                     }
                 }
                 current = current.getCause();

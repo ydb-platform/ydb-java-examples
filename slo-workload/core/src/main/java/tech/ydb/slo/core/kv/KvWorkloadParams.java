@@ -4,7 +4,6 @@ import com.beust.jcommander.Parameter;
 
 @SuppressWarnings("FieldMayBeFinal")
 public final class KvWorkloadParams {
-
     @Parameter(
             names = {"--read-rps"},
             description = "Target read operations per second"
@@ -108,8 +107,6 @@ public final class KvWorkloadParams {
     public int maxPartitionCount() {
         return maxPartitionCount;
     }
-
-
 
     public int durationSeconds() {
         return durationSeconds;

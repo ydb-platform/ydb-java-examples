@@ -11,14 +11,11 @@ import tech.ydb.slo.core.kv.Row;
 
 @Service
 public class KvOperationService {
-
     private static final ThreadLocal<int[]> ATTEMPTS = ThreadLocal.withInitial(() -> new int[1]);
-
 
     public static void resetAttempts() {
         ATTEMPTS.get()[0] = 0;
     }
-
 
     public static int currentAttempts() {
         return ATTEMPTS.get()[0];

@@ -11,13 +11,9 @@ public final class OpOutcome {
         this.errorKind = errorKind;
     }
 
-
-
     public static OpOutcome success(int retryAttempts) {
         return new OpOutcome(true, retryAttempts, null);
     }
-
-
 
     public static OpOutcome error(int retryAttempts, String errorKind) {
         return new OpOutcome(false, retryAttempts, errorKind);

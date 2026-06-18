@@ -77,6 +77,10 @@ public final class JdbcKvClient implements KvClient {
         return new JdbcKvSession();
     }
 
+    @Override
+    public void close() {
+    }
+
     private Connection openConnection() throws SQLException {
         return DriverManager.getConnection(jdbcUrl, connectionProperties);
     }
@@ -103,9 +107,6 @@ public final class JdbcKvClient implements KvClient {
                     }
                     invalidateOnConnectionError(e);
                     if (!backoff(attempts)) {
-
-
-
                         break;
                     }
                 }
@@ -207,14 +208,11 @@ public final class JdbcKvClient implements KvClient {
         return Math.max(1, (timeoutMs + 999) / 1000);
     }
 
-
-
     private static boolean isRetryable(SQLException e) {
         if (e instanceof YdbStatusable) {
             try {
                 return ((YdbStatusable) e).getStatus().getCode().isRetryable(true);
             } catch (RuntimeException ignored) {
-
             }
         }
         return e instanceof SQLRecoverableException || e instanceof SQLTransientException;
@@ -234,13 +232,10 @@ public final class JdbcKvClient implements KvClient {
             try {
                 return "ydb/" + ((YdbStatusable) e).getStatus().getCode().name().toLowerCase();
             } catch (RuntimeException ignored) {
-
             }
         }
         return e.getClass().getSimpleName().toLowerCase();
     }
-
-
 
     private static boolean backoff(int attempt) {
         long delay = Math.min(MAX_BACKOFF_MS, INITIAL_BACKOFF_MS * (1L << Math.min(attempt - 1, 20)));
@@ -262,7 +257,6 @@ public final class JdbcKvClient implements KvClient {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (Exception ignored) {
-
         }
     }
 }

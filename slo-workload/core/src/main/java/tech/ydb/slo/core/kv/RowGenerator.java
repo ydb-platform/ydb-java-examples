@@ -15,14 +15,10 @@ public final class RowGenerator {
         this.nextId = new AtomicLong(startId);
     }
 
-
-
     public Row generate() {
         long id = nextId.getAndIncrement();
         return generate(id);
     }
-
-
 
     public static Row generate(long id) {
         long payloadHash = ThreadLocalRandom.current().nextLong();
@@ -40,8 +36,6 @@ public final class RowGenerator {
         ThreadLocalRandom.current().nextBytes(bytes);
         return Base64.getEncoder().withoutPadding().encodeToString(bytes);
     }
-
-
 
     public static long numericHash(long id) {
         long z = id + 0x9E3779B97F4A7C15L;

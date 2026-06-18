@@ -20,7 +20,6 @@ import org.HdrHistogram.AtomicHistogram;
 import org.HdrHistogram.Histogram;
 
 public final class Metrics implements AutoCloseable {
-
     public enum OperationType {
         READ("read"),
         WRITE("write");
@@ -60,7 +59,6 @@ public final class Metrics implements AutoCloseable {
     private static final AttributeKey<String> ATTR_REF =
             AttributeKey.stringKey("ref");
 
-
     private static final long HDR_MIN_MICROS = 1L;
     private static final long HDR_MAX_MICROS = 60L * 1_000_000L;
     private static final int HDR_SIGNIFICANT_DIGITS = 3;
@@ -91,8 +89,6 @@ public final class Metrics implements AutoCloseable {
         this.pendingOperations = pendingOperations;
         this.histograms = histograms;
     }
-
-
 
     public static Metrics create(Config config) {
         String ref = config.ref();
@@ -142,25 +138,9 @@ public final class Metrics implements AutoCloseable {
 
         Map<OperationType, Histogram> histograms = new ConcurrentHashMap<>();
 
-
-
-
-
-
-
         for (OperationType type : OperationType.values()) {
             histograms.put(type, newHistogram());
         }
-
-
-
-
-
-
-
-
-
-
 
         ObservableDoubleMeasurement p50Observer = meter.gaugeBuilder("sdk.operation.latency.p50.seconds")
                 .setUnit("s")
@@ -194,10 +174,6 @@ public final class Metrics implements AutoCloseable {
     }
 
     private static String metricsEndpoint(String otlpEndpoint) {
-
-
-
-
         String trimmed = otlpEndpoint.endsWith("/")
                 ? otlpEndpoint.substring(0, otlpEndpoint.length() - 1)
                 : otlpEndpoint;
@@ -207,8 +183,6 @@ public final class Metrics implements AutoCloseable {
         return trimmed + "/v1/metrics";
     }
 
-
-
     public Span startOperation(OperationType type) {
         pendingOperations.add(1, Attributes.of(
                 ATTR_REF, ref,
@@ -216,8 +190,6 @@ public final class Metrics implements AutoCloseable {
         ));
         return new Span(this, type, System.nanoTime());
     }
-
-
 
     public void flush() {
         meterProvider.forceFlush().join(10, TimeUnit.SECONDS);
@@ -248,12 +220,6 @@ public final class Metrics implements AutoCloseable {
                 ATTR_OPERATION_TYPE, type.label()
         ));
 
-
-
-
-
-
-
         if (status == OperationStatus.SUCCESS) {
             Histogram histogram = histograms.computeIfAbsent(type, k -> newHistogram());
             long clamped = Math.max(HDR_MIN_MICROS, Math.min(HDR_MAX_MICROS, latencyMicros));
@@ -266,8 +232,6 @@ public final class Metrics implements AutoCloseable {
             ));
         }
     }
-
-
 
     private static void observeAndResetPercentiles(
             Map<OperationType, Histogram> histograms,
@@ -288,10 +252,6 @@ public final class Metrics implements AutoCloseable {
             long p50Micros = snapshot.getValueAtPercentile(50.0);
             long p95Micros = snapshot.getValueAtPercentile(95.0);
             long p99Micros = snapshot.getValueAtPercentile(99.0);
-
-
-
-
 
             Attributes attrs = Attributes.of(
                     ATTR_REF, ref,
@@ -337,5 +297,4 @@ public final class Metrics implements AutoCloseable {
             metrics.recordOutcome(type, status, attempts, latencyMicros, errorKind);
         }
     }
-
 }

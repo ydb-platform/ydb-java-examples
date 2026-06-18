@@ -12,18 +12,13 @@ import tech.ydb.slo.core.kv.WorkloadRunner;
 public final class Launcher {
     private static final Logger logger = LoggerFactory.getLogger(Launcher.class);
 
-
-
     @FunctionalInterface
     public interface ClientFactory {
         KvClient create(Config config, KvWorkloadParams params, String tablePath) throws Exception;
     }
 
     private Launcher() {
-
     }
-
-
 
     public static void launch(
             String programName,
@@ -33,8 +28,6 @@ public final class Launcher {
     ) {
         System.exit(run(programName, defaultWorkloadName, args, factory));
     }
-
-
 
     public static int run(
             String programName,
@@ -54,8 +47,6 @@ public final class Launcher {
         try {
             JCommander.newBuilder()
                     .programName(programName)
-
-
                     .acceptUnknownOptions(false)
                     .addObject(params)
                     .build()
@@ -64,7 +55,6 @@ public final class Launcher {
             logger.error("invalid CLI arguments: {}", e.getMessage());
             return 2;
         }
-
 
         if (params.durationSeconds() <= 0) {
             params.setDurationSeconds(config.durationSeconds());
@@ -120,8 +110,6 @@ public final class Launcher {
         return exitCode;
     }
 
-
-
     public static String tablePathFor(Config config) {
         return sanitize(config.workloadName()) + "_" + sanitize(config.ref());
     }
@@ -136,8 +124,6 @@ public final class Launcher {
             logger.warn("failed to close {}: {}", name, t.toString());
         }
     }
-
-
 
     private static String sanitize(String value) {
         StringBuilder sb = new StringBuilder(value.length());

@@ -68,8 +68,6 @@ public final class QueryKvClient implements KvClient {
                 .build();
         this.queryClient = QueryClient.newClient(transport).build();
 
-
-
         this.retryCtx = SessionRetryContext.create(queryClient)
                 .maxRetries(Math.max(1, params.maxAttempts()))
                 .build();
@@ -117,12 +115,10 @@ public final class QueryKvClient implements KvClient {
         try {
             queryClient.close();
         } catch (Exception ignored) {
-
         }
         try {
             transport.close();
         } catch (Exception ignored) {
-
         }
     }
 

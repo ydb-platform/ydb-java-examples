@@ -27,13 +27,9 @@ public final class Config {
         this.otlpEndpoint = otlpEndpoint;
     }
 
-
-
     public String connectionString() {
         return connectionString;
     }
-
-
 
     public String jdbcUrl() {
         return jdbcUrl;
@@ -58,8 +54,6 @@ public final class Config {
     public String otlpEndpoint() {
         return otlpEndpoint;
     }
-
-
 
     public static Config fromEnv(String defaultWorkloadName) {
         String connectionString = resolveConnectionString();
@@ -87,8 +81,6 @@ public final class Config {
         );
     }
 
-
-
     private static String resolveConnectionString() {
         String jdbc = System.getenv("YDB_JDBC_URL");
         if (jdbc != null && !jdbc.isEmpty()) {
@@ -114,8 +106,6 @@ public final class Config {
         }
         return value;
     }
-
-
 
     private static String toJdbcUrl(String connectionString) {
         if (connectionString.startsWith("jdbc:")) {

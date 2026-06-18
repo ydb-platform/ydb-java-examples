@@ -11,7 +11,6 @@ import tech.ydb.slo.core.Config;
 
 @Configuration
 public class SloInfrastructureConfiguration {
-
     @Bean
     Config sloConfig() {
         return Config.fromEnv("java-spring-data-jpa-kv");

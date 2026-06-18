@@ -7,7 +7,6 @@ public final class Main {
     private static final String YDB_DRIVER_CLASS = "tech.ydb.jdbc.YdbDriver";
 
     private Main() {
-
     }
 
     public static void main(String[] args) {

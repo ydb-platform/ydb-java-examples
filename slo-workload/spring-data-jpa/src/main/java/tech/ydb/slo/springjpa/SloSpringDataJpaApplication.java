@@ -7,7 +7,6 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 
 @SpringBootApplication
 public class SloSpringDataJpaApplication {
-
     public static void main(String[] args) {
         int exitCode = SpringApplication.exit(new SpringApplicationBuilder(SloSpringDataJpaApplication.class)
                 .web(WebApplicationType.NONE)

@@ -17,8 +17,6 @@ import tech.ydb.slo.core.Metrics;
 public final class WorkloadRunner {
     private static final Logger logger = LoggerFactory.getLogger(WorkloadRunner.class);
 
-
-
     private static final double PREFILL_SUCCESS_THRESHOLD = 0.5;
 
     private final KvClient client;
@@ -34,8 +32,6 @@ public final class WorkloadRunner {
         this.tablePath = tablePath;
         this.generator = new RowGenerator(params.prefillCount());
     }
-
-
 
     public void setup() throws Exception {
         logger.info("creating table {}", tablePath);
@@ -71,11 +67,6 @@ public final class WorkloadRunner {
                             }
                         }
                     } catch (Exception e) {
-
-
-
-
-
                         sessionOpenFailures.incrementAndGet();
                         long firstUnclaimed = nextId.getAndSet(params.prefillCount());
                         if (firstUnclaimed < params.prefillCount()) {
@@ -115,16 +106,11 @@ public final class WorkloadRunner {
         }
     }
 
-
-
     public void run() throws InterruptedException {
         long durationSeconds = params.durationSeconds();
         long endNanos = durationSeconds > 0
                 ? System.nanoTime() + TimeUnit.SECONDS.toNanos(durationSeconds)
                 : Long.MAX_VALUE;
-
-
-
 
         AtomicLong writesIssued = new AtomicLong();
 
@@ -159,7 +145,6 @@ public final class WorkloadRunner {
                 logger.info("write RPS <= 0, skipping write workers");
             }
 
-
             long graceNanos = TimeUnit.SECONDS.toNanos(params.shutdownTimeSeconds());
             long waitNanos = durationSeconds > 0
                     ? Math.max(0L, endNanos - System.nanoTime()) + graceNanos
@@ -192,14 +177,10 @@ public final class WorkloadRunner {
         }
     }
 
-
-
     public void teardown() {
         logger.info("dropping table {}", tablePath);
         client.dropTable(tablePath);
     }
-
-
 
     private void readWorkerLoop(long endNanos, RateLimiter limiter, AtomicLong writesIssued) {
         try (KvSession session = client.openSession()) {
@@ -208,8 +189,6 @@ public final class WorkloadRunner {
                 if (remaining <= 0) {
                     return;
                 }
-
-
 
                 if (!limiter.tryAcquire(remaining, TimeUnit.NANOSECONDS)) {
                     return;
@@ -247,8 +226,6 @@ public final class WorkloadRunner {
         }
     }
 
-
-
     private void readOnce(KvSession session, long writesObserved) {
         long upperBound = Math.max(1L, params.prefillCount() + writesObserved);
         long id = ThreadLocalRandom.current().nextLong(upperBound);
@@ -273,8 +250,6 @@ public final class WorkloadRunner {
             logger.debug("write {} failed: {}", row.id(), outcome.errorKind());
         }
     }
-
-
 
     private int workerCount(int rps) {
         if (rps <= 0) {

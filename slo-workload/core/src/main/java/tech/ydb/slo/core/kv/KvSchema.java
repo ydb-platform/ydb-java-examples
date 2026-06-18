@@ -1,7 +1,6 @@
 package tech.ydb.slo.core.kv;
 
 public final class KvSchema {
-
     public static final String CREATE_TABLE_TEMPLATE = ""
             + "CREATE TABLE IF NOT EXISTS `%s` ("
             + "  hash Uint64,"

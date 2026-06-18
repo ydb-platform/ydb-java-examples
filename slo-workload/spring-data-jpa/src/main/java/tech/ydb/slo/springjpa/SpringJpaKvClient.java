@@ -23,8 +23,6 @@ public class SpringJpaKvClient {
         this.operations = operations;
     }
 
-
-
     public KvClient forTable(String tablePath) {
         return new BoundClient(operations, tablePath);
     }
@@ -64,6 +62,10 @@ public class SpringJpaKvClient {
         @Override
         public KvSession openSession() {
             return new SpringJpaKvSession(operations, tablePath);
+        }
+
+        @Override
+        public void close() {
         }
     }
 
@@ -106,8 +108,6 @@ public class SpringJpaKvClient {
             }
         }
 
-
-
         private static String classifyError(Throwable e) {
             Throwable current = e;
             while (current != null) {
@@ -115,7 +115,6 @@ public class SpringJpaKvClient {
                     try {
                         return "ydb/" + ((YdbStatusable) current).getStatus().getCode().name().toLowerCase();
                     } catch (RuntimeException ignored) {
-
                     }
                 }
                 current = current.getCause();
