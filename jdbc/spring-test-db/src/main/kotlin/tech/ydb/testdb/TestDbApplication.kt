@@ -1,15 +1,14 @@
 package tech.ydb.testdb
 
-import jakarta.persistence.EntityManager
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
-import java.time.Instant
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
+import javax.sql.DataSource
+import java.util.Locale
+import kotlin.math.floor
 import kotlin.concurrent.thread
 
 /**
@@ -22,7 +21,7 @@ class TestDbApplication : CommandLineRunner {
     }
 
     @Autowired
-    lateinit var entityManager: EntityManager
+    lateinit var dataSource: DataSource
 
     @Value("\${workers.count}")
     var workersCount: Int = 0
@@ -36,22 +35,28 @@ class TestDbApplication : CommandLineRunner {
                 val t0 = System.nanoTime()
                 val end = t0 + 10_000_000_000L
                 var count = 0
-                while (System.nanoTime() < end) {
-                    sink += getFixedString(testString).length
-                    count++
+                dataSource.connection.use { connection ->
+                    connection.isReadOnly = true
+                    connection.prepareStatement("SELECT ?").use { statement ->
+                        while (System.nanoTime() < end) {
+                            statement.setString(1, testString)
+                            statement.executeQuery().use { rs ->
+                                if (rs.next()) {
+                                    sink += rs.getString(1).length
+                                }
+                            }
+                            count++
+                        }
+                    }
                 }
                 val elapsed = System.nanoTime() - t0
                 val avgMs = elapsed.toDouble() / count / 1_000_000.0
                 val opsPerSec = count * 1e9 / elapsed
-                log.info("WorkerNum {}, avg={} ms/op, throughput={} ops/s", it, avgMs, opsPerSec)
+                val avgMsStr = String.format(Locale.US, "%.3f", avgMs)
+                val opsPerSecInt = floor(opsPerSec).toInt()
+                log.info("WorkerNum {}, avg={} ms/op, throughput={} ops/s", it, avgMsStr, opsPerSecInt)
             }
         }
-    }
-
-    fun getFixedString(s: String): String {
-        return entityManager.createNativeQuery("SELECT ?1")
-                .setParameter(1, s)
-                .singleResult.toString()
     }
 }
 
