@@ -52,7 +52,7 @@ public class ControlPlane extends SimpleTopicExample {
                                         .build())
                                 .setPartitioningSettings(PartitioningSettings.newBuilder()
                                         .setMinActivePartitions(4)
-                                        .setPartitionCountLimit(10)
+                                        .setMaxActivePartitions(10)
                                         .build())
                                 .setPartitionWriteSpeedBytesPerSecond(2 * 1024 * 1024) // 2 MB
                                 .setPartitionWriteBurstBytes(4 * 1024 * 1024) // 4 MB
@@ -76,8 +76,7 @@ public class ControlPlane extends SimpleTopicExample {
                 TopicDescription description = describeTopic(TOPIC_NAME, topicClient);
 
                 assert description.getPartitioningSettings().getMinActivePartitions() == 4;
-                // getPartitionCountLimit is temporally ignored by server
-                assert description.getPartitioningSettings().getPartitionCountLimit() == 0;
+                assert description.getPartitioningSettings().getMaxActivePartitions() == 10;
                 assert description.getPartitionWriteSpeedBytesPerSecond() == 2 * 1024 * 1024;
                 assert description.getPartitionWriteBurstBytes() == 4 * 1024 * 1024;
                 assert description.getConsumers().size() == 2;
@@ -94,6 +93,7 @@ public class ControlPlane extends SimpleTopicExample {
                                         .build())
                                 .setAlterPartitioningSettings(AlterPartitioningSettings.newBuilder()
                                         .setMinActivePartitions(6)
+                                        .setMaxActivePartitions(6)
                                         .build())
                                 .setPartitionWriteSpeedBytesPerSecond(4 * 1024 * 1024)
                                 .build())
@@ -106,8 +106,7 @@ public class ControlPlane extends SimpleTopicExample {
                 TopicDescription description = describeTopic(TOPIC_NAME, topicClient);
 
                 assert description.getPartitioningSettings().getMinActivePartitions() == 6;
-                // getPartitionCountLimit is temporally ignored by server
-                assert description.getPartitioningSettings().getPartitionCountLimit() == 0;
+                assert description.getPartitioningSettings().getMaxActivePartitions() == 6;
                 assert description.getPartitionWriteSpeedBytesPerSecond() == 4 * 1024 * 1024;
                 assert description.getPartitionWriteBurstBytes() == 4 * 1024 * 1024;
                 assert description.getConsumers().size() == 2;
@@ -123,7 +122,7 @@ public class ControlPlane extends SimpleTopicExample {
 
                 topicClient.alterTopic(TOPIC_NAME, AlterTopicSettings.newBuilder()
                                 .setAlterPartitioningSettings(AlterPartitioningSettings.newBuilder()
-                                        .setPartitionCountLimit(8)
+                                        .setMaxActivePartitions(8)
                                         .build())
                                 .setRetentionPeriod(Duration.ofHours(13))
                                 .setRetentionStorageMb(512)
@@ -159,8 +158,7 @@ public class ControlPlane extends SimpleTopicExample {
                 TopicDescription description = describeTopic(TOPIC_NAME, topicClient);
 
                 assert description.getPartitioningSettings().getMinActivePartitions() == 6;
-                // getPartitionCountLimit is temporally ignored by server
-                assert description.getPartitioningSettings().getPartitionCountLimit() == 0;
+                assert description.getPartitioningSettings().getMaxActivePartitions() == 8;
                 assert Objects.equals(description.getRetentionPeriod(), Duration.ofHours(13));
                 assert description.getRetentionStorageMb() == 512;
                 assert description.getPartitionWriteSpeedBytesPerSecond() == 4 * 1024 * 1024;
@@ -216,7 +214,7 @@ public class ControlPlane extends SimpleTopicExample {
                 .append("  ActivePartitions: ").append(description.getPartitioningSettings().getMinActivePartitions())
                     .append("\n")
                 .append("  PartitionCountLimit: ").append(description.getPartitioningSettings()
-                        .getPartitionCountLimit()).append("\n")
+                        .getMaxActivePartitions()).append("\n")
                 .append("getPartitionWriteSpeedBytesPerSecond: ")
                     .append(description.getPartitionWriteSpeedBytesPerSecond()).append("\n")
                 .append("getPartitionWriteBurstBytes: ").append(description.getPartitionWriteBurstBytes())

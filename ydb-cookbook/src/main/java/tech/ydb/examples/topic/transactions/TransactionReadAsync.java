@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Result;
 import tech.ydb.core.Status;
@@ -20,8 +21,8 @@ import tech.ydb.topic.TopicClient;
 import tech.ydb.topic.read.AsyncReader;
 import tech.ydb.topic.read.Message;
 import tech.ydb.topic.read.PartitionSession;
-import tech.ydb.topic.read.events.DataReceivedEvent;
 import tech.ydb.topic.read.events.AbstractReadEventHandler;
+import tech.ydb.topic.read.events.DataReceivedEvent;
 import tech.ydb.topic.read.events.PartitionSessionClosedEvent;
 import tech.ydb.topic.read.events.ReaderClosedEvent;
 import tech.ydb.topic.read.events.StartPartitionSessionEvent;
@@ -80,6 +81,7 @@ public class TransactionReadAsync extends SimpleTopicExample {
                             .join().getValue();
 
                     // Update offsets in transaction
+                    @SuppressWarnings("deprecation")
                     Status updateStatus =  reader.updateOffsetsInTransaction(transaction, message.getPartitionOffsets(),
                                     new UpdateOffsetsInTransactionSettings.Builder().build())
                             // Do not commit transaction without waiting for updateOffsetsInTransaction result

@@ -35,7 +35,7 @@ public class Scheme extends SimpleExample {
             .getValue();
 
         System.out.println("--[self]---------------------------");
-        System.out.println(result1.getSelf());
+        System.out.println(result1.getEntry());
         System.out.println("-----------------------------------");
 
         ListDirectoryResult result2 = schemeClient.listDirectory(directoryPath)
@@ -43,9 +43,9 @@ public class Scheme extends SimpleExample {
             .getValue();
 
         System.out.println("--[self]---------------------------");
-        System.out.println(result2.getSelf());
+        System.out.println(result2.getEntry());
         System.out.println("--[children]-----------------------");
-        System.out.println(result2.getChildren());
+        System.out.println(result2.getEntryChildren());
         System.out.println("-----------------------------------");
 
         for (int i = 0; i < 3; i++) {
