@@ -16,6 +16,11 @@
     </properties>
     <dependencies>
         <dependency>
+            <groupId>tech.ydb.auth</groupId>
+            <artifactId>yc-auth-provider</artifactId>
+            <version>2.3.2</version>
+        </dependency>
+        <dependency>
             <groupId>tech.ydb</groupId>
             <artifactId>ydb-sdk-topic</artifactId>
             <version>${ydb.sdk.version}</version>

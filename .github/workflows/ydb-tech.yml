@@ -32,3 +32,5 @@ jobs:
           distribution: temurin
           cache: maven
       - run: bash examples/ydb_tech/run.sh
+        env:
+          YDB_ANONYMOUS_CREDENTIALS: '1'
