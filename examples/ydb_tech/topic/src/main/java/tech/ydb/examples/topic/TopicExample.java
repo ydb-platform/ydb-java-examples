@@ -64,7 +64,7 @@ import tech.ydb.topic.write.WriteAck;
 /** Executable source of the Java topic snippets on ydb.tech. */
 public final class TopicExample {
     private static final List<String> EXPECTED = Arrays.asList(
-            "11", "22", "33", "message", "message-data", "message-data", "compressed");
+            "11", "22", "33", "message", "message-data", "message-data");
     private static final String[] CONSUMERS = {
         "one", "commit_one", "batch", "commit_batch", "commit_each", "offset", "selectors", "outside"
     };
@@ -106,9 +106,6 @@ public final class TopicExample {
                 TopicDescription description = topicDescriptionResult.getValue();
                 // [END topic_describe]
                 require(description.getConsumers().size() == CONSUMERS.length + 1, "Unexpected consumers");
-                topicClient.alterTopic(topicPath, AlterTopicSettings.newBuilder()
-                        .setSupportedCodecs(SupportedCodecs.newBuilder().addCodec(Codec.RAW)
-                                .addCodec(Codec.GZIP).addCodec(Codec.ZSTD).build()).build()).join().expectSuccess();
                 write(topicClient, topicPath);
                 initializeSyncWriter(topicClient, topicPath);
                 readSync(topicClient, topicPath, "one", false);
@@ -320,6 +317,10 @@ public final class TopicExample {
     }
 
     private static void writeCompressed(TopicClient topicClient, String topicPath) throws Exception {
+        topicPath += "_codec";
+        topicClient.createTopic(topicPath, CreateTopicSettings.newBuilder()
+                .setSupportedCodecs(SupportedCodecs.newBuilder().addCodec(Codec.ZSTD).build())
+                .addConsumer(Consumer.newBuilder().setName("codec").build()).build()).join().expectSuccess();
         // [BEGIN topic_codec]
         String producerAndGroupID = "group-id";
         WriterSettings settings = WriterSettings.newBuilder()
@@ -335,6 +336,15 @@ public final class TopicExample {
             writer.send(Message.of(bytes("compressed"))).get(30, TimeUnit.SECONDS);
         } finally {
             writer.shutdown().get(30, TimeUnit.SECONDS);
+        }
+        SyncReader reader = topicClient.createSyncReader(readerSettings(topicPath, "codec"));
+        try {
+            reader.initAndWait();
+            require(Arrays.equals(reader.receive(30, TimeUnit.SECONDS).getData(), bytes("compressed")),
+                    "Unexpected compressed payload");
+        } finally {
+            reader.shutdown();
+            topicClient.dropTopic(topicPath).join().expectSuccess();
         }
     }
 
