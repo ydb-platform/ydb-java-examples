@@ -22,6 +22,7 @@
     </properties>
 
     <modules>
+        <module>examples/ydb_tech/topic</module>
         <module>auth</module>
         <module>secondary_index</module>
         <module>basic_example</module>
