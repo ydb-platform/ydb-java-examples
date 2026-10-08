@@ -303,6 +303,7 @@ public final class TopicExample {
                             .build()
             );
             // [END topic_write_metadata]
+            CompletableFuture<WriteAck> metadataAcknowledgement =
             // [BEGIN topic_write_metadata_add]
             writer.send(
                     Message.newBuilder().setData(bytes("message-data"))
@@ -311,6 +312,7 @@ public final class TopicExample {
                             .build()
             );
             // [END topic_write_metadata_add]
+            metadataAcknowledgement.get(30, TimeUnit.SECONDS);
         } finally {
             writer.shutdown().get(30, TimeUnit.SECONDS);
         }
@@ -371,6 +373,7 @@ public final class TopicExample {
         List<String> received = new ArrayList<>();
         processor = message -> {
             received.add(checkMessage(message));
+            System.out.println("Received sync message " + received.size() + " of " + EXPECTED.size());
             if (commit) commitOne(message);
             if (received.size() == EXPECTED.size()) throw new ScenarioComplete();
         };
