@@ -87,6 +87,7 @@ public final class TopicExample {
             initializeTopicClient(transport);
             createTopic(topicClient, topicPath);
             try {
+                CompletableFuture<Status> alteration =
                 // [BEGIN topic_alter]
                 topicClient.alterTopic(topicPath, AlterTopicSettings.newBuilder()
                                 .addAddConsumer(Consumer.newBuilder()
@@ -98,7 +99,7 @@ public final class TopicExample {
                                         .build())
                                 .build());
                 // [END topic_alter]
-                topicClient.alterTopic(topicPath, AlterTopicSettings.newBuilder().build()).join().expectSuccess();
+                alteration.join().expectSuccess();
                 // [BEGIN topic_describe]
                 Result<TopicDescription> topicDescriptionResult = topicClient.describeTopic(topicPath)
                         .join();
