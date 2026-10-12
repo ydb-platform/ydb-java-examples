@@ -147,9 +147,9 @@ pushing to CI.
   Locally that's fine; in CI it would merge current and baseline series. The
   action always sets it, but watch out when reproducing CI behaviour
   manually.
-- **Prefill failure threshold is 50%**. If half the writes during prefill
-  fail, the runner refuses to start the read loop — empty key-space means
-  meaningless read latency. Don't lower the threshold to "fix" a flaky test.
+- **Any final operation failure fails the workload**, including prefill.
+  Recovered retries stay successful. The first terminal cause survives peer
+  shutdown and cleanup; successful later operations cannot erase it.
 - **`acceptUnknownOptions(false)`** on JCommander is intentional. A typo in
   the ydb-slo-action `workload_*_command` input should fail loudly, not
   silently fall back to defaults.

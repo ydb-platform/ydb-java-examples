@@ -88,7 +88,7 @@ public class SpringJpaKvClient {
             } catch (RuntimeException e) {
                 return OpOutcome.error(
                         Math.max(0, KvOperationService.currentAttempts() - 1),
-                        classifyError(e)
+                        classifyError(e), e
                 );
             }
         }
@@ -103,7 +103,7 @@ public class SpringJpaKvClient {
             } catch (RuntimeException e) {
                 return OpOutcome.error(
                         Math.max(0, KvOperationService.currentAttempts() - 1),
-                        classifyError(e)
+                        classifyError(e), e
                 );
             }
         }

@@ -7,6 +7,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.util.concurrent.RateLimiter;
 import org.slf4j.Logger;
@@ -17,13 +18,12 @@ import tech.ydb.slo.core.Metrics;
 public final class WorkloadRunner {
     private static final Logger logger = LoggerFactory.getLogger(WorkloadRunner.class);
 
-    private static final double PREFILL_SUCCESS_THRESHOLD = 0.5;
-
     private final KvClient client;
     private final Metrics metrics;
     private final KvWorkloadParams params;
     private final String tablePath;
     private final RowGenerator generator;
+    private final AtomicReference<Throwable> firstFailure = new AtomicReference<>();
 
     public WorkloadRunner(KvClient client, Metrics metrics, KvWorkloadParams params, String tablePath) {
         this.client = client;
@@ -49,29 +49,22 @@ public final class WorkloadRunner {
                 parallelism, namedThreadFactory("slo-prefill-")
         );
         AtomicLong nextId = new AtomicLong(0);
-        AtomicInteger failed = new AtomicInteger();
-        AtomicInteger sessionOpenFailures = new AtomicInteger();
         try {
             for (int w = 0; w < parallelism; w++) {
                 prefillPool.execute(() -> {
                     try (KvSession session = client.openSession()) {
                         long id;
-                        while ((id = nextId.getAndIncrement()) < params.prefillCount()) {
+                        while (firstFailure.get() == null &&
+                                (id = nextId.getAndIncrement()) < params.prefillCount()) {
                             OpOutcome outcome = session.write(
                                     RowGenerator.generate(id), params.writeTimeoutMs());
                             if (!outcome.isSuccess()) {
-                                int f = failed.incrementAndGet();
-                                if (f <= 5) {
-                                    logger.warn("prefill row {} failed: {}", id, outcome.errorKind());
-                                }
+                                recordFailure(outcome);
+                                return;
                             }
                         }
-                    } catch (Exception e) {
-                        sessionOpenFailures.incrementAndGet();
-                        long firstUnclaimed = nextId.getAndSet(params.prefillCount());
-                        if (firstUnclaimed < params.prefillCount()) {
-                            failed.addAndGet((int) (params.prefillCount() - firstUnclaimed));
-                        }
+                    } catch (Throwable e) {
+                        firstFailure.compareAndSet(null, e);
                         logger.error("prefill worker failed to open session: {}", e.toString());
                     }
                 });
@@ -79,31 +72,13 @@ public final class WorkloadRunner {
         } finally {
             prefillPool.shutdown();
             if (!prefillPool.awaitTermination(5, TimeUnit.MINUTES)) {
+                firstFailure.compareAndSet(null, new IllegalStateException("prefill workers did not finish"));
                 prefillPool.shutdownNow();
             }
         }
 
-        int total = params.prefillCount();
-        int failedCount = failed.get();
-        int succeeded = total - failedCount;
-        if (sessionOpenFailures.get() == parallelism) {
-            throw new IllegalStateException(
-                    "all " + parallelism + " prefill workers failed to open a session — "
-                            + "check YDB connectivity and credentials"
-            );
-        }
-        if (succeeded < total * PREFILL_SUCCESS_THRESHOLD) {
-            throw new IllegalStateException(
-                    "prefill completed with " + failedCount + " failed rows out of " + total
-                            + " (success rate < " + (int) (PREFILL_SUCCESS_THRESHOLD * 100)
-                            + "%); reads would target an empty key-space, refusing to run"
-            );
-        }
-        if (failedCount > 0) {
-            logger.warn("prefill completed with {} failed rows out of {}", failedCount, total);
-        } else {
-            logger.info("prefill completed");
-        }
+        throwIfFailed();
+        logger.info("prefill completed");
     }
 
     public void run() throws InterruptedException {
@@ -160,6 +135,7 @@ public final class WorkloadRunner {
             if (readPool != null) {
                 long started = System.nanoTime();
                 if (!readPool.awaitTermination(waitNanos, TimeUnit.NANOSECONDS)) {
+                    firstFailure.compareAndSet(null, new IllegalStateException("read pool did not drain"));
                     logger.warn("read pool did not drain within deadline, forcing shutdown");
                     readPool.shutdownNow();
                 }
@@ -167,14 +143,19 @@ public final class WorkloadRunner {
             }
             if (writePool != null) {
                 if (!writePool.awaitTermination(waitNanos, TimeUnit.NANOSECONDS)) {
+                    firstFailure.compareAndSet(null, new IllegalStateException("write pool did not drain"));
                     logger.warn("write pool did not drain within deadline, forcing shutdown");
                     writePool.shutdownNow();
                 }
             }
+        } catch (InterruptedException e) {
+            throwIfFailed();
+            throw e;
         } finally {
             forceShutdown(readPool, "read pool");
             forceShutdown(writePool, "write pool");
         }
+        throwIfFailed();
     }
 
     public void teardown() {
@@ -184,7 +165,7 @@ public final class WorkloadRunner {
 
     private void readWorkerLoop(long endNanos, RateLimiter limiter, AtomicLong writesIssued) {
         try (KvSession session = client.openSession()) {
-            while (!Thread.currentThread().isInterrupted()) {
+            while (firstFailure.get() == null && !Thread.currentThread().isInterrupted()) {
                 long remaining = endNanos - System.nanoTime();
                 if (remaining <= 0) {
                     return;
@@ -193,20 +174,26 @@ public final class WorkloadRunner {
                 if (!limiter.tryAcquire(remaining, TimeUnit.NANOSECONDS)) {
                     return;
                 }
+                if (firstFailure.get() != null || System.nanoTime() >= endNanos) {
+                    return;
+                }
                 try {
                     readOnce(session, writesIssued.get());
                 } catch (Throwable t) {
+                    firstFailure.compareAndSet(null, t);
                     logger.warn("read op threw unexpectedly: {}", t.toString());
+                    return;
                 }
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
+            firstFailure.compareAndSet(null, e);
             logger.warn("read worker failed to open session: {}", e.toString());
         }
     }
 
     private void writeWorkerLoop(long endNanos, RateLimiter limiter, AtomicLong writesIssued) {
         try (KvSession session = client.openSession()) {
-            while (!Thread.currentThread().isInterrupted()) {
+            while (firstFailure.get() == null && !Thread.currentThread().isInterrupted()) {
                 long remaining = endNanos - System.nanoTime();
                 if (remaining <= 0) {
                     return;
@@ -214,14 +201,20 @@ public final class WorkloadRunner {
                 if (!limiter.tryAcquire(remaining, TimeUnit.NANOSECONDS)) {
                     return;
                 }
+                if (firstFailure.get() != null || System.nanoTime() >= endNanos) {
+                    return;
+                }
                 try {
                     writeOnce(session, generator.generate());
                     writesIssued.incrementAndGet();
                 } catch (Throwable t) {
+                    firstFailure.compareAndSet(null, t);
                     logger.warn("write op threw unexpectedly: {}", t.toString());
+                    return;
                 }
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
+            firstFailure.compareAndSet(null, e);
             logger.warn("write worker failed to open session: {}", e.toString());
         }
     }
@@ -235,6 +228,7 @@ public final class WorkloadRunner {
         if (outcome.isSuccess()) {
             span.finishSuccess(outcome.retryAttempts());
         } else {
+            recordFailure(outcome);
             span.finishError(outcome.retryAttempts(), outcome.errorKind());
             logger.debug("read {} failed: {}", id, outcome.errorKind());
         }
@@ -246,8 +240,21 @@ public final class WorkloadRunner {
         if (outcome.isSuccess()) {
             span.finishSuccess(outcome.retryAttempts());
         } else {
+            recordFailure(outcome);
             span.finishError(outcome.retryAttempts(), outcome.errorKind());
             logger.debug("write {} failed: {}", row.id(), outcome.errorKind());
+        }
+    }
+
+    private void recordFailure(OpOutcome outcome) {
+        firstFailure.compareAndSet(null, outcome.cause() != null ? outcome.cause()
+                : new IllegalStateException("Operation failed: " + outcome.errorKind()));
+    }
+
+    private void throwIfFailed() {
+        Throwable failure = firstFailure.get();
+        if (failure != null) {
+            throw new IllegalStateException("Workload failed", failure);
         }
     }
 

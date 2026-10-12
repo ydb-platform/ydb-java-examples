@@ -111,7 +111,7 @@ public final class JdbcKvClient implements KvClient {
                     }
                 }
             }
-            return OpOutcome.error(attempts - 1, classifyError(last));
+            return OpOutcome.error(attempts - 1, classifyError(last), last);
         }
 
         @Override
@@ -135,7 +135,7 @@ public final class JdbcKvClient implements KvClient {
                     }
                 }
             }
-            return OpOutcome.error(attempts - 1, classifyError(last));
+            return OpOutcome.error(attempts - 1, classifyError(last), last);
         }
 
         @Override
