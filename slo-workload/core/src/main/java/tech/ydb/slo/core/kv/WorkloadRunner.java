@@ -225,6 +225,10 @@ public final class WorkloadRunner {
 
         Metrics.Span span = metrics.startOperation(Metrics.OperationType.READ);
         OpOutcome outcome = session.read(id, params.readTimeoutMs());
+        if (outcome.isSuccess() && "1".equals(System.getenv("SLO_QA_FINAL_ERROR"))) {
+            outcome = OpOutcome.error(outcome.retryAttempts(), "qa-final",
+                    new IllegalStateException("SLO_QA_JAVA_FINAL_OPERATION"));
+        }
         if (outcome.isSuccess()) {
             span.finishSuccess(outcome.retryAttempts());
         } else {
