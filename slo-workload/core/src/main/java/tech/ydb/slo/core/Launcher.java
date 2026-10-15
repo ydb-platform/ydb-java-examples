@@ -111,7 +111,8 @@ public final class Launcher {
     }
 
     public static String tablePathFor(Config config) {
-        return sanitize(config.workloadName()) + "_" + sanitize(config.ref());
+        return sanitize(config.workloadName()) + "_" + sanitize(config.ref())
+                + "_" + java.util.UUID.randomUUID().toString().replace("-", "");
     }
 
     private static void closeQuietly(AutoCloseable closeable, String name) {

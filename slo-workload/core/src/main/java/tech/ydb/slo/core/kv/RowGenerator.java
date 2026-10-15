@@ -21,10 +21,13 @@ public final class RowGenerator {
     }
 
     public static Row generate(long id) {
+        if (id == Long.MAX_VALUE) {
+            throw new IllegalStateException("Load writer reached the reserved control key");
+        }
         long payloadHash = ThreadLocalRandom.current().nextLong();
         double payloadDouble = ThreadLocalRandom.current().nextDouble();
         String payloadStr = randomPayloadString();
-        Instant payloadTimestamp = Instant.now();
+        Instant payloadTimestamp = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
 
         return new Row(id, payloadStr, payloadDouble, payloadTimestamp, payloadHash);
     }

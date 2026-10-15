@@ -88,12 +88,12 @@ public class SpringJdbcKvClient {
             KvOperationService.resetAttempts();
             try {
                 long hash = RowGenerator.numericHash(id);
-                operations.read(tablePath, id, hash);
-                return OpOutcome.success(Math.max(0, KvOperationService.currentAttempts() - 1));
+                java.util.List<Row> rows = operations.read(tablePath, id, hash);
+                return OpOutcome.success(Math.max(0, KvOperationService.currentAttempts() - 1), rows);
             } catch (RuntimeException e) {
                 return OpOutcome.error(
                         Math.max(0, KvOperationService.currentAttempts() - 1),
-                        classifyError(e)
+                        classifyError(e), e
                 );
             }
         }
@@ -108,7 +108,7 @@ public class SpringJdbcKvClient {
             } catch (RuntimeException e) {
                 return OpOutcome.error(
                         Math.max(0, KvOperationService.currentAttempts() - 1),
-                        classifyError(e)
+                        classifyError(e), e
                 );
             }
         }

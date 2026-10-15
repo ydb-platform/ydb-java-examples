@@ -9,6 +9,7 @@ import tech.ydb.auth.TokenAuthProvider;
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Result;
 import tech.ydb.core.Status;
+import tech.ydb.core.UnexpectedResultException;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.query.QueryClient;
 import tech.ydb.query.settings.ExecuteQuerySettings;
@@ -154,17 +155,21 @@ public final class QueryKvClient implements KvClient {
 
             int retryAttempts = Math.max(0, attempts.get() - 1);
             if (!result.getStatus().isSuccess()) {
-                return OpOutcome.error(retryAttempts, classifyStatus(result.getStatus()));
+                return OpOutcome.error(retryAttempts, classifyStatus(result.getStatus()),
+                        new UnexpectedResultException("Final read failed", result.getStatus()));
             }
 
             QueryReader reader = result.getValue();
-            if (reader.getResultSetCount() > 0) {
-                ResultSetReader rs = reader.getResultSet(0);
+            java.util.List<Row> rows = new java.util.ArrayList<>();
+            for (int i = 0; i < reader.getResultSetCount(); i++) {
+                ResultSetReader rs = reader.getResultSet(i);
                 while (rs.next()) {
-                    rs.getColumn("id").getUint64();
+                    rows.add(new Row(rs.getColumn("id").getUint64(),
+                            rs.getColumn("payload_str").getText(), rs.getColumn("payload_double").getDouble(),
+                            rs.getColumn("payload_timestamp").getTimestamp(), rs.getColumn("payload_hash").getUint64()));
                 }
             }
-            return OpOutcome.success(retryAttempts);
+            return OpOutcome.success(retryAttempts, rows);
         }
 
         @Override
@@ -196,7 +201,8 @@ public final class QueryKvClient implements KvClient {
             if (status.isSuccess()) {
                 return OpOutcome.success(retryAttempts);
             }
-            return OpOutcome.error(retryAttempts, classifyStatus(status));
+            return OpOutcome.error(retryAttempts, classifyStatus(status),
+                    new UnexpectedResultException("Final write failed", status));
         }
     }
 
