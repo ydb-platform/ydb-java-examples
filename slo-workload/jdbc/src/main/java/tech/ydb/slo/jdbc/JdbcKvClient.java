@@ -98,8 +98,7 @@ public final class JdbcKvClient implements KvClient {
             while (attempts < maxAttempts) {
                 attempts++;
                 try {
-                    read(id, hash, timeoutSeconds(timeoutMs));
-                    return OpOutcome.success(attempts - 1);
+                    return OpOutcome.success(attempts - 1, read(id, hash, timeoutSeconds(timeoutMs)));
                 } catch (SQLException e) {
                     last = e;
                     if (!isRetryable(e) || attempts >= maxAttempts) {
@@ -111,7 +110,7 @@ public final class JdbcKvClient implements KvClient {
                     }
                 }
             }
-            return OpOutcome.error(attempts - 1, classifyError(last));
+            return OpOutcome.error(attempts - 1, classifyError(last), last);
         }
 
         @Override
@@ -135,7 +134,7 @@ public final class JdbcKvClient implements KvClient {
                     }
                 }
             }
-            return OpOutcome.error(attempts - 1, classifyError(last));
+            return OpOutcome.error(attempts - 1, classifyError(last), last);
         }
 
         @Override
@@ -173,16 +172,21 @@ public final class JdbcKvClient implements KvClient {
             return writeStmt;
         }
 
-        private void read(long id, long hash, int timeoutSeconds) throws SQLException {
+        private java.util.List<Row> read(long id, long hash, int timeoutSeconds) throws SQLException {
             PreparedStatement stmt = readStmt();
             stmt.setQueryTimeout(timeoutSeconds);
             stmt.setLong(1, id);
             stmt.setLong(2, hash);
+            java.util.List<Row> rows = new java.util.ArrayList<>();
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    rs.getLong("id");
+                    rows.add(new Row(((Number) rs.getObject("id")).longValue(), rs.getString("payload_str"),
+                            ((Number) rs.getObject("payload_double")).doubleValue(),
+                            rs.getTimestamp("payload_timestamp").toInstant(),
+                            ((Number) rs.getObject("payload_hash")).longValue()));
                 }
             }
+            return rows;
         }
 
         private void write(Row row, long hash, int timeoutSeconds) throws SQLException {
