@@ -19,6 +19,9 @@ Concretely:
 - `query/`, `jdbc/`, `spring-data-jdbc/`, `spring-data-jpa/` — one workload per
   client under test. Each module is ~thin: a `Main` that wires a `KvClient`
   implementation into the shared `Launcher`.
+- `query-rmw/` — separate native Query transactional scenario using `core/rmw`.
+  It reuses Config/Metrics and the namespace helper, not the basic KV schema or
+  checker. JDBC and JPA do not implement this scenario.
 - `docker/Dockerfile.sdk` — single shared Dockerfile used by the **SDK**
   CI (`ydb-java-sdk`). Picks the workload module via build args.
 - `<module>/Dockerfile` — per-workload Dockerfile used by the **JDBC driver**
@@ -118,6 +121,18 @@ availability still computes correctly.
    (`ydb-java-sdk/.github/workflows/slo.yml` or
    `ydb-jdbc-driver/.github/workflows/slo.yaml`). This repo does **not** run
    SLO CI by itself — there's no YDB cluster here.
+
+The separate Query RMW scenario is an exception to the KV adapter shape. Its
+runner retains each logical ID/counter/delta before admission, admits bounded
+concurrent rounds and settles every admitted transaction before independent
+validation and cleanup. Expected totals and versions come from that retained
+image, never the observed ledger. Retry the complete SDK transaction with the
+same ID; the transactional ledger justifies SDK idempotent retry. Its scoped
+QueryClient observation counts outer SDK session acquisitions, including failed
+acquisition and retries after commit, rather than callback entries. Use the
+existing source Dockerfile with the RMW module/jar build arguments; see
+`query-rmw/README.md`. Do not imply support in other adapters or change the
+basic KV checker to accommodate this scenario.
 
 ## Local sanity checks
 
