@@ -121,6 +121,7 @@
             <modules>
                 <module>core</module>
                 <module>query</module>
+                <module>query-rmw</module>
                 <module>jdbc</module>
                 <module>spring-data-jdbc</module>
                 <module>spring-data-jpa</module>
