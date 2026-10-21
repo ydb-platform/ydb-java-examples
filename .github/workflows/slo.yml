@@ -1,0 +1,164 @@
+name: SLO
+
+on:
+  workflow_dispatch:
+    inputs:
+      sdk_current_ref:
+        description: "Current ydb-java-sdk commit, branch or tag"
+        required: true
+      sdk_baseline_ref:
+        description: "Baseline ydb-java-sdk commit, branch or tag"
+        required: true
+      examples_ref:
+        description: "Workload revision (empty uses this workflow's revision)"
+        required: false
+      github_issue:
+        description: "Optional issue or pull request for the report"
+        required: false
+  workflow_call:
+    inputs:
+      sdk_current_ref:
+        type: string
+        required: true
+      sdk_baseline_ref:
+        type: string
+        required: true
+      examples_ref:
+        type: string
+        required: true
+      github_issue:
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  ydb-slo-action:
+    name: Run YDB SLO Tests (${{ matrix.workload.name }})
+    runs-on: large-runner-java-sdk
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        workload:
+          - name: java-query-kv
+            module: query
+            jar: ydb-slo-query-workload.jar
+            copy_libs: "true"
+          - name: java-jdbc-kv
+            module: jdbc
+            jar: ydb-slo-jdbc-workload.jar
+            copy_libs: "true"
+          - name: java-spring-data-jdbc-kv
+            module: spring-data-jdbc
+            jar: ydb-slo-spring-data-jdbc-workload.jar
+            copy_libs: "false"
+          - name: java-spring-data-jpa-kv
+            module: spring-data-jpa
+            jar: ydb-slo-spring-data-jpa-workload.jar
+            copy_libs: "false"
+    concurrency:
+      group: slo-${{ github.ref }}-${{ matrix.workload.name }}
+      cancel-in-progress: true
+    steps:
+      - name: Install dependencies
+        run: |
+          set -euxo pipefail
+          YQ_VERSION=v4.48.2
+          BUILDX_VERSION=0.30.1
+          COMPOSE_VERSION=2.40.3
+          sudo curl -fLo /usr/local/bin/yq \
+            "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
+          sudo chmod +x /usr/local/bin/yq
+          sudo mkdir -p /usr/local/lib/docker/cli-plugins
+          sudo curl -fLo /usr/local/lib/docker/cli-plugins/docker-buildx \
+            "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-amd64"
+          sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
+          sudo curl -fLo /usr/local/lib/docker/cli-plugins/docker-compose \
+            "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-x86_64"
+          sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
+      - name: Checkout workload sources
+        uses: actions/checkout@v5
+        with:
+          repository: ydb-platform/ydb-java-examples
+          ref: ${{ inputs.examples_ref || github.sha }}
+          path: examples
+
+      - name: Checkout current SDK
+        uses: actions/checkout@v5
+        with:
+          repository: ydb-platform/ydb-java-sdk
+          ref: ${{ inputs.sdk_current_ref }}
+          path: build-current/ydb-java-sdk
+
+      - name: Checkout baseline SDK
+        uses: actions/checkout@v5
+        with:
+          repository: ydb-platform/ydb-java-sdk
+          ref: ${{ inputs.sdk_baseline_ref }}
+          path: build-baseline/ydb-java-sdk
+
+      - name: Record SDK revisions and stage shared harness
+        id: revisions
+        run: |
+          set -euxo pipefail
+          echo "current=current@$(git -C build-current/ydb-java-sdk rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "baseline=baseline@$(git -C build-baseline/ydb-java-sdk rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          cp -a examples build-current/ydb-java-examples
+          cp -a examples build-baseline/ydb-java-examples
+
+      - name: Build current workload image
+        run: |
+          docker build --platform linux/amd64 \
+            --build-arg WORKLOAD_MODULE=slo-workload/${{ matrix.workload.module }} \
+            --build-arg WORKLOAD_JAR=${{ matrix.workload.jar }} \
+            --build-arg COPY_LIBS=${{ matrix.workload.copy_libs }} \
+            -f examples/slo-workload/docker/Dockerfile.sdk \
+            -t ydb-app-current build-current
+
+      - name: Build baseline workload image
+        run: |
+          docker build --platform linux/amd64 \
+            --build-arg WORKLOAD_MODULE=slo-workload/${{ matrix.workload.module }} \
+            --build-arg WORKLOAD_JAR=${{ matrix.workload.jar }} \
+            --build-arg COPY_LIBS=${{ matrix.workload.copy_libs }} \
+            -f examples/slo-workload/docker/Dockerfile.sdk \
+            -t ydb-app-baseline build-baseline
+
+      - name: Run SLO Tests
+        uses: ydb-platform/ydb-slo-action/init@v3
+        timeout-minutes: 30
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_issue: ${{ inputs.github_issue }}
+          workload_name: ${{ matrix.workload.name }}
+          workload_duration: "600"
+          fail_on_workload_error: "true"
+          workload_current_ref: ${{ steps.revisions.outputs.current }}
+          workload_current_image: ydb-app-current
+          workload_current_command: --read-rps 1000 --write-rps 100
+          workload_baseline_ref: ${{ steps.revisions.outputs.baseline }}
+          workload_baseline_image: ydb-app-baseline
+          workload_baseline_command: --read-rps 1000 --write-rps 100
+          metrics_schema: legacy_table
+
+  publish-slo-report:
+    needs: ydb-slo-action
+    if: ${{ !cancelled() && needs.ydb-slo-action.result != 'skipped' }}
+    name: Publish YDB SLO Report
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Publish YDB SLO Report
+        uses: ydb-platform/ydb-slo-action/report@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_issue: ${{ inputs.github_issue }}
+          github_run_id: ${{ github.run_id }}
+          post_comment: ${{ inputs.github_issue != '' }}

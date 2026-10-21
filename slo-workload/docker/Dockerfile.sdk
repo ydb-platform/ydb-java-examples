@@ -6,6 +6,8 @@ ARG COPY_LIBS=true
 
 FROM ${MAVEN_IMAGE} AS workload-build
 
+ARG WORKLOAD_MODULE
+
 WORKDIR /src
 
 COPY ydb-java-sdk /src/ydb-java-sdk
