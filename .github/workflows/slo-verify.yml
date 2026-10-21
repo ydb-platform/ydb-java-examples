@@ -1,0 +1,25 @@
+name: Verify SLO workflow
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled]
+    branches: [master]
+    paths:
+      - ".github/workflows/slo*.yml"
+      - "slo-workload/**"
+
+jobs:
+  slo:
+    if: contains(github.event.pull_request.labels.*.name, 'SLO')
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
+      issues: write
+    uses: ./.github/workflows/slo.yml
+    with:
+      # Explicit SDK revisions make this examples-side PR check reproducible.
+      sdk_current_ref: 39325794c491cbedab1ece0c0893b17eadf5fc1e
+      sdk_baseline_ref: 72cf8182fe21d9c97e18f43003f7608456d73764
+      examples_ref: ${{ github.event.pull_request.head.sha }}
+      github_issue: ${{ format('{0}', github.event.pull_request.number) }}

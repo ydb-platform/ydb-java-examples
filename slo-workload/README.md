@@ -124,6 +124,11 @@ workflow in the SDK repository is changed by this migration. Existing consumers,
 including [`ydb-jdbc-driver`](https://github.com/ydb-platform/ydb-jdbc-driver),
 can still build these workload sources from their own CI.
 
+For SLO-labeled pull requests here, `slo-verify.yml` calls that reusable workflow
+with two explicit pinned SDK commits and the PR's examples revision. This verifies
+the same four workloads before the new manual workflow is available on the default
+branch; it does not require merging the PR to test it.
+
 A consumer workflow, via [`ydb-platform/ydb-slo-action`](https://github.com/ydb-platform/ydb-slo-action):
 
 1. checks out the driver under test (current and baseline) and this repository
