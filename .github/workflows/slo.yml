@@ -129,7 +129,7 @@ jobs:
 
       - name: Run SLO Tests
         # Pin legacy telemetry fixes until ydb-slo-action#81 is merged.
-        uses: ydb-platform/ydb-slo-action/init@e136720bca3783a0bd2d14e78ac591275573c0b3
+        uses: ydb-platform/ydb-slo-action/init@d66bd1e10f893e5f70d542c4430a3cffb6d6f9f8
         timeout-minutes: 30
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -143,7 +143,7 @@ jobs:
           workload_baseline_ref: ${{ steps.revisions.outputs.baseline }}
           workload_baseline_image: ydb-app-baseline
           workload_baseline_command: --read-rps 1000 --write-rps 100
-          metrics_schema: legacy_table
+          workload_type: table
 
   publish-slo-report:
     needs: ydb-slo-action

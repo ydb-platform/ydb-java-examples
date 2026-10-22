@@ -107,7 +107,7 @@ during cross-driver experiments.
 ## How CI uses this module
 
 The [SLO workflow](../.github/workflows/slo.yml) in this repository runs the four
-existing Java workloads through Action v3 with `metrics_schema: legacy_table`.
+existing Java workloads through Action v3 with `workload_type: table`.
 The metrics above, 600-second duration and 1000/100 read/write RPS remain unchanged.
 
 For a manual run, select the examples branch and supply `sdk_current_ref` and

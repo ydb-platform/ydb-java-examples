@@ -116,7 +116,7 @@ availability still computes correctly.
    and pass `WORKLOAD_MODULE=slo-workload/<name>` from CI.
 4. Register the module in `pom.xml` under the `jdk17-slo-workload` profile.
 5. Wire it into the appropriate SLO workflow. The manual/reusable workflow here
-   uses Action v3 with `metrics_schema: legacy_table`; existing component-owned
+   uses Action v3 with `workload_type: table`; existing component-owned
    consumer workflows are separate rollout targets.
 
 ## Local sanity checks
