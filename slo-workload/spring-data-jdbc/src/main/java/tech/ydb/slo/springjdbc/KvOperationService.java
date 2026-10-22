@@ -28,13 +28,13 @@ public class KvOperationService {
     }
 
     @YdbTransactional(readOnly = true)
-    public void read(String tablePath, long id, long hash) {
+    public java.util.List<Row> read(String tablePath, long id, long hash) {
         ATTEMPTS.get()[0]++;
-        jdbc.query(String.format(KvSchema.SELECT_TEMPLATE, tablePath), rs -> {
-            while (rs.next()) {
-                rs.getLong("id");
-            }
-        }, id, hash);
+        return jdbc.query(String.format(KvSchema.SELECT_TEMPLATE, tablePath), (rs, index) ->
+                new Row(((Number) rs.getObject("id")).longValue(), rs.getString("payload_str"),
+                        ((Number) rs.getObject("payload_double")).doubleValue(),
+                        rs.getTimestamp("payload_timestamp").toInstant(),
+                        ((Number) rs.getObject("payload_hash")).longValue()), id, hash);
     }
 
     @YdbTransactional(idempotent = true)

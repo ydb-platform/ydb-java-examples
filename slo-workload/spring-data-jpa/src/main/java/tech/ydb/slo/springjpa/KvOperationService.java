@@ -31,7 +31,7 @@ public class KvOperationService {
     private EntityManager entityManager;
 
     @YdbTransactional(readOnly = true)
-    public void read(String tablePath, long id, long hash) {
+    public List<Row> read(String tablePath, long id, long hash) {
         ATTEMPTS.get()[0]++;
         Query query = entityManager.createNativeQuery(String.format(KvSchema.SELECT_TEMPLATE, tablePath))
                 .setParameter(1, id)
@@ -40,11 +40,13 @@ public class KvOperationService {
         query.setFlushMode(FlushModeType.COMMIT);
         @SuppressWarnings("unchecked")
         List<Object[]> rows = query.getResultList();
+        List<Row> decoded = new java.util.ArrayList<>();
         for (Object[] row : rows) {
-            if (row[0] != null) {
-                ((Number) row[0]).longValue();
-            }
+            decoded.add(new Row(((Number) row[0]).longValue(), (String) row[1],
+                    ((Number) row[2]).doubleValue(), ((Timestamp) row[3]).toInstant(),
+                    ((Number) row[4]).longValue()));
         }
+        return decoded;
     }
 
     @YdbTransactional(idempotent = true)

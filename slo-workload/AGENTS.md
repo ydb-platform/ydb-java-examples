@@ -31,8 +31,9 @@ The CI workflows in `ydb-java-sdk` and `ydb-jdbc-driver` need to test SDK/driver
 code **as it is in the PR** — not whatever version is pinned in this repo's
 `pom.xml`. The pattern is:
 
-1. The component-under-test repo has the workflow file (`slo.yml` / `slo.yaml`)
-   and a `build-slo-image.sh` script.
+1. The component-under-test repo can own a consumer workflow. This repository
+   also provides manual/reusable SLO CI with explicit current and baseline SDK
+   refs; it builds both sources independently with no current-image fallback.
 2. The workflow checks out **three** trees with `actions/checkout`:
    - current SDK/driver (the PR's HEAD)
    - baseline SDK/driver (the merge-base commit with `master`)
@@ -114,10 +115,9 @@ availability still computes correctly.
    test from source (mirror `jdbc/Dockerfile`), or extend `Dockerfile.sdk`
    and pass `WORKLOAD_MODULE=slo-workload/<name>` from CI.
 4. Register the module in `pom.xml` under the `jdk17-slo-workload` profile.
-5. Wire it into the SLO workflow of the component-under-test repository
-   (`ydb-java-sdk/.github/workflows/slo.yml` or
-   `ydb-jdbc-driver/.github/workflows/slo.yaml`). This repo does **not** run
-   SLO CI by itself — there's no YDB cluster here.
+5. Wire it into the appropriate SLO workflow. The manual/reusable workflow here
+   uses Action v3 with `workload_type: table`; existing component-owned
+   consumer workflows are separate rollout targets.
 
 ## Local sanity checks
 
@@ -147,9 +147,12 @@ pushing to CI.
   Locally that's fine; in CI it would merge current and baseline series. The
   action always sets it, but watch out when reproducing CI behaviour
   manually.
-- **Prefill failure threshold is 50%**. If half the writes during prefill
-  fail, the runner refuses to start the read loop — empty key-space means
-  meaningless read latency. Don't lower the threshold to "fix" a flaky test.
+- **Any final operation failure fails the workload**, including prefill.
+  Recovered retries stay successful. The first terminal cause survives peer
+  shutdown and cleanup; successful later operations cannot erase it.
+- **Each launcher owns a process-private table for its whole lifecycle.**
+  One owner checks a reserved control key's exact generation and payload before,
+  during and after load; random load reads do not assert committed-key presence.
 - **`acceptUnknownOptions(false)`** on JCommander is intentional. A typo in
   the ydb-slo-action `workload_*_command` input should fail loudly, not
   silently fall back to defaults.

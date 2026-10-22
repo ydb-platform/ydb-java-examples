@@ -106,20 +106,38 @@ during cross-driver experiments.
 
 ## How CI uses this module
 
-This repository only hosts the workload sources. The CI that actually runs them
-lives in the repository of the component under test — for `jdbc` that is
-[`ydb-jdbc-driver`](https://github.com/ydb-platform/ydb-jdbc-driver) — mirroring
-how the SDK SLO workload in [`../slo`](../slo) is driven from the
-`ydb-java-sdk` repository rather than from here.
+The [SLO workflow](../.github/workflows/slo.yml) in this repository runs the four
+existing Java workloads through Action v3 with `workload_type: table`.
+The metrics above, 600-second duration and 1000/100 read/write RPS remain unchanged.
 
-The driver's workflow, via [`ydb-platform/ydb-slo-action`](https://github.com/ydb-platform/ydb-slo-action):
+For a manual run, select the examples branch and supply `sdk_current_ref` and
+`sdk_baseline_ref` from `ydb-platform/ydb-java-sdk`. Both are required: the
+workflow checks out and builds each SDK independently, pins the shared workload
+to the version built from that checkout, and never falls back to the current
+image after a baseline build failure. Reports label each SDK with its resolved
+commit. `examples_ref` optionally overrides the selected workload revision;
+`github_issue` optionally selects a report comment in this repository.
+
+The same workflow supports `workflow_call`. Callers must provide all three
+source refs explicitly and grant the report job's permissions. No consumer
+workflow in the SDK repository is changed by this migration. Existing consumers,
+including [`ydb-jdbc-driver`](https://github.com/ydb-platform/ydb-jdbc-driver),
+can still build these workload sources from their own CI.
+
+For SLO-labeled pull requests here, `slo-verify.yml` calls that reusable workflow
+with two explicit pinned SDK commits and the PR's examples revision. This verifies
+the same four workloads before the new manual workflow is available on the default
+branch; it does not require merging the PR to test it.
+
+A consumer workflow, via [`ydb-platform/ydb-slo-action`](https://github.com/ydb-platform/ydb-slo-action):
 
 1. checks out the driver under test (current and baseline) and this repository
    for the workload sources;
-2. `ydb-platform/ydb-slo-action/init` deploys a YDB cluster (storage + database
+2. builds the workload images against their respective SDK or driver sources;
+3. `ydb-platform/ydb-slo-action/init` deploys a YDB cluster (storage + database
    nodes), Prometheus with an OTLP receiver, and a chaos monkey, exposing the
-   database node IPs and the OTLP endpoint as step outputs;
-3. builds the workload jar and runs it, pointing `YDB_CONNECTION_STRING` at a
+   database node IPs and the OTLP endpoint as step outputs,
+   and runs both images, pointing `YDB_CONNECTION_STRING` at a
    database node and `OTEL_EXPORTER_OTLP_ENDPOINT` at the Prometheus OTLP
    receiver;
 4. `ydb-platform/ydb-slo-action/report` compares the current run against the

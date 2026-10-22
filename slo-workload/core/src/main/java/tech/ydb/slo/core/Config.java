@@ -9,7 +9,7 @@ public final class Config {
     private final int durationSeconds;
     private final String otlpEndpoint;
 
-    private Config(
+    Config(
             String connectionString,
             String jdbcUrl,
             String token,
